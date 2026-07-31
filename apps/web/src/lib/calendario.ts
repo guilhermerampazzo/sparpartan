@@ -38,10 +38,11 @@ export const FONTES_PADRAO: FonteCalendarioTipo[] = [
   "lembrete",
   "aniversario",
   "solicitacao",
+  "despesa",
 ];
 
 /** Fatos consumados (histórico) — desligados por padrão, disponíveis via chip. */
-export const FONTES_HISTORICO: FonteCalendarioTipo[] = ["protocolo", "venda", "despesa", "pagamento_recebido"];
+export const FONTES_HISTORICO: FonteCalendarioTipo[] = ["protocolo", "venda", "pagamento_recebido"];
 
 export const TODAS_FONTES = [...FONTES_PADRAO, ...FONTES_HISTORICO];
 
@@ -53,7 +54,12 @@ function toISO(d: Date) {
  * Uma query por fonte, cada uma limitada à janela do mês exibido — sem isso o
  * calendário puxaria o histórico inteiro do sistema a cada carregamento.
  */
-async function buscarFonte(tipo: FonteCalendarioTipo, inicio: Date, fim: Date): Promise<ItemCalendario[]> {
+async function buscarFonte(
+  tipo: FonteCalendarioTipo,
+  inicio: Date,
+  fim: Date,
+  mostrarValores: boolean
+): Promise<ItemCalendario[]> {
   const inicioStr = toISO(inicio);
   const fimStr = toISO(fim);
 
@@ -287,7 +293,7 @@ async function buscarFonte(tipo: FonteCalendarioTipo, inicio: Date, fim: Date): 
       return linhas.map((l) => ({
         data: l.data,
         tipo,
-        titulo: `${l.descricao} — R$ ${Number(l.valor).toFixed(2)}`,
+        titulo: mostrarValores ? `${l.descricao} — R$ ${Number(l.valor).toFixed(2)}` : l.descricao,
         clienteNome: null,
         href: "/vendas/despesas",
       }));
@@ -319,9 +325,12 @@ async function buscarFonte(tipo: FonteCalendarioTipo, inicio: Date, fim: Date): 
 export async function buscarItensCalendario(
   inicio: Date,
   fim: Date,
-  fontesAtivas: FonteCalendarioTipo[]
+  fontesAtivas: FonteCalendarioTipo[],
+  mostrarValores = false
 ): Promise<ItemCalendario[]> {
-  const resultados = await Promise.all(fontesAtivas.map((tipo) => buscarFonte(tipo, inicio, fim)));
+  const resultados = await Promise.all(
+    fontesAtivas.map((tipo) => buscarFonte(tipo, inicio, fim, mostrarValores))
+  );
   return resultados.flat();
 }
 

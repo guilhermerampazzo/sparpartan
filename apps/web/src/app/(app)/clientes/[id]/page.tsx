@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { eq, inArray } from "drizzle-orm";
-import { FileText, Mail, CircleDollarSign, CalendarClock, Ship, Download } from "lucide-react";
+import { FileText, Mail, CircleDollarSign, CalendarClock, Ship, Download, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import {
   clientes,
@@ -14,9 +14,11 @@ import {
   servicosContratados,
   agendaEventos,
   modelosDocumento,
+  obras,
 } from "@/db/schema";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Badge, StatusBadge, Button, LinkButton, EmptyState, BackButton } from "@/components/ui";
+import { Badge, StatusBadge, Button, LinkButton, EmptyState, BackButton, ConfirmButton, CadastradoPor } from "@/components/ui";
+import { OcrArquivo } from "@/components/ocr/ocr-arquivo";
 import { urgenciaVencimento, infoUrgencia } from "@/lib/status";
 import {
   adicionarHabilitacao,
@@ -25,6 +27,7 @@ import {
   gerarLinkCadastro,
   gerarLinkEmbarcacao,
 } from "./actions";
+import { excluirCliente } from "../actions";
 
 type EventoTimeline = {
   data: Date;
@@ -54,6 +57,7 @@ export default async function ClienteDetalhesPage({
 
   const gerarLinkCadastroComId = gerarLinkCadastro.bind(null, id);
   const gerarLinkEmbarcacaoComId = gerarLinkEmbarcacao.bind(null, id);
+  const excluirComId = excluirCliente.bind(null, id);
 
   const embarcacoesDoCliente = await db
     .select()
@@ -64,6 +68,18 @@ export default async function ClienteDetalhesPage({
     .select()
     .from(habilitacoes)
     .where(eq(habilitacoes.clienteId, id));
+
+  const obrasDoCliente = await db
+    .select()
+    .from(obras)
+    .where(eq(obras.clienteId, id));
+
+  const embarcacoesEsporteRecreio = embarcacoesDoCliente.filter(
+    (e) => e.classe !== "comercial"
+  );
+  const embarcacoesComerciais = embarcacoesDoCliente.filter((e) => e.classe === "comercial");
+  const habilitacoesAmadoras = habilitacoesDoCliente.filter((h) => h.tipo === "CHA");
+  const habilitacoesComerciaisCir = habilitacoesDoCliente.filter((h) => h.tipo === "CIR");
 
   const arquivosDoCliente = await db
     .select()
@@ -142,6 +158,7 @@ export default async function ClienteDetalhesPage({
         <div>
           <h1 className="font-display text-headline-lg font-bold text-primary">{cliente.nome}</h1>
           <p className="text-body-sm text-outline">{cliente.cpfCnpj}</p>
+          <CadastradoPor usuarioId={cliente.criadoPorId} />
         </div>
         <div className="flex gap-2">
           <LinkButton href={`/clientes/${cliente.id}/editar`} variant="outlined">
@@ -150,6 +167,14 @@ export default async function ClienteDetalhesPage({
           <LinkButton href={`/api/etiqueta/${cliente.id}`} variant="outlined" icon={Download}>
             Etiqueta de Envio
           </LinkButton>
+          <form action={excluirComId}>
+            <ConfirmButton
+              mensagem={`Excluir ${cliente.nome}? Vai para a lixeira, dá para restaurar depois.`}
+              icon={<Trash2 size={14} />}
+            >
+              Excluir
+            </ConfirmButton>
+          </form>
         </div>
       </div>
 
@@ -226,12 +251,12 @@ export default async function ClienteDetalhesPage({
         </dl>
       </SectionCard>
 
-      <SectionCard title="Embarcações">
-        {embarcacoesDoCliente.length === 0 ? (
-          <EmptyState icon={Ship} title="Nenhuma embarcação vinculada" />
+      <SectionCard title="Embarcações Esporte e Recreio">
+        {embarcacoesEsporteRecreio.length === 0 ? (
+          <EmptyState icon={Ship} title="Nenhuma embarcação esporte e recreio vinculada" />
         ) : (
           <ul className="space-y-2">
-            {embarcacoesDoCliente.map((e) => (
+            {embarcacoesEsporteRecreio.map((e) => (
               <li key={e.id}>
                 <Link href={`/embarcacoes/${e.id}`} className="inline-flex items-center gap-2 text-body-md text-primary hover:underline">
                   <Ship size={14} /> {e.nome} {e.numeroInscricao ? `— ${e.numeroInscricao}` : ""}
@@ -242,8 +267,41 @@ export default async function ClienteDetalhesPage({
         )}
       </SectionCard>
 
-      <SectionCard title="Habilitações">
-        {habilitacoesDoCliente.length > 0 && (
+      <SectionCard title="Embarcações Comerciais">
+        {embarcacoesComerciais.length === 0 ? (
+          <EmptyState icon={Ship} title="Nenhuma embarcação comercial vinculada" />
+        ) : (
+          <ul className="space-y-2">
+            {embarcacoesComerciais.map((e) => (
+              <li key={e.id}>
+                <Link href={`/embarcacoes/${e.id}`} className="inline-flex items-center gap-2 text-body-md text-primary hover:underline">
+                  <Ship size={14} /> {e.nome} {e.numeroInscricao ? `— ${e.numeroInscricao}` : ""}
+                  {e.atividadeComercial ? ` — ${e.atividadeComercial}` : ""}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Obras">
+        {obrasDoCliente.length === 0 ? (
+          <EmptyState icon={FileText} title="Nenhuma obra vinculada" />
+        ) : (
+          <ul className="space-y-2">
+            {obrasDoCliente.map((o) => (
+              <li key={o.id}>
+                <Link href={`/obras/${o.id}`} className="inline-flex items-center gap-2 text-body-md text-primary hover:underline">
+                  <FileText size={14} /> {o.titulo ?? "(sem título)"} {o.idObra ? `— ${o.idObra}` : ""}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Habilitação Amadora">
+        {habilitacoesAmadoras.length > 0 && (
           <table className="mb-4 w-full text-left text-body-md">
             <thead>
               <tr className="border-b border-outline-variant font-mono-caps text-label-sm uppercase tracking-wide text-outline">
@@ -254,7 +312,7 @@ export default async function ClienteDetalhesPage({
               </tr>
             </thead>
             <tbody>
-              {habilitacoesDoCliente.map((h) => (
+              {habilitacoesAmadoras.map((h) => (
                 <tr key={h.id} className="border-b border-outline-variant last:border-0">
                   <td className="px-2 py-2">
                     <Badge tone="info" size="sm">{h.tipo}</Badge>
@@ -274,21 +332,56 @@ export default async function ClienteDetalhesPage({
         )}
 
         <form action={adicionarHabilitacaoComId} className="grid grid-cols-1 gap-4 sm:grid-cols-5">
-          <CampoSelect
-            label="Tipo"
-            name="tipo"
-            required
-            options={[
-              { value: "CHA", label: "CHA (Arrais/Motonauta)" },
-              { value: "CIR", label: "CIR (Carteira de Trabalho)" },
-            ]}
-          />
+          <input type="hidden" name="tipo" value="CHA" />
           <Campo label="Número" name="numero" />
           <Campo label="Categoria" name="categoria" />
           <Campo label="Data de Emissão" name="dataEmissao" type="date" />
           <Campo label="Validade" name="validade" type="date" />
           <div className="sm:col-span-5">
-            <Button type="submit">Adicionar Habilitação</Button>
+            <Button type="submit">Adicionar Habilitação Amadora</Button>
+          </div>
+        </form>
+      </SectionCard>
+
+      <SectionCard title="Habilitação comercial-CIR">
+        {habilitacoesComerciaisCir.length > 0 && (
+          <table className="mb-4 w-full text-left text-body-md">
+            <thead>
+              <tr className="border-b border-outline-variant font-mono-caps text-label-sm uppercase tracking-wide text-outline">
+                <th className="px-2 py-2">Tipo</th>
+                <th className="px-2 py-2">Número</th>
+                <th className="px-2 py-2">Categoria</th>
+                <th className="px-2 py-2">Validade</th>
+              </tr>
+            </thead>
+            <tbody>
+              {habilitacoesComerciaisCir.map((h) => (
+                <tr key={h.id} className="border-b border-outline-variant last:border-0">
+                  <td className="px-2 py-2">
+                    <Badge tone="info" size="sm">{h.tipo}</Badge>
+                  </td>
+                  <td className="px-2 py-2">{h.numero ?? "—"}</td>
+                  <td className="px-2 py-2">{h.categoria ?? "—"}</td>
+                  <td className="px-2 py-2">
+                    <div className="flex items-center gap-2">
+                      {h.validade ?? "—"}
+                      {h.validade && <StatusBadge status={infoUrgencia(urgenciaVencimento(h.validade))} size="sm" />}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <form action={adicionarHabilitacaoComId} className="grid grid-cols-1 gap-4 sm:grid-cols-5">
+          <input type="hidden" name="tipo" value="CIR" />
+          <Campo label="Número" name="numero" />
+          <Campo label="Categoria" name="categoria" />
+          <Campo label="Data de Emissão" name="dataEmissao" type="date" />
+          <Campo label="Validade" name="validade" type="date" />
+          <div className="sm:col-span-5">
+            <Button type="submit">Adicionar Habilitação CIR</Button>
           </div>
         </form>
       </SectionCard>
@@ -367,6 +460,10 @@ export default async function ClienteDetalhesPage({
           </label>
           <div className="flex items-end">
             <Button type="submit">Enviar Arquivo</Button>
+          </div>
+          <textarea name="textoExtraido" className="hidden" readOnly />
+          <div className="sm:col-span-5">
+            <OcrArquivo />
           </div>
         </form>
       </SectionCard>

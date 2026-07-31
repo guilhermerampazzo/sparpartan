@@ -6,7 +6,7 @@ import { NovaTaxaForm } from "./form";
 
 export default async function NovaTaxaPage() {
   const listaClientes = await db
-    .select({ id: clientes.id, nome: clientes.nome })
+    .select({ id: clientes.id, nome: clientes.nome, cpfCnpj: clientes.cpfCnpj })
     .from(clientes)
     .orderBy(clientes.nome);
 

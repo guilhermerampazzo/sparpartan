@@ -33,6 +33,35 @@ export async function criarTemplate(
   redirect("/emails");
 }
 
+export async function atualizarTemplate(
+  templateId: string,
+  _estadoAnterior: EstadoForm,
+  formData: FormData
+): Promise<EstadoForm> {
+  const nome = String(formData.get("nome") ?? "").trim();
+  const assunto = String(formData.get("assunto") ?? "").trim();
+  const corpo = String(formData.get("corpo") ?? "").trim();
+  const valores = valoresDoFormData(formData);
+
+  const erro = new Validador()
+    .exigir(!!nome, "Informe o nome do template.")
+    .exigir(!!assunto, "Informe o assunto.")
+    .exigir(!!corpo, "Informe o corpo do e-mail.").erro;
+  if (erro) return { erro, valores };
+
+  await db
+    .update(templatesEmail)
+    .set({
+      nome,
+      tipo: String(formData.get("tipo") ?? "geral"),
+      assunto,
+      corpo,
+    })
+    .where(eq(templatesEmail.id, templateId));
+
+  redirect("/emails");
+}
+
 export async function enviarEmailCliente(
   _estadoAnterior: EstadoForm,
   formData: FormData

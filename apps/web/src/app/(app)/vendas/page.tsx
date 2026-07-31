@@ -2,7 +2,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { ShoppingBag, TrendingUp, CheckCircle2 } from "lucide-react";
 import { db } from "@/db";
 import { servicosContratados, clientes, servicos, pagamentos, orcamentos } from "@/db/schema";
-import { StatCard, LinkButton, Button, ProgressBar, Badge, EmptyState, CampoMoeda, Campo } from "@/components/ui";
+import { StatCard, LinkButton, Button, ProgressBar, Badge, EmptyState, CampoMoeda, Campo, BackButton } from "@/components/ui";
 import { registrarPagamento } from "./actions";
 
 function formatMoney(v: number) {
@@ -37,8 +37,9 @@ export default async function VendasPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-headline-lg font-bold text-primary">Vendas</h1>
+        <h1 className="font-display text-headline-lg font-bold text-primary">Financeiro</h1>
         <LinkButton href="/vendas/financeiro" variant="outlined" size="sm">
           Financeiro / BI
         </LinkButton>

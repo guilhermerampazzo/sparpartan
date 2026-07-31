@@ -21,19 +21,23 @@ import {
   Landmark,
   BookMarked,
   MessageSquare,
+  Kanban,
+  Store,
 } from "lucide-react";
 
 export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  children?: NavItem[];
 };
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Home", icon: LayoutDashboard },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
+  { href: "/pipeline", label: "Pipeline Comercial", icon: Kanban },
   { href: "/orcamentos", label: "Orçamentos", icon: Receipt },
-  { href: "/taxas", label: "Taxas a Pagar", icon: Landmark },
+  { href: "/taxas", label: "Taxas", icon: Landmark },
   { href: "/lembretes", label: "Lembretes", icon: AlarmClock },
   { href: "/chat", label: "Chat da Equipe", icon: MessageSquare },
   { href: "/clientes", label: "Clientes", icon: Users },
@@ -45,12 +49,19 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/servicos", label: "Serviços", icon: Wrench },
   { href: "/arquivos", label: "Arquivos", icon: Folder },
   { href: "/documentos-sparapan", label: "Documentos Sparapan", icon: BookMarked },
-  { href: "/vendas", label: "Vendas", icon: BarChart3 },
+  { href: "/vendas", label: "Financeiro", icon: BarChart3 },
   { href: "/emails", label: "Enviar E-mails", icon: Mail },
-  { href: "/area-de-estudos", label: "Área de Estudos", icon: GraduationCap },
-  { href: "/lms/materias", label: "LMS", icon: BookOpen },
-  { href: "/alunos", label: "Alunos", icon: UserCog },
+  {
+    href: "/area-de-estudos",
+    label: "Escola Náutica",
+    icon: GraduationCap,
+    children: [
+      { href: "/lms/materias", label: "LMS", icon: BookOpen },
+      { href: "/alunos", label: "Alunos", icon: UserCog },
+    ],
+  },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/loja", label: "Loja", icon: Store },
 ];
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [

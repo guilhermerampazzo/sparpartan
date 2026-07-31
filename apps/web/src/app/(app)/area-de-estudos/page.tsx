@@ -58,7 +58,7 @@ export default async function AreaEstudosPage({
   return (
     <div className="space-y-gutter">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-headline-lg font-bold text-primary">Área de Estudos</h1>
+        <h1 className="font-display text-headline-lg font-bold text-primary">Escola Náutica</h1>
         <LinkButton href="/area-de-estudos/materiais/novo" variant="outlined" size="sm">
           + Novo Material
         </LinkButton>

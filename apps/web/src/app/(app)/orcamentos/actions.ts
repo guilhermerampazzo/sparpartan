@@ -31,16 +31,20 @@ export async function criarOrcamento(
   formData: FormData
 ): Promise<EstadoForm> {
   const clienteId = String(formData.get("clienteId") ?? "");
-  const servicoId = String(formData.get("servicoId") ?? "");
+  const servicoId = String(formData.get("servicoId") ?? "") || null;
+  const servicoLivreNome = String(formData.get("servicoLivreNome") ?? "").trim();
   const valor = String(formData.get("valor") ?? "");
   const valores = valoresDoFormData(formData);
 
   const erro = new Validador()
     .exigir(!!clienteId, "Selecione o cliente.")
-    .exigir(!!servicoId, "Selecione o serviço.")
+    .exigir(!!servicoId || !!servicoLivreNome, "Selecione um serviço ou informe o nome do serviço avulso.")
     .exigir(!!valor && Number(valor) > 0, "Informe um valor válido.").erro;
 
   if (erro) return { erro, valores };
+
+  const descricaoInformada = String(formData.get("descricao") ?? "").trim();
+  const descricao = descricaoInformada || (!servicoId ? servicoLivreNome : "") || null;
 
   const session = await auth();
   const usuarioSessao = session?.user as { id?: string; tipo?: string } | undefined;
@@ -61,10 +65,12 @@ export async function criarOrcamento(
           servicoId,
           embarcacaoId: String(formData.get("embarcacaoId") ?? "") || null,
           vendedorId,
+          contaBancariaId: String(formData.get("contaBancariaId") ?? "") || null,
           valor,
-          descricao: String(formData.get("descricao") ?? "") || null,
+          descricao,
           observacoes: String(formData.get("observacoes") ?? "") || null,
           validoAte: String(formData.get("validoAte") ?? "") || null,
+          criadoPorId: vendedorId,
         })
         .returning({ id: orcamentos.id });
       orcamentoId = orcamento.id;
@@ -86,13 +92,14 @@ export async function atualizarOrcamento(
   formData: FormData
 ): Promise<EstadoForm> {
   const clienteId = String(formData.get("clienteId") ?? "");
-  const servicoId = String(formData.get("servicoId") ?? "");
+  const servicoId = String(formData.get("servicoId") ?? "") || null;
+  const servicoLivreNome = String(formData.get("servicoLivreNome") ?? "").trim();
   const valor = String(formData.get("valor") ?? "");
   const valores = valoresDoFormData(formData);
 
   const erro = new Validador()
     .exigir(!!clienteId, "Selecione o cliente.")
-    .exigir(!!servicoId, "Selecione o serviço.")
+    .exigir(!!servicoId || !!servicoLivreNome, "Selecione um serviço ou informe o nome do serviço avulso.")
     .exigir(!!valor && Number(valor) > 0, "Informe um valor válido.").erro;
 
   if (erro) return { erro, valores };
@@ -107,14 +114,18 @@ export async function atualizarOrcamento(
     return { erro: "Só é possível editar orçamentos com status pendente.", valores };
   }
 
+  const descricaoInformada = String(formData.get("descricao") ?? "").trim();
+  const descricao = descricaoInformada || (!servicoId ? servicoLivreNome : "") || null;
+
   await db
     .update(orcamentos)
     .set({
       clienteId,
       servicoId,
       embarcacaoId: String(formData.get("embarcacaoId") ?? "") || null,
+      contaBancariaId: String(formData.get("contaBancariaId") ?? "") || null,
       valor,
-      descricao: String(formData.get("descricao") ?? "") || null,
+      descricao,
       observacoes: String(formData.get("observacoes") ?? "") || null,
       validoAte: String(formData.get("validoAte") ?? "") || null,
       pdfCaminho: null,
@@ -133,7 +144,12 @@ export async function excluirOrcamento(orcamentoId: string) {
 }
 
 export async function gerarPdfOrcamento(orcamentoId: string) {
-  await gerarPdfCore(orcamentoId);
+  try {
+    await gerarPdfCore(orcamentoId);
+  } catch (e) {
+    const mensagem = e instanceof Error ? e.message : "Falha ao gerar PDF do orçamento.";
+    redirect(`/orcamentos/${orcamentoId}?erro=${encodeURIComponent(mensagem)}`);
+  }
   redirect(`/orcamentos/${orcamentoId}`);
 }
 
@@ -144,9 +160,17 @@ export async function enviarOrcamentoPorEmail(orcamentoId: string) {
   const [cliente] = await db.select().from(clientes).where(eq(clientes.id, orcamento.clienteId)).limit(1);
   if (!cliente?.email) throw new Error("Cliente não possui e-mail cadastrado");
 
-  const [servico] = await db.select().from(servicos).where(eq(servicos.id, orcamento.servicoId)).limit(1);
+  const [servico] = orcamento.servicoId
+    ? await db.select().from(servicos).where(eq(servicos.id, orcamento.servicoId)).limit(1)
+    : [];
 
-  const pdfCaminho = orcamento.pdfCaminho ?? (await gerarPdfCore(orcamentoId)).pdfCaminho;
+  let pdfCaminho: string;
+  try {
+    pdfCaminho = orcamento.pdfCaminho ?? (await gerarPdfCore(orcamentoId)).pdfCaminho;
+  } catch (e) {
+    const mensagem = e instanceof Error ? e.message : "Falha ao gerar PDF do orçamento.";
+    redirect(`/orcamentos/${orcamentoId}?erro=${encodeURIComponent(mensagem)}`);
+  }
   const pdfBuffer = await lerPdfOrcamento(pdfCaminho);
 
   const valorFormatado = Number(orcamento.valor).toLocaleString("pt-BR", {

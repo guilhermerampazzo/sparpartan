@@ -35,12 +35,14 @@ export function CampoSelect({
   options,
   required = false,
   defaultValue,
+  onChange,
 }: {
   label: string;
   name: string;
   options: { value: string; label: string }[];
   required?: boolean;
   defaultValue?: string;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }) {
   return (
     <label className="flex flex-col gap-1">
@@ -52,6 +54,7 @@ export function CampoSelect({
         name={name}
         required={required}
         defaultValue={defaultValue}
+        onChange={onChange}
         className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
       >
         {options.map((opt) => (
@@ -60,6 +63,43 @@ export function CampoSelect({
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+export function CampoComboLivre({
+  label,
+  name,
+  options,
+  defaultValue,
+  required = false,
+}: {
+  label: string;
+  name: string;
+  options: string[];
+  defaultValue?: string;
+  required?: boolean;
+}) {
+  const listId = `${name}-lista`;
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+        {label}
+        {required ? " *" : ""}
+      </span>
+      <input
+        name={name}
+        list={listId}
+        required={required}
+        defaultValue={defaultValue}
+        placeholder="Selecione ou digite..."
+        className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+      />
+      <datalist id={listId}>
+        {options.map((opt) => (
+          <option key={opt} value={opt} />
+        ))}
+      </datalist>
     </label>
   );
 }

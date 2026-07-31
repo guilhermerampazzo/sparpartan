@@ -247,7 +247,9 @@ export default async function SolicitacaoPage({ params }: { params: Promise<{ to
   if (solicitacao.tipo === "aprovacao_orcamento") {
     if (!solicitacao.orcamentoId) return <Casca titulo="Erro">Solicitação inválida.</Casca>;
     const [orcamento] = await db.select().from(orcamentos).where(eq(orcamentos.id, solicitacao.orcamentoId)).limit(1);
-    const [servico] = await db.select().from(servicos).where(eq(servicos.id, orcamento.servicoId)).limit(1);
+    const [servico] = orcamento.servicoId
+      ? await db.select().from(servicos).where(eq(servicos.id, orcamento.servicoId)).limit(1)
+      : [];
     const aprovarComToken = aprovarOrcamentoPublico.bind(null, token);
     const recusarComToken = recusarOrcamentoPublico.bind(null, token);
     const valorFormatado = Number(orcamento.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -256,7 +258,7 @@ export default async function SolicitacaoPage({ params }: { params: Promise<{ to
       <Casca titulo={`Orçamento ${orcamento.numero}`}>
         <SectionCard title="Detalhes">
           <div className="space-y-2 text-body-md text-primary">
-            <p>Serviço: <strong>{servico?.nome}</strong></p>
+            <p>Serviço: <strong>{servico?.nome ?? orcamento.descricao ?? "—"}</strong></p>
             <p>Valor: <strong>{valorFormatado}</strong></p>
             {orcamento.validoAte && <p>Válido até: <strong>{orcamento.validoAte}</strong></p>}
             <StatusBadge status={statusOrcamento(orcamento.status)} />

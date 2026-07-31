@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { obras, clientes, engenheiros } from "@/db/schema";
+import { obras, clientes, engenheiros, obraFotos } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { BackButton, LinkButton } from "@/components/ui";
+import { BackButton, LinkButton, Button, CadastradoPor } from "@/components/ui";
+import { enviarFotoObra, removerFotoObra } from "../actions";
 
 function Campo({ label, valor }: { label: string; valor: string | number | null }) {
   return (
@@ -31,6 +33,10 @@ export default async function ObraDetalhesPage({
     ? await db.select().from(engenheiros).where(eq(engenheiros.id, obra.engenheiroId)).limit(1)
     : [];
 
+  const fotos = await db.select().from(obraFotos).where(eq(obraFotos.obraId, id));
+  const enviarFotoComId = enviarFotoObra.bind(null, id);
+  const removerFotoComId = removerFotoObra.bind(null, id);
+
   return (
     <div className="space-y-gutter">
       <BackButton href="/obras" />
@@ -45,6 +51,7 @@ export default async function ObraDetalhesPage({
               {cliente?.nome}
             </Link>
           </p>
+          <CadastradoPor usuarioId={obra.criadoPorId} />
         </div>
         <div className="flex gap-2">
           <LinkButton href={`/obras/${id}/editar`} variant="outlined">
@@ -66,6 +73,7 @@ export default async function ObraDetalhesPage({
           <Campo label="Código do Item" valor={obra.itemObraCodigo} />
           <Campo label="NORMAM de Uso" valor={obra.normamDeUso} />
           <Campo label="CP/DL/AG" valor={obra.cpDlAg} />
+          <Campo label="Endereço" valor={obra.endereco} />
         </dl>
       </SectionCard>
 
@@ -124,6 +132,45 @@ export default async function ObraDetalhesPage({
           <Campo label="Coletes" valor={obra.coletes} />
           <Campo label="Boias" valor={obra.boias} />
         </dl>
+      </SectionCard>
+
+      <SectionCard title={`Fotos da Obra (${fotos.length})`}>
+        {fotos.length < 3 && (
+          <p className="mb-4 text-sm text-warning">
+            O memorial descritivo recomenda no mínimo 3 fotos — faltam {3 - fotos.length}.
+          </p>
+        )}
+        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {fotos.map((foto) => (
+            <div key={foto.id} className="space-y-2">
+              <div className="relative aspect-square overflow-hidden rounded-lg border border-outline-variant">
+                <Image
+                  src={`/api/obra-fotos/${foto.id}`}
+                  alt="Foto da obra"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <form action={removerFotoComId.bind(null, foto.id)}>
+                <Button type="submit" variant="outlined" size="sm">
+                  Remover
+                </Button>
+              </form>
+            </div>
+          ))}
+        </div>
+        <form action={enviarFotoComId} className="flex items-end gap-3">
+          <input
+            name="foto"
+            type="file"
+            accept="image/*"
+            required
+            className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-body-md text-primary outline-none focus:border-primary"
+          />
+          <Button type="submit" variant="outlined" size="sm">
+            Enviar Foto
+          </Button>
+        </form>
       </SectionCard>
     </div>
   );

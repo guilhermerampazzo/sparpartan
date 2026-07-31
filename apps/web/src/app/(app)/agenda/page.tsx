@@ -2,6 +2,7 @@ import { asc, eq, gte, and, inArray, isNotNull } from "drizzle-orm";
 import { ChevronLeft, ChevronRight, CalendarClock, Landmark } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
+import { auth } from "@/lib/auth";
 import { agendaEventos, agendaInteressados, clientes, processos, servicos } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
 import { Badge, LinkButton, Button, EmptyState, CalendarMonth } from "@/components/ui";
@@ -58,8 +59,11 @@ export default async function AgendaPage({
     TODAS_FONTES.includes(f)
   );
 
+  const session = await auth();
+  const mostrarValores = (session?.user as { role?: string } | undefined)?.role === "admin";
+
   const { inicio, fim, celulas } = gradeDoMes(mesRef);
-  const itens = await buscarItensCalendario(inicio, fim, fontesAtivas);
+  const itens = await buscarItensCalendario(inicio, fim, fontesAtivas, mostrarValores);
 
   const mesAnterior = new Date(mesRef.getFullYear(), mesRef.getMonth() - 1, 1);
   const mesSeguinte = new Date(mesRef.getFullYear(), mesRef.getMonth() + 1, 1);

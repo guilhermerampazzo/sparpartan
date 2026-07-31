@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { FolderClock, Receipt, AlarmClock, Link2, CreditCard } from "lucide-react";
 import { db } from "@/db";
 import { processos, clientes, servicos, orcamentos, pagamentos, lembretes, solicitacoes, servicosContratados } from "@/db/schema";
@@ -19,7 +19,7 @@ export default async function PendentesPage() {
     .from(processos)
     .innerJoin(clientes, eq(processos.clienteId, clientes.id))
     .innerJoin(servicos, eq(processos.servicoId, servicos.id))
-    .where(eq(processos.status, "documentos_pendentes"))
+    .where(inArray(processos.status, ["documentos_pendentes", "pronto_para_protocolo"] as const))
     .orderBy(desc(processos.atualizadoEm));
 
   const orcamentosPendentes = await db
@@ -62,9 +62,9 @@ export default async function PendentesPage() {
       <h1 className="font-display text-headline-lg font-bold text-primary">Pendentes</h1>
       <p className="text-body-sm text-outline">Tudo que precisa da sua atenção, num só lugar.</p>
 
-      <SectionCard title="Processos com documentos pendentes">
+      <SectionCard title="Processos não protocolados">
         {processosPendentes.length === 0 ? (
-          <EmptyState icon={FolderClock} title="Nenhum processo travado em documentos" />
+          <EmptyState icon={FolderClock} title="Nenhum processo aguardando protocolo" />
         ) : (
           <ul className="space-y-2">
             {processosPendentes.map((p) => (

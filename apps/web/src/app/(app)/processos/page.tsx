@@ -1,9 +1,10 @@
-import { and, desc, eq, isNull, or, ilike, count } from "drizzle-orm";
+import { and, desc, eq, isNull, or, ilike, count, inArray } from "drizzle-orm";
 import { FolderClock } from "lucide-react";
 import { db } from "@/db";
 import { processos, clientes, servicos } from "@/db/schema";
 import {
   StatusBadge,
+  Badge,
   LinkButton,
   EmptyState,
   DataTable,
@@ -12,29 +13,44 @@ import {
   paginar,
   type Column,
 } from "@/components/ui";
-import { statusProcesso } from "@/lib/status";
+import { statusProcesso, urgenciaVencimento, infoUrgencia, vencimentoProtocolo } from "@/lib/status";
 
 type LinhaProcesso = {
   id: string;
   status: string;
   numeroProtocolo: string | null;
+  dataProtocolo: string | null;
   clienteNome: string;
   servicoNome: string;
 };
 
+const ABAS = [
+  { key: "geral", label: "Geral", status: null as string[] | null },
+  { key: "andamento", label: "Em Andamento", status: ["aberto", "documentos_pendentes", "pronto_para_protocolo"] },
+  { key: "protocolado", label: "Protocolado", status: ["protocolado"] },
+  { key: "prontos", label: "Prontos", status: ["concluido"] },
+] as const;
+
 export default async function ProcessosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; aba?: string }>;
 }) {
-  const { q, page } = await searchParams;
+  const { q, page, aba: abaParam } = await searchParams;
+  const aba = ABAS.find((a) => a.key === abaParam) ?? ABAS[0];
 
-  const filtro = q
-    ? and(
-        isNull(processos.excluidoEm),
-        or(ilike(clientes.nome, `%${q}%`), ilike(servicos.nome, `%${q}%`), ilike(processos.numeroProtocolo, `%${q}%`))
-      )
-    : isNull(processos.excluidoEm);
+  const condicoes = [isNull(processos.excluidoEm)];
+  if (q) {
+    condicoes.push(
+      or(
+        ilike(clientes.nome, `%${q}%`),
+        ilike(servicos.nome, `%${q}%`),
+        ilike(processos.numeroProtocolo, `%${q}%`)
+      )!
+    );
+  }
+  if (aba.status) condicoes.push(inArray(processos.status, aba.status as (typeof processos.status.enumValues)[number][]));
+  const filtro = and(...condicoes);
 
   const [{ total }] = await db
     .select({ total: count() })
@@ -50,6 +66,7 @@ export default async function ProcessosPage({
       id: processos.id,
       status: processos.status,
       numeroProtocolo: processos.numeroProtocolo,
+      dataProtocolo: processos.dataProtocolo,
       criadoEm: processos.criadoEm,
       clienteNome: clientes.nome,
       servicoNome: servicos.nome,
@@ -67,6 +84,18 @@ export default async function ProcessosPage({
     { header: "Serviço", cell: (p) => p.servicoNome },
     { header: "Status", cell: (p) => <StatusBadge status={statusProcesso(p.status)} /> },
     { header: "Protocolo", cell: (p) => p.numeroProtocolo ?? "—" },
+    {
+      header: "Vencimento do Protocolo",
+      cell: (p) => {
+        if (p.status !== "protocolado" || !p.dataProtocolo) return "—";
+        const urgencia = urgenciaVencimento(vencimentoProtocolo(p.dataProtocolo));
+        return (
+          <Badge tone={infoUrgencia(urgencia).tone} size="sm">
+            {infoUrgencia(urgencia).label}
+          </Badge>
+        );
+      },
+    },
   ];
 
   return (
@@ -74,6 +103,19 @@ export default async function ProcessosPage({
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Processos</h1>
         <LinkButton href="/processos/novo">+ Novo Atendimento</LinkButton>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {ABAS.map((a) => (
+          <LinkButton
+            key={a.key}
+            href={`/processos${a.key === "geral" ? "" : `?aba=${a.key}`}`}
+            variant={aba.key === a.key ? "filled" : "outlined"}
+            size="sm"
+          >
+            {a.label}
+          </LinkButton>
+        ))}
       </div>
 
       <SearchBox placeholder="Buscar por cliente, serviço ou protocolo..." valorAtual={q} />
@@ -86,13 +128,13 @@ export default async function ProcessosPage({
         empty={
           <EmptyState
             icon={FolderClock}
-            title={q ? "Nenhum processo encontrado" : "Nenhum processo aberto ainda"}
+            title={q ? "Nenhum processo encontrado" : "Nenhum processo nessa aba"}
             action={q ? undefined : { label: "+ Novo Atendimento", href: "/processos/novo" }}
           />
         }
       />
 
-      <Pagination paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalRegistros={total} baseParams={{ q }} />
+      <Pagination paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalRegistros={total} baseParams={{ q, aba: aba.key === "geral" ? undefined : aba.key }} />
     </div>
   );
 }

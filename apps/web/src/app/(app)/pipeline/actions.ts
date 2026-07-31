@@ -1,0 +1,185 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { pipelineOportunidades, pipelineHistorico } from "@/db/schema";
+import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
+import { auth } from "@/lib/auth";
+
+async function usuarioAtualId(): Promise<string | null> {
+  const session = await auth();
+  const usuarioSessao = session?.user as { id?: string; tipo?: string } | undefined;
+  return usuarioSessao?.tipo === "equipe" ? (usuarioSessao.id ?? null) : null;
+}
+
+export async function criarOportunidade(
+  _estadoAnterior: EstadoForm,
+  formData: FormData
+): Promise<EstadoForm> {
+  const titulo = String(formData.get("titulo") ?? "").trim();
+  const clienteId = String(formData.get("clienteId") ?? "") || null;
+  const telefoneContato = String(formData.get("telefoneContato") ?? "").trim() || null;
+  const origem = String(formData.get("origem") ?? "").trim() || null;
+  const valorEstimado = String(formData.get("valorEstimado") ?? "") || null;
+  const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+  const valores = valoresDoFormData(formData);
+
+  const erro = new Validador()
+    .exigir(!!titulo, "Informe o título da oportunidade.")
+    .exigir(!!clienteId || !!telefoneContato, "Vincule um cliente ou informe um telefone de contato.")
+    .erro;
+
+  if (erro) return { erro, valores };
+
+  const criadoPorId = await usuarioAtualId();
+
+  const [oportunidade] = await db
+    .insert(pipelineOportunidades)
+    .values({
+      titulo,
+      clienteId,
+      telefoneContato,
+      origem,
+      valorEstimado,
+      observacoes,
+      criadoPorId,
+    })
+    .returning({ id: pipelineOportunidades.id });
+
+  await db.insert(pipelineHistorico).values({
+    oportunidadeId: oportunidade.id,
+    estagioAnterior: null,
+    estagioNovo: "novo_lead",
+    usuarioId: criadoPorId,
+  });
+
+  redirect(`/pipeline/${oportunidade.id}`);
+}
+
+export async function atualizarOportunidade(
+  oportunidadeId: string,
+  _estadoAnterior: EstadoForm,
+  formData: FormData
+): Promise<EstadoForm> {
+  const titulo = String(formData.get("titulo") ?? "").trim();
+  const clienteId = String(formData.get("clienteId") ?? "") || null;
+  const telefoneContato = String(formData.get("telefoneContato") ?? "").trim() || null;
+  const origem = String(formData.get("origem") ?? "").trim() || null;
+  const valorEstimado = String(formData.get("valorEstimado") ?? "") || null;
+  const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+  const valores = valoresDoFormData(formData);
+
+  const erro = new Validador()
+    .exigir(!!titulo, "Informe o título da oportunidade.")
+    .exigir(!!clienteId || !!telefoneContato, "Vincule um cliente ou informe um telefone de contato.")
+    .erro;
+
+  if (erro) return { erro, valores };
+
+  await db
+    .update(pipelineOportunidades)
+    .set({
+      titulo,
+      clienteId,
+      telefoneContato,
+      origem,
+      valorEstimado,
+      observacoes,
+      atualizadoEm: new Date(),
+    })
+    .where(eq(pipelineOportunidades.id, oportunidadeId));
+
+  redirect(`/pipeline/${oportunidadeId}`);
+}
+
+const ESTAGIOS = [
+  "novo_lead",
+  "atendimento",
+  "proposta_enviada",
+  "negociacao",
+  "fechado",
+  "em_execucao",
+  "aguardando_cliente",
+  "concluido",
+  "pos_venda",
+  "perdido",
+] as const;
+type PipelineEstagio = (typeof ESTAGIOS)[number];
+const ESTAGIOS_VALIDOS = new Set<string>(ESTAGIOS);
+
+function comoEstagio(valor: string): PipelineEstagio {
+  return valor as PipelineEstagio;
+}
+
+export async function moverEstagio(
+  oportunidadeId: string,
+  novoEstagio: string,
+  motivoPerda?: string
+) {
+  if (!ESTAGIOS_VALIDOS.has(novoEstagio)) throw new Error("Estágio inválido.");
+
+  const [atual] = await db
+    .select({ estagio: pipelineOportunidades.estagio })
+    .from(pipelineOportunidades)
+    .where(eq(pipelineOportunidades.id, oportunidadeId))
+    .limit(1);
+  if (!atual) throw new Error("Oportunidade não encontrada.");
+
+  const usuarioId = await usuarioAtualId();
+
+  await db
+    .update(pipelineOportunidades)
+    .set({
+      estagio: comoEstagio(novoEstagio),
+      motivoPerda: novoEstagio === "perdido" ? (motivoPerda?.trim() || null) : null,
+      atualizadoEm: new Date(),
+    })
+    .where(eq(pipelineOportunidades.id, oportunidadeId));
+
+  await db.insert(pipelineHistorico).values({
+    oportunidadeId,
+    estagioAnterior: atual.estagio,
+    estagioNovo: comoEstagio(novoEstagio),
+    usuarioId,
+  });
+
+  redirect(`/pipeline/${oportunidadeId}`);
+}
+
+export async function moverEstagioNoQuadro(formData: FormData) {
+  const oportunidadeId = String(formData.get("oportunidadeId") ?? "");
+  const novoEstagio = String(formData.get("novoEstagio") ?? "");
+  if (!oportunidadeId || !ESTAGIOS_VALIDOS.has(novoEstagio)) throw new Error("Dados inválidos.");
+
+  const [atual] = await db
+    .select({ estagio: pipelineOportunidades.estagio })
+    .from(pipelineOportunidades)
+    .where(eq(pipelineOportunidades.id, oportunidadeId))
+    .limit(1);
+  if (!atual) throw new Error("Oportunidade não encontrada.");
+
+  const usuarioId = await usuarioAtualId();
+
+  await db
+    .update(pipelineOportunidades)
+    .set({
+      estagio: comoEstagio(novoEstagio),
+      atualizadoEm: new Date(),
+    })
+    .where(eq(pipelineOportunidades.id, oportunidadeId));
+
+  await db.insert(pipelineHistorico).values({
+    oportunidadeId,
+    estagioAnterior: atual.estagio,
+    estagioNovo: comoEstagio(novoEstagio),
+    usuarioId,
+  });
+
+  redirect("/pipeline");
+}
+
+export async function marcarPerdida(oportunidadeId: string, formData: FormData) {
+  const motivoPerda = String(formData.get("motivoPerda") ?? "").trim();
+  await moverEstagio(oportunidadeId, "perdido", motivoPerda);
+}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClipboardList, Trash2, Download, ScanText } from "lucide-react";
+import { ClipboardList, Trash2, Download, ScanText, FileStack, Landmark, UserCog } from "lucide-react";
 import { auth } from "@/lib/auth";
 
 export default async function ConfiguracoesPage() {
@@ -7,11 +7,23 @@ export default async function ConfiguracoesPage() {
   const role = (session?.user as { role?: string })?.role;
 
   const cartoes = [
+    {
+      href: "/configuracoes/modelos",
+      icon: FileStack,
+      title: "Modelos de Documento",
+      description: "Modelos cadastrados, importação e substituição de arquivo.",
+    },
     role === "admin" && {
       href: "/configuracoes/auditoria",
       icon: ClipboardList,
       title: "Log de Auditoria",
       description: "Histórico de ações da equipe no sistema.",
+    },
+    role === "admin" && {
+      href: "/configuracoes/usuarios",
+      icon: UserCog,
+      title: "Usuários",
+      description: "Controle de acesso: quais módulos cada colaborador pode ver.",
     },
     {
       href: "/clientes/lixeira",
@@ -30,6 +42,12 @@ export default async function ConfiguracoesPage() {
       icon: ScanText,
       title: "OCR de Documento",
       description: "Extrai texto de uma foto de RG/CRLV para copiar no cadastro.",
+    },
+    {
+      href: "/configuracoes/contas-bancarias",
+      icon: Landmark,
+      title: "Contas Bancárias",
+      description: "Contas usadas para receber pagamentos, disponíveis nos orçamentos.",
     },
   ].filter(Boolean) as { href: string; icon: typeof ClipboardList; title: string; description: string }[];
 

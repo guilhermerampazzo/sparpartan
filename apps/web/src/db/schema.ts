@@ -103,6 +103,25 @@ export const statusPedidoPagamento = pgEnum("status_pedido_pagamento", [
   "cancelado",
 ]);
 
+export const lojaCategoriaEnum = pgEnum("loja_categoria", [
+  "embarcacao",
+  "motor",
+  "equipamento_nautico",
+  "acessorio",
+  "pesca",
+  "servico",
+]);
+export const lojaOrcamentoStatusEnum = pgEnum("loja_orcamento_status", [
+  "pendente",
+  "aprovado",
+  "recusado",
+]);
+export const lojaVendaStatusEnum = pgEnum("loja_venda_status", [
+  "em_andamento",
+  "concluida",
+  "cancelada",
+]);
+
 export const usuarios = pgTable("usuarios", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull(),
@@ -110,6 +129,8 @@ export const usuarios = pgTable("usuarios", {
   senhaHash: text("senha_hash").notNull(),
   role: userRole("role").notNull().default("operador"),
   ativo: boolean("ativo").notNull().default(true),
+  chatUltimaLeituraEm: timestamp("chat_ultima_leitura_em"),
+  modulosPermitidos: jsonb("modulos_permitidos").$type<string[]>(),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
   atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
 });
@@ -142,6 +163,7 @@ export const clientes = pgTable("clientes", {
   ativo: boolean("ativo").notNull().default(true),
   portalSenhaHash: text("portal_senha_hash"),
   excluidoEm: timestamp("excluido_em"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
   atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
 });
@@ -183,11 +205,24 @@ export const embarcacoes = pgTable("embarcacoes", {
   apoliceDpem: text("apolice_dpem"),
   validadeDpem: date("validade_dpem"),
   tipoPropulsao: text("tipo_propulsao"),
+  potenciaMotor: numeric("potencia_motor"),
+  numeroSerieMotor: text("numero_serie_motor"),
   classe: embarcacaoClasse("classe").notNull().default("esporte_recreio"),
+  atividadeComercial: text("atividade_comercial"),
   ativo: boolean("ativo").notNull().default(true),
   excluidoEm: timestamp("excluido_em"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
   atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+});
+
+export const embarcacaoFotos = pgTable("embarcacao_fotos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  embarcacaoId: uuid("embarcacao_id")
+    .notNull()
+    .references(() => embarcacoes.id, { onDelete: "cascade" }),
+  caminho: text("caminho").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
 export const motores = pgTable("motores", {
@@ -255,6 +290,7 @@ export const obras = pgTable("obras", {
   respTecnico: text("resp_tecnico"),
   nCrea: text("n_crea"),
   engenheiroId: uuid("engenheiro_id").references(() => engenheiros.id, { onDelete: "set null" }),
+  endereco: text("endereco"),
   // Localização
   rioLocalizado: text("rio_localizado"),
   distanciaRioKm: numeric("distancia_rio_km"),
@@ -293,8 +329,18 @@ export const obras = pgTable("obras", {
   qntTambores: integer("qnt_tambores"),
   volumeTambores: numeric("volume_tambores"),
   excluidoEm: timestamp("excluido_em"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
   atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+});
+
+export const obraFotos = pgTable("obra_fotos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  obraId: uuid("obra_id")
+    .notNull()
+    .references(() => obras.id, { onDelete: "cascade" }),
+  caminho: text("caminho").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
 export const servicos = pgTable("servicos", {
@@ -346,6 +392,7 @@ export const arquivos = pgTable("arquivos", {
   tipo: text("tipo").notNull(),
   nomeOriginal: text("nome_original").notNull(),
   caminho: text("caminho").notNull(),
+  textoExtraido: text("texto_extraido"),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
@@ -372,6 +419,17 @@ export const modelosDocumento = pgTable("modelos_documento", {
   duasVias: boolean("duas_vias").notNull().default(false),
   /** Quando preenchido, o documento gerado ganha vencimento = hoje + N meses. */
   validadeMeses: integer("validade_meses"),
+  padraoParaObra: boolean("padrao_para_obra").notNull().default(false),
+  /**
+   * Campos de marcação (checkbox) do modelo — ex: um requerimento com várias
+   * finalidades possíveis ("Inscrição", "Baixa", "Transferência"...) onde só a
+   * opção do serviço contratado deve vir marcada. Cada entrada diz qual
+   * MERGEFIELD marcar, com que valor, e quais serviços acionam a marcação.
+   */
+  camposMarcacao: jsonb("campos_marcacao")
+    .notNull()
+    .default([])
+    .$type<{ campo: string; valorMarcado: string; servicoIds: string[] }[]>(),
   ativo: boolean("ativo").notNull().default(true),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
@@ -384,6 +442,7 @@ export const processos = pgTable("processos", {
   embarcacaoId: uuid("embarcacao_id").references(() => embarcacoes.id, {
     onDelete: "set null",
   }),
+  obraId: uuid("obra_id").references(() => obras.id, { onDelete: "set null" }),
   servicoId: uuid("servico_id")
     .notNull()
     .references(() => servicos.id, { onDelete: "restrict" }),
@@ -396,6 +455,7 @@ export const processos = pgTable("processos", {
   protocoloEscaneadoCaminho: text("protocolo_escaneado_caminho"),
   observacoes: text("observacoes"),
   excluidoEm: timestamp("excluido_em"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
   atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
 });
@@ -412,6 +472,7 @@ export const documentosGerados = pgTable("documentos_gerados", {
     onDelete: "set null",
   }),
   processoId: uuid("processo_id").references(() => processos.id, { onDelete: "set null" }),
+  obraId: uuid("obra_id").references(() => obras.id, { onDelete: "set null" }),
   dadosPreenchidos: jsonb("dados_preenchidos").notNull().$type<Record<string, string>>(),
   docxCaminho: text("docx_caminho").notNull(),
   pdfCaminho: text("pdf_caminho"),
@@ -426,13 +487,14 @@ export const orcamentos = pgTable("orcamentos", {
   clienteId: uuid("cliente_id")
     .notNull()
     .references(() => clientes.id, { onDelete: "restrict" }),
-  servicoId: uuid("servico_id")
-    .notNull()
-    .references(() => servicos.id, { onDelete: "restrict" }),
+  servicoId: uuid("servico_id").references(() => servicos.id, { onDelete: "restrict" }),
   embarcacaoId: uuid("embarcacao_id").references(() => embarcacoes.id, {
     onDelete: "set null",
   }),
   vendedorId: uuid("vendedor_id").references(() => usuarios.id, { onDelete: "set null" }),
+  contaBancariaId: uuid("conta_bancaria_id").references(() => contasBancarias.id, {
+    onDelete: "set null",
+  }),
   valor: numeric("valor").notNull(),
   descricao: text("descricao"),
   observacoes: text("observacoes"),
@@ -440,6 +502,17 @@ export const orcamentos = pgTable("orcamentos", {
   validoAte: date("valido_ate"),
   pdfCaminho: text("pdf_caminho"),
   excluidoEm: timestamp("excluido_em"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const contasBancarias = pgTable("contas_bancarias", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  apelido: text("apelido").notNull(),
+  banco: text("banco"),
+  agencia: text("agencia"),
+  conta: text("conta"),
+  pix: text("pix"),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
@@ -456,6 +529,7 @@ export const servicosContratados = pgTable("servicos_contratados", {
   vendedorId: uuid("vendedor_id").references(() => usuarios.id, { onDelete: "set null" }),
   valor: numeric("valor").notNull(),
   dataContratacao: date("data_contratacao").notNull(),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
@@ -806,12 +880,14 @@ export const taxasPagar = pgTable("taxas_pagar", {
     onDelete: "set null",
   }),
   descricao: text("descricao").notNull(),
+  numero: text("numero"),
   valor: numeric("valor").notNull(),
   vencimento: date("vencimento"),
   status: taxaStatus("status").notNull().default("pendente"),
   arquivoCaminho: text("arquivo_caminho"),
   pagoEm: timestamp("pago_em"),
   formaPagamento: text("forma_pagamento"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
@@ -825,11 +901,205 @@ export const arquivosEmpresa = pgTable("arquivos_empresa", {
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
-/** Chat interno da equipe — canal único (MVP). */
+// ---------------------------------------------------------------------------
+// Pipeline Comercial (Kanban de vendas) — migração 0024
+// ---------------------------------------------------------------------------
+
+export const pipelineEstagio = pgEnum("pipeline_estagio", [
+  "novo_lead",
+  "atendimento",
+  "proposta_enviada",
+  "negociacao",
+  "fechado",
+  "em_execucao",
+  "aguardando_cliente",
+  "concluido",
+  "pos_venda",
+  "perdido",
+]);
+
+export const pipelineOportunidades = pgTable("pipeline_oportunidades", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  titulo: text("titulo").notNull(),
+  clienteId: uuid("cliente_id").references(() => clientes.id, { onDelete: "set null" }),
+  telefoneContato: text("telefone_contato"),
+  origem: text("origem"),
+  estagio: pipelineEstagio("estagio").notNull().default("novo_lead"),
+  motivoPerda: text("motivo_perda"),
+  valorEstimado: numeric("valor_estimado"),
+  observacoes: text("observacoes"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+});
+
+export const pipelineHistorico = pgTable("pipeline_historico", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  oportunidadeId: uuid("oportunidade_id")
+    .notNull()
+    .references(() => pipelineOportunidades.id, { onDelete: "cascade" }),
+  estagioAnterior: pipelineEstagio("estagio_anterior"),
+  estagioNovo: pipelineEstagio("estagio_novo").notNull(),
+  usuarioId: uuid("usuario_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+/** Chat interno da equipe — canal geral (destinatarioId nulo) ou conversa privada 1-a-1. */
 export const mensagens = pgTable("mensagens", {
   id: uuid("id").primaryKey().defaultRandom(),
   usuarioId: uuid("usuario_id").references(() => usuarios.id, { onDelete: "set null" }),
   usuarioNome: text("usuario_nome").notNull(),
+  destinatarioId: uuid("destinatario_id").references(() => usuarios.id, { onDelete: "cascade" }),
   corpo: text("corpo").notNull(),
+  anexoCaminho: text("anexo_caminho"),
+  anexoNome: text("anexo_nome"),
+  editadaEm: timestamp("editada_em"),
+  apagadaEm: timestamp("apagada_em"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Loja — módulo independente de venda de embarcações, motores e acessórios
+// ---------------------------------------------------------------------------
+
+export const lojaProdutos = pgTable("loja_produtos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  categoria: lojaCategoriaEnum("categoria").notNull(),
+  nome: text("nome").notNull(),
+  descricao: text("descricao"),
+  fabricante: text("fabricante"),
+  preco: numeric("preco"),
+  estoque: integer("estoque").notNull().default(0),
+  observacoes: text("observacoes"),
+  ativo: boolean("ativo").notNull().default(true),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaProdutoFotos = pgTable("loja_produto_fotos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  produtoId: uuid("produto_id")
+    .notNull()
+    .references(() => lojaProdutos.id, { onDelete: "cascade" }),
+  caminho: text("caminho").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaProdutoArquivos = pgTable("loja_produto_arquivos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  produtoId: uuid("produto_id")
+    .notNull()
+    .references(() => lojaProdutos.id, { onDelete: "cascade" }),
+  nomeOriginal: text("nome_original").notNull(),
+  caminho: text("caminho").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaOrcamentos = pgTable("loja_orcamentos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  numero: text("numero").notNull().unique(),
+  clienteId: uuid("cliente_id")
+    .notNull()
+    .references(() => clientes.id, { onDelete: "restrict" }),
+  valorTotal: numeric("valor_total").notNull().default("0"),
+  status: lojaOrcamentoStatusEnum("status").notNull().default("pendente"),
+  observacoes: text("observacoes"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaOrcamentoItens = pgTable("loja_orcamento_itens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orcamentoId: uuid("orcamento_id")
+    .notNull()
+    .references(() => lojaOrcamentos.id, { onDelete: "cascade" }),
+  produtoId: uuid("produto_id").references(() => lojaProdutos.id, { onDelete: "set null" }),
+  descricao: text("descricao").notNull(),
+  quantidade: integer("quantidade").notNull().default(1),
+  precoUnitario: numeric("preco_unitario").notNull().default("0"),
+});
+
+export const lojaVendas = pgTable("loja_vendas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orcamentoId: uuid("orcamento_id").references(() => lojaOrcamentos.id, { onDelete: "set null" }),
+  clienteId: uuid("cliente_id")
+    .notNull()
+    .references(() => clientes.id, { onDelete: "restrict" }),
+  valorTotal: numeric("valor_total").notNull().default("0"),
+  custoTotal: numeric("custo_total"),
+  comissao: numeric("comissao"),
+  status: lojaVendaStatusEnum("status").notNull().default("em_andamento"),
+  observacoes: text("observacoes"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaVendaItens = pgTable("loja_venda_itens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendaId: uuid("venda_id")
+    .notNull()
+    .references(() => lojaVendas.id, { onDelete: "cascade" }),
+  produtoId: uuid("produto_id").references(() => lojaProdutos.id, { onDelete: "set null" }),
+  descricao: text("descricao").notNull(),
+  quantidade: integer("quantidade").notNull().default(1),
+  precoUnitario: numeric("preco_unitario").notNull().default("0"),
+});
+
+export const lojaVendaPagamentos = pgTable("loja_venda_pagamentos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendaId: uuid("venda_id")
+    .notNull()
+    .references(() => lojaVendas.id, { onDelete: "cascade" }),
+  valor: numeric("valor").notNull(),
+  formaPagamento: text("forma_pagamento"),
+  dataPagamento: date("data_pagamento"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaVendaChecklistItens = pgTable("loja_venda_checklist_itens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendaId: uuid("venda_id")
+    .notNull()
+    .references(() => lojaVendas.id, { onDelete: "cascade" }),
+  descricao: text("descricao").notNull(),
+  concluido: boolean("concluido").notNull().default(false),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaVendaDocumentos = pgTable("loja_venda_documentos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendaId: uuid("venda_id")
+    .notNull()
+    .references(() => lojaVendas.id, { onDelete: "cascade" }),
+  tipo: text("tipo").notNull(),
+  nomeOriginal: text("nome_original").notNull(),
+  caminho: text("caminho").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaEntregas = pgTable("loja_entregas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendaId: uuid("venda_id")
+    .notNull()
+    .references(() => lojaVendas.id, { onDelete: "cascade" }),
+  cidade: text("cidade"),
+  responsavel: text("responsavel"),
+  dataPrevista: date("data_prevista"),
+  status: text("status").notNull().default("pendente"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaFabricantes = pgTable("loja_fabricantes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaFornecedores = pgTable("loja_fornecedores", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaTransportadoras = pgTable("loja_transportadoras", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });

@@ -2,7 +2,7 @@ import { and, sql, eq, gte, lt } from "drizzle-orm";
 import { TrendingUp, TrendingDown, Wallet, Clock } from "lucide-react";
 import { db } from "@/db";
 import { servicosContratados, pagamentos, despesas, servicos, processos, usuarios } from "@/db/schema";
-import { StatCard, LinkButton, Button, BarChart, DataTable, type Column } from "@/components/ui";
+import { StatCard, LinkButton, Button, BarChart, DataTable, BackButton, type Column } from "@/components/ui";
 
 function formatMoney(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -115,6 +115,7 @@ export default async function FinanceiroPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/vendas" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-headline-lg font-bold text-primary">Financeiro</h1>
         <div className="flex flex-wrap gap-3">

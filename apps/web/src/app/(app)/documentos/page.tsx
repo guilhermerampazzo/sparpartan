@@ -1,34 +1,16 @@
 import { desc, eq, or, ilike, count } from "drizzle-orm";
-import { FileText, FileStack } from "lucide-react";
+import { FileText } from "lucide-react";
 import { db } from "@/db";
 import { modelosDocumento, documentosGerados, clientes } from "@/db/schema";
 import {
   StatusBadge,
-  Badge,
   LinkButton,
   EmptyState,
-  DataTable,
   SearchBox,
   Pagination,
   paginar,
-  type Column,
 } from "@/components/ui";
 import { statusDocumento } from "@/lib/status";
-
-type LinhaModelo = {
-  id: string;
-  nome: string;
-  norma: string | null;
-  campos: string[];
-  duasVias: boolean;
-};
-
-type LinhaGerado = {
-  id: string;
-  status: string;
-  modeloNome: string;
-  clienteNome: string;
-};
 
 export default async function DocumentosPage({
   searchParams,
@@ -36,11 +18,6 @@ export default async function DocumentosPage({
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const { q, page } = await searchParams;
-
-  const modelos = await db
-    .select()
-    .from(modelosDocumento)
-    .orderBy(desc(modelosDocumento.criadoEm));
 
   const filtroGerados = q
     ? or(ilike(clientes.nome, `%${q}%`), ilike(modelosDocumento.nome, `%${q}%`))
@@ -62,6 +39,7 @@ export default async function DocumentosPage({
       status: documentosGerados.status,
       modeloNome: modelosDocumento.nome,
       clienteNome: clientes.nome,
+      pdfCaminho: documentosGerados.pdfCaminho,
     })
     .from(documentosGerados)
     .innerJoin(modelosDocumento, eq(documentosGerados.modeloId, modelosDocumento.id))
@@ -71,21 +49,12 @@ export default async function DocumentosPage({
     .limit(limit)
     .offset(offset);
 
-  const colunasModelos: Column<LinhaModelo>[] = [
-    { header: "Nome", cell: (m) => <span className="font-medium text-primary">{m.nome}</span> },
-    { header: "Norma", cell: (m) => m.norma ?? "—" },
-    { header: "Campos", cell: (m) => m.campos.length },
-    {
-      header: "2 Vias",
-      cell: (m) => (m.duasVias ? <Badge tone="info" size="sm">Sim</Badge> : "Não"),
-    },
-  ];
-
-  const colunasGerados: Column<LinhaGerado>[] = [
-    { header: "Modelo", cell: (g) => <span className="font-medium text-primary">{g.modeloNome}</span> },
-    { header: "Cliente", cell: (g) => g.clienteNome },
-    { header: "Status", cell: (g) => <StatusBadge status={statusDocumento(g.status)} /> },
-  ];
+  const porCliente = new Map<string, typeof gerados>();
+  for (const doc of gerados) {
+    const lista = porCliente.get(doc.clienteNome) ?? [];
+    lista.push(doc);
+    porCliente.set(doc.clienteNome, lista);
+  }
 
   return (
     <div className="space-y-gutter">
@@ -95,45 +64,76 @@ export default async function DocumentosPage({
           <LinkButton href="/documentos/vencimentos" variant="outlined" size="sm">
             Vencimentos
           </LinkButton>
-          <LinkButton href="/documentos/modelos/novo" variant="outlined" size="sm">
-            + Importar Modelo
-          </LinkButton>
           <LinkButton href="/documentos/gerar">+ Gerar Documento</LinkButton>
         </div>
       </div>
 
-      <div>
-        <h2 className="mb-3 font-display text-title-lg font-semibold text-primary">
-          Modelos Cadastrados
-        </h2>
-        <DataTable
-          columns={colunasModelos}
-          rows={modelos}
-          rowKey={(m) => m.id}
-          empty={
-            <EmptyState
-              icon={FileStack}
-              title="Nenhum modelo importado ainda"
-              action={{ label: "+ Importar Modelo", href: "/documentos/modelos/novo" }}
-            />
-          }
-        />
-      </div>
-
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-title-lg font-semibold text-primary">
             Documentos Gerados
           </h2>
           <SearchBox placeholder="Buscar por cliente ou modelo..." valorAtual={q} />
         </div>
-        <DataTable
-          columns={colunasGerados}
-          rows={gerados}
-          rowKey={(g) => g.id}
-          rowHref={(g) => `/documentos/${g.id}`}
-          empty={<EmptyState icon={FileText} title={q ? "Nenhum documento encontrado" : "Nenhum documento gerado ainda"} />}
-        />
+
+        {gerados.length === 0 ? (
+          <EmptyState icon={FileText} title={q ? "Nenhum documento encontrado" : "Nenhum documento gerado ainda"} />
+        ) : (
+          <div className="space-y-6">
+            {[...porCliente.entries()].map(([clienteNome, docs]) => {
+              const docsComPdf = docs.filter((doc) => doc.pdfCaminho);
+              return (
+                <div key={clienteNome} className="rounded-xl border border-outline-variant bg-surface-container-lowest">
+                  <div className="border-b border-outline-variant px-4 py-2">
+                    <span className="font-display text-title-sm font-semibold text-primary">{clienteNome}</span>
+                  </div>
+                  <form action="/api/documentos/mesclar" method="post">
+                    <ul className="divide-y divide-outline-variant">
+                      {docs.map((doc) => (
+                        <li key={doc.id} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low">
+                          {doc.pdfCaminho ? (
+                            <input
+                              type="checkbox"
+                              name="ids"
+                              value={doc.id}
+                              className="size-4 shrink-0 accent-primary"
+                              aria-label={`Selecionar ${doc.modeloNome}`}
+                            />
+                          ) : (
+                            <span className="size-4 shrink-0" />
+                          )}
+                          <a
+                            href={`/documentos/${doc.id}`}
+                            className="flex flex-1 items-center justify-between gap-4"
+                          >
+                            <span className="text-body-md text-primary">{doc.modeloNome}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-body-sm text-outline">
+                                {new Date(doc.criadoEm).toLocaleDateString("pt-BR")}
+                              </span>
+                              <StatusBadge status={statusDocumento(doc.status)} size="sm" />
+                            </div>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    {docsComPdf.length > 1 && (
+                      <div className="border-t border-outline-variant px-4 py-3">
+                        <button
+                          type="submit"
+                          className="rounded-lg border border-outline-variant px-3 py-1.5 text-body-sm font-medium text-primary hover:bg-surface-container-low"
+                        >
+                          Baixar selecionados como 1 PDF
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <Pagination paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalRegistros={total} baseParams={{ q }} />
       </div>
     </div>

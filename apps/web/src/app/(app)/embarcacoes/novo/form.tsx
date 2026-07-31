@@ -1,9 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
-import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
+import { useActionState, useState } from "react";
+import { Campo, CampoSelect, CampoComboLivre, SectionCard } from "@/components/ui/form-field";
 import { SubmitButton, FormError, CampoMoeda, CampoCnpj } from "@/components/ui";
 import { criarEmbarcacao } from "../actions";
+
+const ATIVIDADES_COMERCIAIS = [
+  "Transporte de carga",
+  "Transporte de passageiros",
+  "Transporte de carga e passageiros",
+  "Pesca",
+  "Extração de minérios",
+  "Captação de água",
+  "Roll-on Roll-off",
+];
 
 export function NovaEmbarcacaoForm({
   listaClientes,
@@ -14,6 +24,7 @@ export function NovaEmbarcacaoForm({
 }) {
   const [estado, formAction] = useActionState(criarEmbarcacao, null);
   const v = (nome: string) => estado?.valores?.[nome] ?? "";
+  const [classe, setClasse] = useState(v("classe") || classeInicial || "esporte_recreio");
 
   return (
     <form action={formAction} className="max-w-4xl space-y-6">
@@ -35,12 +46,21 @@ export function NovaEmbarcacaoForm({
           <CampoSelect
             label="Classe"
             name="classe"
-            defaultValue={v("classe") || classeInicial || "esporte_recreio"}
+            defaultValue={classe}
+            onChange={(e) => setClasse(e.target.value)}
             options={[
               { value: "esporte_recreio", label: "Esporte e Recreio" },
               { value: "comercial", label: "Comercial" },
             ]}
           />
+          {classe === "comercial" && (
+            <CampoComboLivre
+              label="Atividade Específica"
+              name="atividadeComercial"
+              defaultValue={v("atividadeComercial")}
+              options={ATIVIDADES_COMERCIAIS}
+            />
+          )}
           <Campo label="Nome Anterior" name="nomeAnterior" defaultValue={v("nomeAnterior")} />
           <Campo label="Número de Inscrição" name="numeroInscricao" defaultValue={v("numeroInscricao")} />
           <Campo label="Tipo" name="tipo" defaultValue={v("tipo")} />
@@ -62,7 +82,9 @@ export function NovaEmbarcacaoForm({
           <Campo label="Material do Casco" name="materialCasco" defaultValue={v("materialCasco")} />
           <Campo label="Construtor" name="construtor" defaultValue={v("construtor")} />
           <Campo label="Cor" name="cor" defaultValue={v("cor")} />
-          <Campo label="Tipo de Propulsão" name="tipoPropulsao" defaultValue={v("tipoPropulsao")} />
+          <Campo label="Marca do Motor" name="tipoPropulsao" defaultValue={v("tipoPropulsao")} />
+          <Campo label="Potência (HP)" name="potenciaMotor" type="number" defaultValue={v("potenciaMotor")} />
+          <Campo label="Número de Série do Motor" name="numeroSerieMotor" defaultValue={v("numeroSerieMotor")} />
         </div>
       </SectionCard>
 

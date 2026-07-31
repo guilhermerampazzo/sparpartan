@@ -1,12 +1,21 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+import { mkdir, writeFile, unlink } from "node:fs/promises";
+import path from "node:path";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { obras } from "@/db/schema";
+import { obras, obraFotos } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
+import { validarArquivo } from "@/lib/upload";
+
+function uploadsDir() {
+  return process.env.UPLOADS_DIR ?? "./data/uploads";
+}
 
 function opt(formData: FormData, key: string) {
   const v = String(formData.get(key) ?? "").trim();
@@ -37,6 +46,7 @@ export async function criarObra(
       respTecnico: opt(formData, "respTecnico"),
       nCrea: opt(formData, "nCrea"),
       engenheiroId: opt(formData, "engenheiroId"),
+      endereco: opt(formData, "endereco"),
       rioLocalizado: opt(formData, "rioLocalizado"),
       distanciaRioKm: opt(formData, "distanciaRioKm"),
       areaNavegacao: opt(formData, "areaNavegacao"),
@@ -70,6 +80,7 @@ export async function criarObra(
       matTambores: opt(formData, "matTambores"),
       qntTambores: opt(formData, "qntTambores") ? Number(opt(formData, "qntTambores")) : null,
       volumeTambores: opt(formData, "volumeTambores"),
+      criadoPorId: await idUsuarioEquipe(),
     })
     .returning({ id: obras.id });
 
@@ -103,6 +114,7 @@ export async function atualizarObra(
       respTecnico: opt(formData, "respTecnico"),
       nCrea: opt(formData, "nCrea"),
       engenheiroId: opt(formData, "engenheiroId"),
+      endereco: opt(formData, "endereco"),
       rioLocalizado: opt(formData, "rioLocalizado"),
       distanciaRioKm: opt(formData, "distanciaRioKm"),
       areaNavegacao: opt(formData, "areaNavegacao"),
@@ -143,4 +155,36 @@ export async function atualizarObra(
   await registrarAuditoria("atualizar", "obra", obraId, opt(formData, "titulo") ?? "");
   revalidatePath(`/obras/${obraId}`);
   redirect(`/obras/${obraId}`);
+}
+
+export async function enviarFotoObra(obraId: string, formData: FormData) {
+  const arquivo = formData.get("foto") as File | null;
+  if (!arquivo || arquivo.size === 0) throw new Error("Selecione uma foto.");
+
+  const erroArquivo = validarArquivo(arquivo, "imagem");
+  if (erroArquivo) throw new Error(erroArquivo);
+
+  const obraDir = path.join(uploadsDir(), "obras", obraId);
+  await mkdir(obraDir, { recursive: true });
+
+  const extensao = path.extname(arquivo.name) || "";
+  const nomeArquivo = `${randomUUID()}${extensao}`;
+  const bytes = Buffer.from(await arquivo.arrayBuffer());
+  await writeFile(path.join(obraDir, nomeArquivo), bytes);
+
+  await db.insert(obraFotos).values({
+    obraId,
+    caminho: path.join("obras", obraId, nomeArquivo),
+  });
+
+  revalidatePath(`/obras/${obraId}`);
+}
+
+export async function removerFotoObra(obraId: string, fotoId: string) {
+  const [foto] = await db.select().from(obraFotos).where(eq(obraFotos.id, fotoId)).limit(1);
+  if (foto) {
+    await unlink(path.join(uploadsDir(), foto.caminho)).catch(() => {});
+    await db.delete(obraFotos).where(eq(obraFotos.id, fotoId));
+  }
+  revalidatePath(`/obras/${obraId}`);
 }

@@ -27,8 +27,10 @@ import {
   servicosContratados,
   usuarios,
 } from "@/db/schema";
+import { Suspense } from "react";
 import { StatCard, AlertCard, Badge, EmptyState, BarChart } from "@/components/ui";
 import { tipoEvento, infoUrgencia, urgenciaVencimento, rotuloPrazo, ordenarPorUrgencia } from "@/lib/status";
+import { AvisoAcessoNegado } from "@/components/layout/aviso-acesso-negado";
 
 export default async function HomePage() {
   const hoje = new Date();
@@ -171,6 +173,9 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-gutter">
+      <Suspense fallback={null}>
+        <AvisoAcessoNegado />
+      </Suspense>
       <div>
         <h1 className="font-display text-headline-lg font-bold text-primary">
           Bem-vindo {nomeUsuario}
@@ -341,7 +346,7 @@ export default async function HomePage() {
               { href: "/clientes/novo", label: "Novo Cliente", icon: UserPlus },
               { href: "/documentos/gerar", label: "Novo Documento", icon: FileText },
               { href: "/agenda/novo", label: "Agendar", icon: CalendarPlus },
-              { href: "/area-de-estudos", label: "Área de Estudos", icon: GraduationCap },
+              { href: "/area-de-estudos", label: "Escola Náutica", icon: GraduationCap },
               { href: "/processos/novo", label: "Novo Processo", icon: FolderClock },
               { href: "/orcamentos/novo", label: "Novo Orçamento", icon: Receipt },
             ].map((acao) => (

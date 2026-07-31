@@ -1,8 +1,8 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, or, ilike } from "drizzle-orm";
 import { Folder, Download } from "lucide-react";
 import { db } from "@/db";
 import { arquivos, clientes, processos, servicos } from "@/db/schema";
-import { Badge, LinkButton, EmptyState, DataTable, type Column } from "@/components/ui";
+import { Badge, LinkButton, EmptyState, DataTable, SearchBox, type Column } from "@/components/ui";
 
 type LinhaArquivo = {
   id: string;
@@ -14,7 +14,17 @@ type LinhaArquivo = {
   criadoEm: Date;
 };
 
-export default async function ArquivosPage() {
+export default async function ArquivosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+
+  const filtro = q
+    ? or(ilike(arquivos.nomeOriginal, `%${q}%`), ilike(arquivos.textoExtraido, `%${q}%`))
+    : undefined;
+
   const lista = await db
     .select({
       id: arquivos.id,
@@ -29,6 +39,7 @@ export default async function ArquivosPage() {
     .innerJoin(clientes, eq(arquivos.clienteId, clientes.id))
     .leftJoin(processos, eq(arquivos.processoId, processos.id))
     .leftJoin(servicos, eq(processos.servicoId, servicos.id))
+    .where(filtro)
     .orderBy(desc(arquivos.criadoEm));
 
   const columns: Column<LinhaArquivo>[] = [
@@ -57,16 +68,26 @@ export default async function ArquivosPage() {
 
   return (
     <div className="space-y-gutter">
-      <h1 className="font-display text-headline-lg font-bold text-primary">Arquivos</h1>
-      <p className="text-body-sm text-outline">
-        Todos os documentos enviados por clientes — direto ou pelos links de autoatendimento.
-      </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-headline-lg font-bold text-primary">Arquivos</h1>
+          <p className="text-body-sm text-outline">
+            Todos os documentos enviados por clientes — direto ou pelos links de autoatendimento.
+          </p>
+        </div>
+        <SearchBox placeholder="Buscar por nome ou texto do documento..." valorAtual={q} />
+      </div>
 
       <DataTable
         columns={columns}
         rows={lista}
         rowKey={(a) => a.id}
-        empty={<EmptyState icon={Folder} title="Nenhum arquivo enviado ainda" />}
+        empty={
+          <EmptyState
+            icon={Folder}
+            title={q ? "Nenhum arquivo encontrado" : "Nenhum arquivo enviado ainda"}
+          />
+        }
       />
     </div>
   );

@@ -16,6 +16,7 @@ import {
   agendaEventos,
 } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
 import { enviarEmail } from "@/lib/mail/adapter";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 import { validarArquivo } from "@/lib/upload";
@@ -75,7 +76,7 @@ export async function criarProcesso(
 
   const [processo] = await db
     .insert(processos)
-    .values({ clienteId, servicoId, embarcacaoId, responsavelId })
+    .values({ clienteId, servicoId, embarcacaoId, responsavelId, criadoPorId: await idUsuarioEquipe() })
     .returning({ id: processos.id });
 
   await reclassificarProcesso(processo.id);

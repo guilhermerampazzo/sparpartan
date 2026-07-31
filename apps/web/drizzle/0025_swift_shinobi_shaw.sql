@@ -1,0 +1,1 @@
+ALTER TABLE "modelos_documento" ADD COLUMN "campos_marcacao" jsonb DEFAULT '[]'::jsonb NOT NULL;

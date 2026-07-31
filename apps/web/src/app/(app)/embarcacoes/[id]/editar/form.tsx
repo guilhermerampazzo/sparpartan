@@ -1,10 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
-import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
+import { useActionState, useState } from "react";
+import { Campo, CampoSelect, CampoComboLivre, SectionCard } from "@/components/ui/form-field";
 import { SubmitButton, FormError } from "@/components/ui";
 import { atualizarEmbarcacao } from "../../actions";
 import type { EstadoForm } from "@/lib/validacao";
+
+const ATIVIDADES_COMERCIAIS = [
+  "Transporte de carga",
+  "Transporte de passageiros",
+  "Transporte de carga e passageiros",
+  "Pesca",
+  "Extração de minérios",
+  "Captação de água",
+  "Roll-on Roll-off",
+];
 
 type Embarcacao = {
   id: string;
@@ -16,6 +26,7 @@ type Embarcacao = {
   atividade: string | null;
   areaNavegacao: string | null;
   classe: "esporte_recreio" | "comercial";
+  atividadeComercial: string | null;
   comprimento: string | null;
   boca: string | null;
   pontal: string | null;
@@ -33,6 +44,8 @@ type Embarcacao = {
   construtor: string | null;
   cor: string | null;
   tipoPropulsao: string | null;
+  potenciaMotor: string | null;
+  numeroSerieMotor: string | null;
 };
 
 export function EditarEmbarcacaoForm({
@@ -46,6 +59,7 @@ export function EditarEmbarcacaoForm({
   const [estado, formAction] = useActionState<EstadoForm, FormData>(atualizarComId, null);
   const v = (nome: keyof Embarcacao): string | number =>
     estado?.valores?.[nome] ?? ((embarcacao[nome] ?? "") as string | number);
+  const [classe, setClasse] = useState(String(v("classe")));
 
   return (
     <form action={formAction} className="max-w-4xl space-y-6">
@@ -64,12 +78,21 @@ export function EditarEmbarcacaoForm({
           <CampoSelect
             label="Classe"
             name="classe"
-            defaultValue={String(v("classe"))}
+            defaultValue={classe}
+            onChange={(e) => setClasse(e.target.value)}
             options={[
               { value: "esporte_recreio", label: "Esporte e Recreio" },
               { value: "comercial", label: "Comercial" },
             ]}
           />
+          {classe === "comercial" && (
+            <CampoComboLivre
+              label="Atividade Específica"
+              name="atividadeComercial"
+              defaultValue={String(v("atividadeComercial"))}
+              options={ATIVIDADES_COMERCIAIS}
+            />
+          )}
           <Campo label="Nome Anterior" name="nomeAnterior" defaultValue={v("nomeAnterior")} />
           <Campo label="Número de Inscrição" name="numeroInscricao" defaultValue={v("numeroInscricao")} />
           <Campo label="Tipo" name="tipo" defaultValue={v("tipo")} />
@@ -91,7 +114,9 @@ export function EditarEmbarcacaoForm({
           <Campo label="Material do Casco" name="materialCasco" defaultValue={v("materialCasco")} />
           <Campo label="Construtor" name="construtor" defaultValue={v("construtor")} />
           <Campo label="Cor" name="cor" defaultValue={v("cor")} />
-          <Campo label="Tipo de Propulsão" name="tipoPropulsao" defaultValue={v("tipoPropulsao")} />
+          <Campo label="Marca do Motor" name="tipoPropulsao" defaultValue={v("tipoPropulsao")} />
+          <Campo label="Potência (HP)" name="potenciaMotor" type="number" defaultValue={v("potenciaMotor")} />
+          <Campo label="Número de Série do Motor" name="numeroSerieMotor" defaultValue={v("numeroSerieMotor")} />
         </div>
       </SectionCard>
 

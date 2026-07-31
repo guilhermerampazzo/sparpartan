@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { clientes, embarcacoes, processos, orcamentos, obras } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
 import { criarSolicitacao } from "@/lib/solicitacoes";
 import {
   Validador,
@@ -64,12 +65,62 @@ export async function criarCliente(
       uf: String(formData.get("uf") ?? "") || null,
       indicadoPor: String(formData.get("indicadoPor") ?? "") || null,
       observacoes: String(formData.get("observacoes") ?? "") || null,
+      criadoPorId: await idUsuarioEquipe(),
     })
     .returning({ id: clientes.id });
 
   await registrarAuditoria("criar", "cliente", cliente.id, nome);
 
   redirect("/clientes");
+}
+
+export type EstadoClienteRapido =
+  | { erro: string; valores?: Record<string, string> }
+  | { erro?: undefined; cliente: { id: string; nome: string } }
+  | null;
+
+/**
+ * Cadastro mínimo usado no "+ Novo cliente" inline do formulário de orçamento —
+ * não redireciona, devolve o cliente criado pro form que chamou.
+ */
+export async function criarClienteRapido(
+  _estadoAnterior: EstadoClienteRapido,
+  formData: FormData
+): Promise<EstadoClienteRapido> {
+  const nome = String(formData.get("clienteNovoNome") ?? "").trim();
+  const cpfCnpj = String(formData.get("clienteNovoCpfCnpj") ?? "").trim();
+  const email = String(formData.get("clienteNovoEmail") ?? "").trim();
+  const valores = valoresDoFormData(formData);
+
+  const erro = new Validador()
+    .exigir(!!nome, "Informe o nome.")
+    .exigir(!!cpfCnpj, "Informe o CPF ou CNPJ.")
+    .sePreenchido(cpfCnpj, cpfCnpjValido, "CPF/CNPJ inválido — confira os dígitos.")
+    .sePreenchido(email, emailValido, "E-mail inválido.").erro;
+
+  if (erro) return { erro, valores };
+
+  const [jaExiste] = await db
+    .select({ id: clientes.id })
+    .from(clientes)
+    .where(eq(clientes.cpfCnpj, cpfCnpj))
+    .limit(1);
+  if (jaExiste) return { erro: "Já existe um cliente com esse CPF/CNPJ.", valores };
+
+  const [cliente] = await db
+    .insert(clientes)
+    .values({
+      nome,
+      cpfCnpj,
+      email: email || null,
+      telefone: String(formData.get("clienteNovoTelefone") ?? "").trim() || null,
+      criadoPorId: await idUsuarioEquipe(),
+    })
+    .returning({ id: clientes.id, nome: clientes.nome });
+
+  await registrarAuditoria("criar", "cliente", cliente.id, nome);
+
+  return { cliente };
 }
 
 export async function atualizarCliente(

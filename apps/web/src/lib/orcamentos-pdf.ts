@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { orcamentos, clientes, servicos } from "@/db/schema";
+import { orcamentos, clientes, servicos, contasBancarias } from "@/db/schema";
 import { EMPRESA } from "@/lib/empresa";
 
 function uploadsDir() {
@@ -28,11 +28,16 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
     .from(clientes)
     .where(eq(clientes.id, orcamento.clienteId))
     .limit(1);
-  const [servico] = await db
-    .select()
-    .from(servicos)
-    .where(eq(servicos.id, orcamento.servicoId))
-    .limit(1);
+  const [servico] = orcamento.servicoId
+    ? await db.select().from(servicos).where(eq(servicos.id, orcamento.servicoId)).limit(1)
+    : [];
+  const [contaBancaria] = orcamento.contaBancariaId
+    ? await db
+        .select()
+        .from(contasBancarias)
+        .where(eq(contasBancarias.id, orcamento.contaBancariaId))
+        .limit(1)
+    : [];
 
   const valorFormatado = Number(orcamento.valor).toLocaleString("pt-BR", {
     style: "currency",
@@ -68,8 +73,8 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
   table.itens td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
   table.itens tr.total td { background: #002b5b; color: #fff; font-weight: bold; }
   .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 8px; }
-  .page-break { page-break-before: always; }
-  .assinaturas { display: flex; justify-content: space-between; margin-top: 80px; gap: 40px; }
+  .section { page-break-inside: avoid; }
+  .assinaturas { display: flex; justify-content: space-between; margin-top: 80px; gap: 40px; page-break-inside: avoid; }
   .assinatura-box { flex: 1; border-top: 1px solid #001736; padding-top: 8px; text-align: center; }
 </style></head><body>
 
@@ -123,9 +128,17 @@ ${
     : ""
 }
 
-<div class="footer">${EMPRESA.nome} ${EMPRESA.razaoSocial} | CNPJ: ${EMPRESA.cnpj} — Página 1</div>
-
-<div class="page-break"></div>
+${
+  contaBancaria
+    ? `<div class="section"><div class="section-title">DADOS PARA PAGAMENTO</div><div class="section-body">
+        <p><strong>Conta:</strong> ${contaBancaria.apelido}</p>
+        ${contaBancaria.banco ? `<p><strong>Banco:</strong> ${contaBancaria.banco}</p>` : ""}
+        ${contaBancaria.agencia ? `<p><strong>Agência:</strong> ${contaBancaria.agencia}</p>` : ""}
+        ${contaBancaria.conta ? `<p><strong>Conta:</strong> ${contaBancaria.conta}</p>` : ""}
+        ${contaBancaria.pix ? `<p><strong>PIX:</strong> ${contaBancaria.pix}</p>` : ""}
+      </div></div>`
+    : ""
+}
 
 <p>Para aceitar este orçamento, assine abaixo e devolva para o remetente.</p>
 
@@ -140,18 +153,28 @@ ${
   </div>
 </div>
 
-<div class="footer">${EMPRESA.nome} ${EMPRESA.razaoSocial} | CNPJ: ${EMPRESA.cnpj} — Página 2</div>
+<div class="footer">${EMPRESA.nome} ${EMPRESA.razaoSocial} | CNPJ: ${EMPRESA.cnpj}</div>
 
 </body></html>`;
 
   const gotenbergUrl = process.env.GOTENBERG_URL ?? "http://gotenberg:3000";
   const body = new FormData();
   body.append("files", new Blob([html], { type: "text/html" }), "index.html");
-  const res = await fetch(`${gotenbergUrl}/forms/chromium/convert/html`, {
-    method: "POST",
-    body,
-  });
-  if (!res.ok) throw new Error("Falha ao gerar PDF do orçamento");
+
+  let res: Response;
+  try {
+    res = await fetch(`${gotenbergUrl}/forms/chromium/convert/html`, {
+      method: "POST",
+      body,
+    });
+  } catch {
+    throw new Error(
+      "Não foi possível gerar o PDF: serviço de conversão indisponível. Tente novamente em instantes."
+    );
+  }
+  if (!res.ok) {
+    throw new Error(`Falha ao gerar PDF do orçamento (serviço retornou erro ${res.status}).`);
+  }
 
   const pdfBuffer = Buffer.from(await res.arrayBuffer());
   const orcamentosDir = path.join(uploadsDir(), "orcamentos");

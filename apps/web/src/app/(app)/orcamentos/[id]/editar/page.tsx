@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { orcamentos, clientes, servicos } from "@/db/schema";
+import { orcamentos, clientes, servicos, embarcacoes, contasBancarias } from "@/db/schema";
 import { BackButton } from "@/components/ui";
 import { NovoOrcamentoForm } from "../../novo/form";
 import { atualizarOrcamento } from "../../actions";
@@ -25,6 +25,14 @@ export default async function EditarOrcamentoPage({
     .select({ id: servicos.id, nome: servicos.nome, valor: servicos.valor })
     .from(servicos)
     .orderBy(servicos.nome);
+  const listaEmbarcacoes = await db
+    .select({ id: embarcacoes.id, nome: embarcacoes.nome, clienteId: embarcacoes.clienteId })
+    .from(embarcacoes)
+    .orderBy(embarcacoes.nome);
+  const listaContasBancarias = await db
+    .select({ id: contasBancarias.id, apelido: contasBancarias.apelido })
+    .from(contasBancarias)
+    .orderBy(contasBancarias.apelido);
 
   return (
     <div className="space-y-gutter">
@@ -35,6 +43,8 @@ export default async function EditarOrcamentoPage({
       <NovoOrcamentoForm
         listaClientes={listaClientes}
         listaServicos={listaServicos}
+        listaEmbarcacoes={listaEmbarcacoes}
+        listaContasBancarias={listaContasBancarias}
         orcamentoInicial={orcamento}
         action={atualizarOrcamento.bind(null, id)}
         submitLabel="Salvar Alterações"

@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, or, ilike, count } from "drizzle-orm";
-import { Ship } from "lucide-react";
+import { Ship, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { embarcacoes, clientes } from "@/db/schema";
 import {
@@ -10,10 +10,12 @@ import {
   DataTable,
   SearchBox,
   Pagination,
+  ConfirmButton,
   paginar,
   type Column,
 } from "@/components/ui";
 import { urgenciaVencimento, infoUrgencia } from "@/lib/status";
+import { excluirEmbarcacao } from "./actions";
 
 type LinhaEmbarcacao = {
   id: string;
@@ -93,6 +95,24 @@ export default async function EmbarcacoesPage({
         ) : (
           "—"
         ),
+    },
+    {
+      header: "",
+      align: "right",
+      cell: (e) => {
+        const excluirComId = excluirEmbarcacao.bind(null, e.id);
+        return (
+          <form action={excluirComId}>
+            <ConfirmButton
+              mensagem={`Excluir a embarcação ${e.nome}?`}
+              variant="text"
+              icon={<Trash2 size={12} />}
+            >
+              Excluir
+            </ConfirmButton>
+          </form>
+        );
+      },
     },
   ];
 

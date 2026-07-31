@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orcamentos, clientes, servicos } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { StatusBadge, Button, LinkButton, BackButton } from "@/components/ui";
+import { StatusBadge, Button, LinkButton, BackButton, CadastradoPor } from "@/components/ui";
 import { statusOrcamento, urgenciaVencimento, infoUrgencia, rotuloPrazo } from "@/lib/status";
 import {
   gerarPdfOrcamento,
@@ -22,10 +22,10 @@ export default async function OrcamentoDetalhesPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ link?: string }>;
+  searchParams: Promise<{ link?: string; erro?: string }>;
 }) {
   const { id } = await params;
-  const { link } = await searchParams;
+  const { link, erro } = await searchParams;
 
   const [orcamento] = await db.select().from(orcamentos).where(eq(orcamentos.id, id)).limit(1);
   if (!orcamento) notFound();
@@ -35,11 +35,9 @@ export default async function OrcamentoDetalhesPage({
     .from(clientes)
     .where(eq(clientes.id, orcamento.clienteId))
     .limit(1);
-  const [servico] = await db
-    .select()
-    .from(servicos)
-    .where(eq(servicos.id, orcamento.servicoId))
-    .limit(1);
+  const [servico] = orcamento.servicoId
+    ? await db.select().from(servicos).where(eq(servicos.id, orcamento.servicoId)).limit(1)
+    : [];
 
   const gerarPdfComId = gerarPdfOrcamento.bind(null, id);
   const aprovarComId = aprovarOrcamento.bind(null, id);
@@ -59,6 +57,7 @@ export default async function OrcamentoDetalhesPage({
           </h1>
           <StatusBadge status={statusOrcamento(orcamento.status)} />
         </div>
+        <CadastradoPor usuarioId={orcamento.criadoPorId} />
         {orcamento.status === "pendente" && (
           <LinkButton href={`/orcamentos/${id}/editar`} variant="outlined">
             Editar
@@ -74,7 +73,7 @@ export default async function OrcamentoDetalhesPage({
           </div>
           <div>
             <dt className="font-mono-caps text-label-sm uppercase text-outline">Serviço</dt>
-            <dd className="text-primary">{servico?.nome}</dd>
+            <dd className="text-primary">{servico?.nome ?? orcamento.descricao ?? "—"}</dd>
           </div>
           <div>
             <dt className="font-mono-caps text-label-sm uppercase text-outline">Valor</dt>
@@ -154,6 +153,11 @@ export default async function OrcamentoDetalhesPage({
         {link && (
           <div className="mt-4 rounded-lg bg-info-container p-3 text-body-sm text-on-info-container">
             Link gerado: <span className="break-all font-mono">{`${process.env.AUTH_URL || "http://localhost:8080"}/c/${link}`}</span>
+          </div>
+        )}
+        {erro && (
+          <div className="mt-4 rounded-lg bg-error-container p-3 text-body-sm text-on-error-container">
+            {erro}
           </div>
         )}
       </SectionCard>

@@ -12,6 +12,7 @@ function formatMoney(v: number) {
 type LinhaTaxa = {
   id: string;
   descricao: string;
+  numero: string | null;
   valor: string;
   vencimento: string | null;
   status: "pendente" | "pago";
@@ -37,6 +38,7 @@ export default async function TaxasPage({
     .select({
       id: taxasPagar.id,
       descricao: taxasPagar.descricao,
+      numero: taxasPagar.numero,
       valor: taxasPagar.valor,
       vencimento: taxasPagar.vencimento,
       status: taxasPagar.status,
@@ -53,6 +55,7 @@ export default async function TaxasPage({
 
   const columns: Column<LinhaTaxa>[] = [
     { header: "Descrição", cell: (t) => <span className="font-medium text-primary">{t.descricao}</span> },
+    { header: "Número", cell: (t) => t.numero ?? "—" },
     { header: "Cliente/Serviço", cell: (t) => [t.clienteNome, t.servicoNome].filter(Boolean).join(" — ") || "—" },
     { header: "Valor", cell: (t) => formatMoney(Number(t.valor)) },
     { header: "Vencimento", cell: (t) => t.vencimento ?? "—" },
@@ -90,7 +93,7 @@ export default async function TaxasPage({
   return (
     <div className="space-y-gutter">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-headline-lg font-bold text-primary">Taxas a Pagar</h1>
+        <h1 className="font-display text-headline-lg font-bold text-primary">Taxas</h1>
         <LinkButton href="/taxas/novo">+ Nova Taxa</LinkButton>
       </div>
 

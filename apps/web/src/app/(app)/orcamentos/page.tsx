@@ -23,7 +23,8 @@ type LinhaOrcamento = {
   valor: string;
   status: string;
   clienteNome: string;
-  servicoNome: string;
+  servicoNome: string | null;
+  descricao: string | null;
 };
 
 export default async function OrcamentosPage() {
@@ -35,17 +36,18 @@ export default async function OrcamentosPage() {
       status: orcamentos.status,
       clienteNome: clientes.nome,
       servicoNome: servicos.nome,
+      descricao: orcamentos.descricao,
     })
     .from(orcamentos)
     .innerJoin(clientes, eq(orcamentos.clienteId, clientes.id))
-    .innerJoin(servicos, eq(orcamentos.servicoId, servicos.id))
+    .leftJoin(servicos, eq(orcamentos.servicoId, servicos.id))
     .where(isNull(orcamentos.excluidoEm))
     .orderBy(desc(orcamentos.criadoEm));
 
   const columns: Column<LinhaOrcamento>[] = [
     { header: "Número", cell: (o) => <span className="font-medium text-primary">{o.numero}</span> },
     { header: "Cliente", cell: (o) => o.clienteNome },
-    { header: "Serviço", cell: (o) => o.servicoNome },
+    { header: "Serviço", cell: (o) => o.servicoNome ?? o.descricao ?? "—" },
     { header: "Valor", cell: (o) => formatMoney(o.valor) },
     { header: "Status", cell: (o) => <StatusBadge status={statusOrcamento(o.status)} /> },
     {

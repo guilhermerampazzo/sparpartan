@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { clientes, templatesEmail } from "@/db/schema";
+import { BackButton } from "@/components/ui";
 import { EnviarEmailForm } from "./form";
 
 export default async function EnviarEmailPage() {
@@ -15,6 +16,7 @@ export default async function EnviarEmailPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/emails" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Enviar E-mail</h1>
 
       {listaTemplates.length === 0 ? (

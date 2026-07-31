@@ -1,12 +1,15 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { embarcacoes, motores, aquisicoes, salvatagemItens, clientes } from "@/db/schema";
+import { embarcacoes, motores, aquisicoes, salvatagemItens, clientes, embarcacaoFotos } from "@/db/schema";
+import { Trash2 } from "lucide-react";
 import { Campo, SectionCard } from "@/components/ui/form-field";
-import { StatusBadge, Button, Badge, LinkButton, BackButton } from "@/components/ui";
+import { StatusBadge, Button, Badge, LinkButton, BackButton, ConfirmButton, CadastradoPor } from "@/components/ui";
 import { urgenciaVencimento, infoUrgencia } from "@/lib/status";
 import { adicionarItemSalvatagem } from "./actions";
+import { excluirEmbarcacao, enviarFotoEmbarcacao, removerFotoEmbarcacao } from "../actions";
 
 export default async function EmbarcacaoDetalhesPage({
   params,
@@ -40,7 +43,15 @@ export default async function EmbarcacaoDetalhesPage({
     .from(salvatagemItens)
     .where(eq(salvatagemItens.embarcacaoId, id));
 
+  const fotosDaEmbarcacao = await db
+    .select()
+    .from(embarcacaoFotos)
+    .where(eq(embarcacaoFotos.embarcacaoId, id));
+
   const adicionarItemComId = adicionarItemSalvatagem.bind(null, id);
+  const excluirComId = excluirEmbarcacao.bind(null, id);
+  const enviarFotoComId = enviarFotoEmbarcacao.bind(null, id);
+  const removerFotoComId = removerFotoEmbarcacao.bind(null, id);
 
   return (
     <div className="space-y-gutter">
@@ -59,10 +70,21 @@ export default async function EmbarcacaoDetalhesPage({
               {proprietario.nome}
             </Link>
           </p>
+          <CadastradoPor usuarioId={embarcacao.criadoPorId} />
         </div>
-        <LinkButton href={`/embarcacoes/${id}/editar`} variant="outlined">
-          Editar
-        </LinkButton>
+        <div className="flex gap-2">
+          <LinkButton href={`/embarcacoes/${id}/editar`} variant="outlined">
+            Editar
+          </LinkButton>
+          <form action={excluirComId}>
+            <ConfirmButton
+              mensagem={`Excluir a embarcação ${embarcacao.nome}?`}
+              icon={<Trash2 size={14} />}
+            >
+              Excluir
+            </ConfirmButton>
+          </form>
+        </div>
       </div>
 
       <SectionCard title="Dados Técnicos">
@@ -90,6 +112,24 @@ export default async function EmbarcacaoDetalhesPage({
                 <StatusBadge status={infoUrgencia(urgenciaVencimento(embarcacao.validadeDpem))} size="sm" />
               )}
             </dd>
+          </div>
+          {embarcacao.classe === "comercial" && (
+            <div>
+              <dt className="font-mono-caps text-label-sm uppercase text-outline">Atividade Específica</dt>
+              <dd className="text-primary">{embarcacao.atividadeComercial ?? "—"}</dd>
+            </div>
+          )}
+          <div>
+            <dt className="font-mono-caps text-label-sm uppercase text-outline">Marca do Motor</dt>
+            <dd className="text-primary">{embarcacao.tipoPropulsao ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="font-mono-caps text-label-sm uppercase text-outline">Potência (HP)</dt>
+            <dd className="text-primary">{embarcacao.potenciaMotor ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="font-mono-caps text-label-sm uppercase text-outline">Nº Série do Motor</dt>
+            <dd className="text-primary">{embarcacao.numeroSerieMotor ?? "—"}</dd>
           </div>
         </dl>
       </SectionCard>
@@ -180,6 +220,40 @@ export default async function EmbarcacaoDetalhesPage({
           <div className="flex items-end">
             <Button type="submit">Adicionar Item</Button>
           </div>
+        </form>
+      </SectionCard>
+
+      <SectionCard title={`Fotos da Embarcação (${fotosDaEmbarcacao.length})`}>
+        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {fotosDaEmbarcacao.map((foto) => (
+            <div key={foto.id} className="space-y-2">
+              <div className="relative aspect-square overflow-hidden rounded-lg border border-outline-variant">
+                <Image
+                  src={`/api/embarcacao-fotos/${foto.id}`}
+                  alt="Foto da embarcação"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <form action={removerFotoComId.bind(null, foto.id)}>
+                <Button type="submit" variant="outlined" size="sm">
+                  Remover
+                </Button>
+              </form>
+            </div>
+          ))}
+        </div>
+        <form action={enviarFotoComId} className="flex items-end gap-3">
+          <input
+            name="foto"
+            type="file"
+            accept="image/*"
+            required
+            className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-body-md text-primary outline-none focus:border-primary"
+          />
+          <Button type="submit" variant="outlined" size="sm">
+            Enviar Foto
+          </Button>
         </form>
       </SectionCard>
     </div>

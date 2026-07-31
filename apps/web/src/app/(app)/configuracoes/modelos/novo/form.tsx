@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
 import { SubmitButton, FormError } from "@/components/ui";
-import { importarModelo } from "../../actions";
+import { importarModelo } from "../actions";
 
 export function ImportarModeloForm({ listaServicos }: { listaServicos: { id: string; nome: string }[] }) {
   const [estado, formAction] = useActionState(importarModelo, null);
@@ -53,6 +53,9 @@ export function ImportarModeloForm({ listaServicos }: { listaServicos: { id: str
           </label>
           <label className="flex items-center gap-2 text-sm text-primary">
             <input type="checkbox" name="duasVias" /> Sai em 2 vias
+          </label>
+          <label className="flex items-center gap-2 text-sm text-primary">
+            <input type="checkbox" name="padraoParaObra" /> Modelo padrão para Obras
           </label>
         </div>
       </SectionCard>

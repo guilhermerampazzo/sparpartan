@@ -8,6 +8,8 @@ import {
   habilitacoes,
   obras,
   modelosDocumento,
+  engenheiros,
+  processos,
 } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
 import { Button } from "@/components/ui";
@@ -25,7 +27,17 @@ export default async function GerarDocumentoPage({
     processoId?: string;
   }>;
 }) {
-  const { clienteId, embarcacaoId, obraId, modeloId, processoId } = await searchParams;
+  const { clienteId, embarcacaoId, obraId, processoId } = await searchParams;
+  let { modeloId } = await searchParams;
+
+  if (!modeloId && obraId) {
+    const [modeloPadrao] = await db
+      .select({ id: modelosDocumento.id })
+      .from(modelosDocumento)
+      .where(eq(modelosDocumento.padraoParaObra, true))
+      .limit(1);
+    if (modeloPadrao) modeloId = modeloPadrao.id;
+  }
 
   const listaClientes = await db
     .select({ id: clientes.id, nome: clientes.nome })
@@ -73,6 +85,14 @@ export default async function GerarDocumentoPage({
       ? await db.select().from(habilitacoes).where(eq(habilitacoes.clienteId, clienteId))
       : [];
     const [obra] = obraId ? await db.select().from(obras).where(eq(obras.id, obraId)).limit(1) : [];
+    const [engenheiro] =
+      obra?.engenheiroId
+        ? await db.select().from(engenheiros).where(eq(engenheiros.id, obra.engenheiroId)).limit(1)
+        : [];
+    const [processo] = processoId
+      ? await db.select({ servicoId: processos.servicoId }).from(processos).where(eq(processos.id, processoId)).limit(1)
+      : [];
+    const servicoId = processo?.servicoId ?? modelo?.servicoId ?? null;
 
     camposResolvidos = resolverCamposConhecidos({
       cliente,
@@ -81,6 +101,9 @@ export default async function GerarDocumentoPage({
       aquisicao,
       habilitacoes: habilitacoesDoCliente,
       obra,
+      engenheiro,
+      camposMarcacao: modelo?.camposMarcacao,
+      servicoId,
     });
   }
 
@@ -141,6 +164,7 @@ export default async function GerarDocumentoPage({
           modeloNome={modeloSelecionado.nome}
           clienteId={clienteId ?? ""}
           embarcacaoId={embarcacaoId ?? ""}
+          obraId={obraId}
           processoId={processoId}
           campos={modeloSelecionado.campos}
           camposResolvidos={camposResolvidos}

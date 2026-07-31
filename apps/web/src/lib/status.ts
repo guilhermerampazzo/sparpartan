@@ -36,6 +36,13 @@ import {
   Link2,
   ShoppingBag,
   Wallet,
+  UserPlus,
+  Headset,
+  Handshake,
+  Wrench,
+  ClipboardList,
+  Star,
+  Ban,
 } from "lucide-react";
 import type { StatusInfo } from "@/components/ui/badge";
 
@@ -66,6 +73,36 @@ export const PROCESSO_STEPS: { key: string; label: string }[] = [
 export function etapaProcesso(status: string): number {
   return PROCESSO_STEPS.findIndex((s) => s.key === status);
 }
+
+export function statusPipeline(estagio: string): StatusInfo {
+  const map: Record<string, StatusInfo> = {
+    novo_lead: { label: "Novo Lead", tone: "success", icon: UserPlus },
+    atendimento: { label: "Atendimento", tone: "info", icon: Headset },
+    proposta_enviada: { label: "Proposta Enviada", tone: "warning", icon: Send },
+    negociacao: { label: "Negociação", tone: "warning", icon: Handshake },
+    fechado: { label: "Fechado", tone: "success", icon: CheckCircle2 },
+    em_execucao: { label: "Em Execução", tone: "info", icon: Wrench },
+    aguardando_cliente: { label: "Aguardando Cliente", tone: "warning", icon: ClipboardList },
+    concluido: { label: "Concluído", tone: "success", icon: Check },
+    pos_venda: { label: "Pós-venda", tone: "info", icon: Star },
+    perdido: { label: "Perdido", tone: "danger", icon: Ban },
+  };
+  return map[estagio] ?? { label: estagio, tone: "neutral", icon: Minus };
+}
+
+export const PIPELINE_ESTAGIOS: { key: string; label: string; emoji: string }[] = [
+  { key: "novo_lead", label: "Novo Lead", emoji: "🟢" },
+  { key: "atendimento", label: "Atendimento", emoji: "🔵" },
+  { key: "proposta_enviada", label: "Proposta Enviada", emoji: "🟡" },
+  { key: "negociacao", label: "Negociação", emoji: "🟠" },
+  { key: "fechado", label: "Fechado", emoji: "🟢" },
+  { key: "em_execucao", label: "Em Execução", emoji: "⚙️" },
+  { key: "aguardando_cliente", label: "Aguardando Cliente", emoji: "📋" },
+  { key: "concluido", label: "Concluído", emoji: "✅" },
+  { key: "pos_venda", label: "Pós-venda", emoji: "⭐" },
+];
+
+export const PIPELINE_ESTAGIO_PERDIDO = { key: "perdido", label: "Perdido", emoji: "🔴" };
 
 export function statusOrcamento(status: string): StatusInfo {
   const map: Record<string, StatusInfo> = {
@@ -220,6 +257,13 @@ export function infoUrgencia(urgencia: Urgencia): StatusInfo {
     sem_data: { label: "Sem Data", tone: "neutral", icon: Minus },
   };
   return map[urgencia];
+}
+
+/** Protocolo da Marinha é válido por 60 dias a partir da data de protocolo. */
+export function vencimentoProtocolo(dataProtocolo: string | Date): Date {
+  const venc = new Date(paraData(dataProtocolo));
+  venc.setDate(venc.getDate() + 60);
+  return venc;
 }
 
 export function rotuloPrazo(data: string | Date, hoje: Date = new Date()): string {

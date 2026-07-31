@@ -32,6 +32,7 @@ export async function enviarArquivo(clienteId: string, formData: FormData) {
   const tipo = String(formData.get("tipo") ?? "").trim();
   const arquivo = formData.get("arquivo") as File | null;
   const embarcacaoId = String(formData.get("embarcacaoId") ?? "").trim() || null;
+  const textoExtraido = String(formData.get("textoExtraido") ?? "").trim() || null;
   if (!tipo || !arquivo) {
     throw new Error("Tipo e arquivo são obrigatórios");
   }
@@ -56,6 +57,7 @@ export async function enviarArquivo(clienteId: string, formData: FormData) {
     tipo,
     nomeOriginal: arquivo.name,
     caminho: path.join("clientes", clienteId, nomeArquivo),
+    textoExtraido,
   });
 
   revalidatePath(`/clientes/${clienteId}`);

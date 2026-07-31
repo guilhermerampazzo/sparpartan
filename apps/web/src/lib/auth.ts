@@ -7,7 +7,7 @@ import { usuarios, clientes, auditLog } from "@/db/schema";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 15 * 60, updateAge: 5 * 60 },
   pages: { signIn: "/login" },
   providers: [
     Credentials({
@@ -47,6 +47,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: usuario.email,
           role: usuario.role,
           tipo: "equipe",
+          modulosPermitidos: usuario.modulosPermitidos ?? null,
         };
       },
     }),
@@ -87,17 +88,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.role = (user as { role?: string }).role;
         token.tipo = (user as { tipo?: string }).tipo;
+        token.modulosPermitidos = (user as { modulosPermitidos?: string[] | null })
+          .modulosPermitidos;
       }
       return token;
     },
     session: async ({ session, token }) => {
       if (session.user) {
-        (session.user as { id?: string; role?: string; tipo?: string }).id = token.sub;
+        (
+          session.user as {
+            id?: string;
+            role?: string;
+            tipo?: string;
+            modulosPermitidos?: string[] | null;
+          }
+        ).id = token.sub;
         (session.user as { role?: string; tipo?: string }).role = token.role as
           | string
           | undefined;
         (session.user as { role?: string; tipo?: string }).tipo = token.tipo as
           | string
+          | undefined;
+        (session.user as { modulosPermitidos?: string[] | null }).modulosPermitidos = token.modulosPermitidos as
+          | string[]
+          | null
           | undefined;
       }
       return session;

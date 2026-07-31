@@ -1,4 +1,12 @@
-import type { clientes, embarcacoes, motores, aquisicoes, habilitacoes, obras } from "@/db/schema";
+import type {
+  clientes,
+  embarcacoes,
+  motores,
+  aquisicoes,
+  habilitacoes,
+  obras,
+  engenheiros,
+} from "@/db/schema";
 
 type Cliente = typeof clientes.$inferSelect;
 type Embarcacao = typeof embarcacoes.$inferSelect;
@@ -6,6 +14,7 @@ type Motor = typeof motores.$inferSelect;
 type Aquisicao = typeof aquisicoes.$inferSelect;
 type Habilitacao = typeof habilitacoes.$inferSelect;
 type Obra = typeof obras.$inferSelect;
+type Engenheiro = typeof engenheiros.$inferSelect;
 
 function s(value: string | number | null | undefined): string {
   return value === null || value === undefined ? "" : String(value);
@@ -31,8 +40,11 @@ export function resolverCamposConhecidos(context: {
   aquisicao?: Aquisicao;
   habilitacoes?: Habilitacao[];
   obra?: Obra;
+  engenheiro?: Engenheiro;
+  camposMarcacao?: { campo: string; valorMarcado: string; servicoIds: string[] }[];
+  servicoId?: string | null;
 }): Record<string, string> {
-  const { cliente, embarcacao, aquisicao, obra } = context;
+  const { cliente, embarcacao, aquisicao, obra, engenheiro } = context;
   const motores = context.motores ?? [];
   const motorPrincipal = motores[0];
   const habilitacoes = [...(context.habilitacoes ?? [])].sort(
@@ -165,8 +177,16 @@ export function resolverCamposConhecidos(context: {
     valores["DESCRIÇÃO_DA_OBRA"] = s(obra.descricaoObra);
     valores.NORMAM_DE_USO = s(obra.normamDeUso);
     valores.CPDLAG = s(obra.cpDlAg);
-    valores.RESP_TECNICO = s(obra.respTecnico);
-    valores.N_CREA = s(obra.nCrea);
+    if (engenheiro) {
+      valores.RESP_TECNICO = s(engenheiro.nomeCompleto);
+      valores.N_CREA = s(engenheiro.crea);
+      valores.NOME_ENGENHEIRO = s(engenheiro.nomeCompleto);
+      valores.TITULO_PROFISSIONAL = s(engenheiro.tituloProfissional);
+    } else {
+      valores.RESP_TECNICO = s(obra.respTecnico);
+      valores.N_CREA = s(obra.nCrea);
+    }
+    valores.ENDERECO_OBRA = s(obra.endereco);
     valores.RIO_LOCALIZADO = s(obra.rioLocalizado);
     valores.DISTANCIA_RIO_KM = s(obra.distanciaRioKm);
     // Obra tem área de navegação e atividade próprias — sobrescrevem as da
@@ -203,6 +223,13 @@ export function resolverCamposConhecidos(context: {
     valores.MAT_TAMBORES = s(obra.matTambores);
     valores.QNT_TAMBORES = s(obra.qntTambores);
     valores.VOLUME_TAMBORES = s(obra.volumeTambores);
+  }
+
+  for (const marcacao of context.camposMarcacao ?? []) {
+    valores[marcacao.campo] =
+      context.servicoId && marcacao.servicoIds.includes(context.servicoId)
+        ? marcacao.valorMarcado
+        : "";
   }
 
   return valores;

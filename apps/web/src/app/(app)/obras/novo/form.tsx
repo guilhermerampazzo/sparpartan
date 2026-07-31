@@ -71,6 +71,7 @@ export function NovaObraForm({
 
       <SectionCard title="Localização">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Campo label="Endereço" name="endereco" defaultValue={v("endereco")} />
           <Campo label="Rio Localizado" name="rioLocalizado" defaultValue={v("rioLocalizado")} />
           <Campo label="Distância do Rio (km)" name="distanciaRioKm" type="number" defaultValue={v("distanciaRioKm")} />
           <Campo label="Área de Navegação" name="areaNavegacao" defaultValue={v("areaNavegacao")} />

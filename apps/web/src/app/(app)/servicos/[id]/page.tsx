@@ -4,8 +4,8 @@ import { FileText, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { servicos, requisitosDocumento } from "@/db/schema";
 import { Campo, SectionCard } from "@/components/ui/form-field";
-import { Button, ConfirmButton, LinkButton, Badge, EmptyState } from "@/components/ui";
-import { criarRequisitoDocumento, removerRequisitoDocumento } from "../actions";
+import { Button, ConfirmButton, LinkButton, Badge, EmptyState, BackButton } from "@/components/ui";
+import { criarRequisitoDocumento, removerRequisitoDocumento, excluirServico } from "../actions";
 
 export default async function ServicoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,14 +20,27 @@ export default async function ServicoPage({ params }: { params: Promise<{ id: st
     .orderBy(requisitosDocumento.criadoEm);
 
   const criarRequisitoComId = criarRequisitoDocumento.bind(null, id);
+  const excluirComId = excluirServico.bind(null, id);
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/servicos" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">{servico.nome}</h1>
-        <LinkButton href="/servicos" variant="text" size="sm">
-          ← Voltar para Serviços
-        </LinkButton>
+        <div className="flex gap-2">
+          <LinkButton href={`/servicos/${id}/editar`} variant="outlined" size="sm">
+            Editar
+          </LinkButton>
+          <form action={excluirComId}>
+            <ConfirmButton
+              mensagem={`Excluir o serviço "${servico.nome}"? Ele deixará de aparecer nas listagens.`}
+              size="sm"
+              icon={<Trash2 size={12} />}
+            >
+              Excluir
+            </ConfirmButton>
+          </form>
+        </div>
       </div>
 
       <SectionCard title="Documentos que o cliente precisa entregar">

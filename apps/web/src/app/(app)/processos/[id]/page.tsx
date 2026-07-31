@@ -12,8 +12,8 @@ import {
   documentosGerados,
 } from "@/db/schema";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Stepper, ChecklistItem, ProgressBar, AlertCard, Button } from "@/components/ui";
-import { PROCESSO_STEPS } from "@/lib/status";
+import { Stepper, ChecklistItem, ProgressBar, AlertCard, Button, CadastradoPor } from "@/components/ui";
+import { PROCESSO_STEPS, urgenciaVencimento, infoUrgencia, vencimentoProtocolo, rotuloPrazo } from "@/lib/status";
 import {
   definirEmbarcacao,
   protocolarProcesso,
@@ -86,6 +86,7 @@ export default async function ProcessoDetalhesPage({
         <h1 className="font-display text-headline-lg font-bold text-primary">
           {servico?.nome} — {cliente?.nome}
         </h1>
+        <CadastradoPor usuarioId={processo.criadoPorId} />
       </div>
 
       <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
@@ -144,8 +145,8 @@ export default async function ProcessoDetalhesPage({
         {modelosDoServico.length === 0 ? (
           <p className="text-body-sm text-outline">
             Nenhum modelo de documento vinculado a este serviço ainda. Importe um modelo em{" "}
-            <Link href="/documentos/modelos/novo" className="text-primary hover:underline">
-              Documentos → Importar Modelo
+            <Link href="/configuracoes/modelos/novo" className="text-primary hover:underline">
+              Configurações → Modelos → Importar Modelo
             </Link>{" "}
             e associe ao serviço &quot;{servico?.nome}&quot;.
           </p>
@@ -180,6 +181,22 @@ export default async function ProcessoDetalhesPage({
 
       {processo.status === "protocolado" || processo.status === "concluido" ? (
         <SectionCard title="Protocolo">
+          {processo.status === "protocolado" && processo.dataProtocolo && (
+            <div className="mb-4">
+              {(() => {
+                const venc = vencimentoProtocolo(processo.dataProtocolo);
+                const urgencia = urgenciaVencimento(venc);
+                const info = infoUrgencia(urgencia);
+                return (
+                  <AlertCard
+                    tone={info.tone}
+                    title={`Prazo do protocolo (60 dias): ${info.label}`}
+                    description={`Vence ${rotuloPrazo(venc)} (${venc.toLocaleDateString("pt-BR")}).`}
+                  />
+                );
+              })()}
+            </div>
+          )}
           <dl className="grid grid-cols-2 gap-4 text-body-md sm:grid-cols-3">
             <div>
               <dt className="font-mono-caps text-label-sm uppercase text-outline">Número</dt>

@@ -148,6 +148,41 @@
       "when": 1784303658989,
       "tag": "0020_friendly_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1785499156432,
+      "tag": "0021_flippant_nebula",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785499630048,
+      "tag": "0022_mean_lifeguard",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1785499728203,
+      "tag": "0023_salty_marrow",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1785500599925,
+      "tag": "0024_faulty_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1785501944924,
+      "tag": "0025_swift_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

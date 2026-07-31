@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { taxasPagar } from "@/db/schema";
 import { salvarArquivoLocal } from "@/lib/storage";
 import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 export async function criarTaxa(
@@ -36,11 +37,13 @@ export async function criarTaxa(
     .insert(taxasPagar)
     .values({
       descricao,
+      numero: String(formData.get("numero") ?? "").trim() || null,
       valor,
       vencimento: String(formData.get("vencimento") ?? "") || null,
       clienteId: String(formData.get("clienteId") ?? "") || null,
       processoId: String(formData.get("processoId") ?? "") || null,
       arquivoCaminho,
+      criadoPorId: await idUsuarioEquipe(),
     })
     .returning({ id: taxasPagar.id });
 

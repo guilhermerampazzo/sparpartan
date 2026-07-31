@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { Mail, FileText } from "lucide-react";
 import { db } from "@/db";
 import { templatesEmail, enviosEmail, clientes } from "@/db/schema";
-import { StatusBadge, LinkButton, EmptyState, DataTable, type Column } from "@/components/ui";
+import { StatusBadge, LinkButton, EmptyState, DataTable, BackButton, type Column } from "@/components/ui";
 import { statusEnvio } from "@/lib/status";
 
 type LinhaHistorico = {
@@ -41,6 +41,7 @@ export default async function EmailsPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Enviar E-mails</h1>
         <div className="flex gap-3">
@@ -63,9 +64,14 @@ export default async function EmailsPage() {
           <div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
             <ul className="divide-y divide-outline-variant">
               {templates.map((t) => (
-                <li key={t.id} className="px-4 py-3 text-body-md">
-                  <span className="font-medium text-primary">{t.nome}</span>{" "}
-                  <span className="text-body-sm text-outline">— {t.tipo}</span>
+                <li key={t.id} className="flex items-center justify-between px-4 py-3 text-body-md">
+                  <span>
+                    <span className="font-medium text-primary">{t.nome}</span>{" "}
+                    <span className="text-body-sm text-outline">— {t.tipo}</span>
+                  </span>
+                  <LinkButton href={`/emails/templates/${t.id}/editar`} variant="text" size="sm">
+                    Editar
+                  </LinkButton>
                 </li>
               ))}
             </ul>

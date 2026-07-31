@@ -2,7 +2,7 @@ import { desc } from "drizzle-orm";
 import { Receipt, Repeat } from "lucide-react";
 import { db } from "@/db";
 import { despesas } from "@/db/schema";
-import { Badge, Button, EmptyState, DataTable, type Column } from "@/components/ui";
+import { Badge, Button, EmptyState, DataTable, BackButton, type Column } from "@/components/ui";
 import { NovaDespesaForm } from "./form";
 import { replicarDespesasRecorrentes } from "./actions";
 
@@ -39,6 +39,7 @@ export default async function DespesasPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/vendas/financeiro" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-headline-lg font-bold text-primary">Despesas e Custos Mensais</h1>
         <form action={replicarDespesasRecorrentes}>

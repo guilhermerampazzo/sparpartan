@@ -33,6 +33,42 @@ export async function criarServico(
   redirect("/servicos");
 }
 
+export async function atualizarServico(
+  servicoId: string,
+  _estadoAnterior: EstadoForm,
+  formData: FormData
+): Promise<EstadoForm> {
+  const nome = String(formData.get("nome") ?? "").trim();
+  const valores = valoresDoFormData(formData);
+
+  const erro = new Validador().exigir(!!nome, "Informe o nome do serviço.").erro;
+  if (erro) return { erro, valores };
+
+  await db
+    .update(servicos)
+    .set({
+      nome,
+      descricao: String(formData.get("descricao") ?? "") || null,
+      valor: String(formData.get("valor") ?? "") || null,
+      custo: String(formData.get("custo") ?? "") || null,
+      categoria: String(formData.get("categoria") ?? "despachante") as
+        | "despachante"
+        | "escola"
+        | "engenharia"
+        | "ultrassom",
+      norma: String(formData.get("norma") ?? "") || null,
+      atualizadoEm: new Date(),
+    })
+    .where(eq(servicos.id, servicoId));
+
+  redirect(`/servicos/${servicoId}`);
+}
+
+export async function excluirServico(servicoId: string) {
+  await db.update(servicos).set({ ativo: false }).where(eq(servicos.id, servicoId));
+  redirect("/servicos");
+}
+
 export async function criarRequisitoDocumento(servicoId: string, formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) throw new Error("Nome do documento é obrigatório");

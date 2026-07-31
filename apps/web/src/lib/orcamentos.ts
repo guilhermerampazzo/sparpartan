@@ -6,7 +6,7 @@ import { reclassificarProcesso } from "@/lib/processos";
 
 export type ResultadoAprovacao =
   | { ok: true; processoId?: string }
-  | { ok: false; motivo: "nao_encontrado" | "vencido" | "ja_decidido" };
+  | { ok: false; motivo: "nao_encontrado" | "vencido" | "ja_decidido" | "sem_servico_cadastrado" };
 
 /** Dias até o vencimento da cobrança gerada ao aprovar um orçamento. */
 const PRAZO_PAGAMENTO_DIAS = 15;
@@ -33,12 +33,20 @@ export async function aprovarOrcamentoCore(orcamentoId: string): Promise<Resulta
     return { ok: false, motivo: "vencido" };
   }
 
+  // Orçamento com serviço avulso (só descrição em texto, sem vínculo com o catálogo)
+  // não tem como abrir processo/venda, que exigem servicoId — edite o orçamento e
+  // escolha um serviço da lista antes de aprovar.
+  if (!orcamento.servicoId) {
+    return { ok: false, motivo: "sem_servico_cadastrado" };
+  }
+
   const [processo] = await db
     .insert(processos)
     .values({
       clienteId: orcamento.clienteId,
       servicoId: orcamento.servicoId,
       embarcacaoId: orcamento.embarcacaoId,
+      criadoPorId: orcamento.criadoPorId,
     })
     .returning({ id: processos.id });
 
@@ -52,6 +60,7 @@ export async function aprovarOrcamentoCore(orcamentoId: string): Promise<Resulta
       vendedorId: orcamento.vendedorId,
       valor: orcamento.valor,
       dataContratacao: new Date().toISOString().slice(0, 10),
+      criadoPorId: orcamento.criadoPorId,
     })
     .returning({ id: servicosContratados.id });
 

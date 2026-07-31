@@ -10,6 +10,7 @@ export function GerarDocumentoForm({
   modeloNome,
   clienteId,
   embarcacaoId,
+  obraId,
   processoId,
   campos,
   camposResolvidos,
@@ -18,6 +19,7 @@ export function GerarDocumentoForm({
   modeloNome: string;
   clienteId: string;
   embarcacaoId: string;
+  obraId?: string;
   processoId?: string;
   campos: string[];
   camposResolvidos: Record<string, string>;
@@ -31,6 +33,7 @@ export function GerarDocumentoForm({
         <input type="hidden" name="modeloId" value={modeloId} />
         <input type="hidden" name="clienteId" value={clienteId} />
         <input type="hidden" name="embarcacaoId" value={embarcacaoId} />
+        {obraId && <input type="hidden" name="obraId" value={obraId} />}
         {processoId && <input type="hidden" name="processoId" value={processoId} />}
 
         <FormError erro={estado?.erro} />
