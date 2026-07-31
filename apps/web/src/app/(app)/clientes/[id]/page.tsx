@@ -17,7 +17,8 @@ import {
   obras,
 } from "@/db/schema";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Badge, StatusBadge, Button, LinkButton, EmptyState, BackButton, ConfirmButton, CadastradoPor } from "@/components/ui";
+import { Badge, StatusBadge, Button, LinkButton, EmptyState, BackButton, ConfirmButton } from "@/components/ui";
+import { CadastradoPor } from "@/components/ui/cadastrado-por";
 import { OcrArquivo } from "@/components/ocr/ocr-arquivo";
 import { urgenciaVencimento, infoUrgencia } from "@/lib/status";
 import {

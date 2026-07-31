@@ -12,7 +12,8 @@ import {
   documentosGerados,
 } from "@/db/schema";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Stepper, ChecklistItem, ProgressBar, AlertCard, Button, CadastradoPor } from "@/components/ui";
+import { Stepper, ChecklistItem, ProgressBar, AlertCard, Button } from "@/components/ui";
+import { CadastradoPor } from "@/components/ui/cadastrado-por";
 import { PROCESSO_STEPS, urgenciaVencimento, infoUrgencia, vencimentoProtocolo, rotuloPrazo } from "@/lib/status";
 import {
   definirEmbarcacao,

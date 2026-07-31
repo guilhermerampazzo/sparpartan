@@ -1,7 +1,3 @@
-import { db } from "@/db";
-import { lojaOrcamentos, lojaVendas } from "@/db/schema";
-import { sql } from "drizzle-orm";
-
 export const LOJA_CATEGORIAS = [
   { value: "embarcacao", label: "Embarcações" },
   { value: "motor", label: "Motores" },
@@ -37,21 +33,7 @@ export function infoStatusVenda(status: string) {
   return LOJA_VENDA_STATUS.find((s) => s.value === status) ?? LOJA_VENDA_STATUS[0];
 }
 
-/** Gera o próximo número sequencial de orçamento da loja, formato LJ-0001. */
-export async function proximoNumeroOrcamentoLoja(): Promise<string> {
-  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(lojaOrcamentos);
-  return `LJ-${String(n + 1).padStart(4, "0")}`;
-}
-
 export function formatarMoeda(valor: string | number | null | undefined) {
   const numero = Number(valor ?? 0);
   return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-export async function contarVendasAbertas() {
-  const [{ n }] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(lojaVendas)
-    .where(sql`${lojaVendas.status} = 'em_andamento'`);
-  return n;
 }

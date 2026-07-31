@@ -5,7 +5,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { obras, clientes, engenheiros, obraFotos } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { BackButton, LinkButton, Button, CadastradoPor } from "@/components/ui";
+import { BackButton, LinkButton, Button } from "@/components/ui";
+import { CadastradoPor } from "@/components/ui/cadastrado-por";
 import { enviarFotoObra, removerFotoObra } from "../actions";
 
 function Campo({ label, valor }: { label: string; valor: string | number | null }) {

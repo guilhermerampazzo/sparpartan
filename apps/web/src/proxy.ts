@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { moduloLiberado } from "@/lib/permissoes";
 
 const PUBLIC_PATHS = [
   "/login",
@@ -22,6 +23,20 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  const usuario = req.auth.user as
+    | { role?: string; tipo?: string; modulosPermitidos?: string[] | null }
+    | undefined;
+
+  if (usuario?.tipo === "equipe" && usuario.role !== "admin") {
+    const liberado = moduloLiberado(req.nextUrl.pathname, usuario.modulosPermitidos ?? null);
+    if (!liberado) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/";
+      url.searchParams.set("erro", "acesso-negado");
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();

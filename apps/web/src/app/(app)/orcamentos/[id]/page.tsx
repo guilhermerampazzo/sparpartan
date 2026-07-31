@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orcamentos, clientes, servicos } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { StatusBadge, Button, LinkButton, BackButton, CadastradoPor } from "@/components/ui";
+import { StatusBadge, Button, LinkButton, BackButton } from "@/components/ui";
+import { CadastradoPor } from "@/components/ui/cadastrado-por";
 import { statusOrcamento, urgenciaVencimento, infoUrgencia, rotuloPrazo } from "@/lib/status";
 import {
   gerarPdfOrcamento,

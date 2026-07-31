@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import {
@@ -12,9 +12,13 @@ import {
 } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
-import { proximoNumeroOrcamentoLoja } from "@/lib/loja";
 
 const MAX_ITENS = 8;
+
+async function proximoNumeroOrcamentoLoja(): Promise<string> {
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(lojaOrcamentos);
+  return `LJ-${String(n + 1).padStart(4, "0")}`;
+}
 
 function coletarItens(formData: FormData) {
   const itens: { produtoId: string | null; descricao: string; quantidade: number; precoUnitario: string }[] = [];
