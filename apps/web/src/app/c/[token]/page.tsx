@@ -260,7 +260,16 @@ export default async function SolicitacaoPage({ params }: { params: Promise<{ to
           <div className="space-y-2 text-body-md text-primary">
             <p>Serviço: <strong>{servico?.nome ?? orcamento.descricao ?? "—"}</strong></p>
             <p>Valor: <strong>{valorFormatado}</strong></p>
-            {orcamento.validoAte && <p>Válido até: <strong>{orcamento.validoAte}</strong></p>}
+            {orcamento.validoAte && (
+              <p>
+                Válido até:{" "}
+                <strong>{new Date(`${orcamento.validoAte}T00:00:00`).toLocaleDateString("pt-BR")}</strong>
+              </p>
+            )}
+            {orcamento.formaPagamento && <p>Forma de pagamento: <strong>{orcamento.formaPagamento}</strong></p>}
+            {orcamento.condicaoPagamento && (
+              <p>Condição de pagamento: <strong>{orcamento.condicaoPagamento}</strong></p>
+            )}
             <StatusBadge status={statusOrcamento(orcamento.status)} />
           </div>
         </SectionCard>

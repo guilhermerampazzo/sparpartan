@@ -39,7 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/pipeline", label: "Pipeline Comercial", icon: Kanban },
   { href: "/orcamentos", label: "Orçamentos", icon: Receipt },
   { href: "/taxas", label: "Taxas", icon: Landmark },
-  { href: "/lembretes", label: "Lembretes", icon: AlarmClock },
+  { href: "/pendencias", label: "Central de Pendências", icon: AlarmClock },
   { href: "/chat", label: "Chat da Equipe", icon: MessageSquare },
   { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/obras", label: "Obras", icon: HardHat },

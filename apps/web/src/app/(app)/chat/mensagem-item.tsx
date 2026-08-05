@@ -132,6 +132,7 @@ export function MensagemItem({ mensagem, minha }: { mensagem: Mensagem; minha: b
                 {new Date(mensagem.criadoEm).toLocaleString("pt-BR", {
                   dateStyle: "short",
                   timeStyle: "short",
+                  timeZone: "America/Sao_Paulo",
                 })}
                 {mensagem.editadaEm ? " (editada)" : ""}
               </p>

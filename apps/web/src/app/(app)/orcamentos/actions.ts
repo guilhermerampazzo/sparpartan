@@ -118,6 +118,8 @@ export async function criarOrcamento(
           valor: totalItens !== null ? totalItens.toFixed(2) : valor,
           descricao,
           observacoes: String(formData.get("observacoes") ?? "") || null,
+          formaPagamento: String(formData.get("formaPagamento") ?? "").trim() || null,
+          condicaoPagamento: String(formData.get("condicaoPagamento") ?? "").trim() || null,
           validoAte: String(formData.get("validoAte") ?? "") || null,
           criadoPorId: vendedorId,
         })
@@ -204,6 +206,8 @@ export async function atualizarOrcamento(
       valor: totalItens !== null ? totalItens.toFixed(2) : valor,
       descricao,
       observacoes: String(formData.get("observacoes") ?? "") || null,
+      formaPagamento: String(formData.get("formaPagamento") ?? "").trim() || null,
+      condicaoPagamento: String(formData.get("condicaoPagamento") ?? "").trim() || null,
       validoAte: String(formData.get("validoAte") ?? "") || null,
       pdfCaminho: null,
     })

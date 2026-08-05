@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useActionState } from "react";
 import { Trash2, Plus } from "lucide-react";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { SubmitButton, FormError, CampoMoeda } from "@/components/ui";
+import { SubmitButton, FormError, CampoMoeda, LinkButton } from "@/components/ui";
 import { criarOrcamento } from "../actions";
 import type { EstadoForm } from "@/lib/validacao";
 import { NovoClienteInline } from "./novo-cliente-inline";
@@ -168,6 +168,21 @@ export function NovoOrcamentoForm({
 
           <Campo label="Válido até" name="validoAte" type="date" defaultValue={v("validoAte")} />
 
+          <CampoSelect
+            label="Forma de pagamento"
+            name="formaPagamento"
+            defaultValue={String(v("formaPagamento"))}
+            options={[
+              { value: "", label: "Selecione..." },
+              { value: "A VISTA", label: "À vista" },
+              { value: "PIX", label: "PIX" },
+              { value: "BOLETO", label: "Boleto" },
+              { value: "TRANSFERENCIA", label: "Transferência" },
+              { value: "CARTAO_CREDITO", label: "Cartão de crédito" },
+              { value: "CARTAO_DEBITO", label: "Cartão de débito" },
+            ]}
+          />
+
           <div className="space-y-2">
             <CampoSelect
               label="Dados bancários para pagamento (opcional, aparece no PDF)"
@@ -178,12 +193,29 @@ export function NovoOrcamentoForm({
                 ...contasBancarias.map((c) => ({ value: c.id, label: c.apelido })),
               ]}
             />
-            <NovaContaBancariaInline
-              onCriada={(conta) => {
-                setContasBancarias((atual) => [...atual, conta].sort((a, b) => a.apelido.localeCompare(b.apelido)));
-              }}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <NovaContaBancariaInline
+                onCriada={(conta) => {
+                  setContasBancarias((atual) => [...atual, conta].sort((a, b) => a.apelido.localeCompare(b.apelido)));
+                }}
+              />
+              <LinkButton href="/configuracoes/contas-bancarias" variant="text" size="sm">
+                Gerenciar contas
+              </LinkButton>
+            </div>
           </div>
+
+          <label className="flex flex-col gap-1 sm:col-span-2">
+            <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+              Condição de pagamento (ex.: Entrada de R$ 500 e o restante em 3 vezes)
+            </span>
+            <input
+              name="condicaoPagamento"
+              defaultValue={v("condicaoPagamento")}
+              placeholder="Entrada e restante em X vezes"
+              className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+            />
+          </label>
         </div>
       </SectionCard>
 

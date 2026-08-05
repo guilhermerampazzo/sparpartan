@@ -1,9 +1,10 @@
 import { desc, eq } from "drizzle-orm";
-import { Mail, FileText } from "lucide-react";
+import { Mail, FileText, Eye, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { templatesEmail, enviosEmail, clientes } from "@/db/schema";
-import { StatusBadge, LinkButton, EmptyState, DataTable, BackButton, type Column } from "@/components/ui";
+import { StatusBadge, LinkButton, EmptyState, DataTable, ConfirmButton, BackButton, type Column } from "@/components/ui";
 import { statusEnvio } from "@/lib/status";
+import { excluirTemplate } from "./actions";
 
 type LinhaHistorico = {
   id: string;
@@ -63,17 +64,34 @@ export default async function EmailsPage() {
         ) : (
           <div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
             <ul className="divide-y divide-outline-variant">
-              {templates.map((t) => (
-                <li key={t.id} className="flex items-center justify-between px-4 py-3 text-body-md">
-                  <span>
-                    <span className="font-medium text-primary">{t.nome}</span>{" "}
-                    <span className="text-body-sm text-outline">— {t.tipo}</span>
-                  </span>
-                  <LinkButton href={`/emails/templates/${t.id}/editar`} variant="text" size="sm">
-                    Editar
-                  </LinkButton>
-                </li>
-              ))}
+              {templates.map((t) => {
+                const excluirComId = excluirTemplate.bind(null, t.id);
+                return (
+                  <li key={t.id} className="flex items-center justify-between gap-4 px-4 py-3 text-body-md">
+                    <span>
+                      <span className="font-medium text-primary">{t.nome}</span>{" "}
+                      <span className="text-body-sm text-outline">— {t.tipo}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <LinkButton href={`/emails/templates/${t.id}`} variant="text" size="sm" icon={Eye}>
+                        Visualizar
+                      </LinkButton>
+                      <LinkButton href={`/emails/templates/${t.id}/editar`} variant="text" size="sm">
+                        Editar
+                      </LinkButton>
+                      <form action={excluirComId}>
+                        <ConfirmButton
+                          mensagem={`Excluir o template "${t.nome}"?`}
+                          variant="text"
+                          icon={<Trash2 size={12} />}
+                        >
+                          Excluir
+                        </ConfirmButton>
+                      </form>
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

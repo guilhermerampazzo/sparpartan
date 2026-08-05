@@ -31,6 +31,8 @@ import { Suspense } from "react";
 import { StatCard, AlertCard, Badge, EmptyState, BarChart } from "@/components/ui";
 import { tipoEvento, infoUrgencia, urgenciaVencimento, rotuloPrazo, ordenarPorUrgencia } from "@/lib/status";
 import { AvisoAcessoNegado } from "@/components/layout/aviso-acesso-negado";
+import { pendencias } from "@/db/schema";
+import { diasAtePendencia } from "@/lib/pendencias";
 
 export default async function HomePage() {
   const hoje = new Date();
@@ -138,6 +140,30 @@ export default async function HomePage() {
     .groupBy(usuarios.id, usuarios.nome)
     .orderBy(usuarios.nome);
 
+  // Resumo da Central de Pendências (dashboard)
+  const pendenciasAtivas = await db
+    .select({ id: pendencias.id, data: pendencias.data, status: pendencias.status, concluidaEm: pendencias.concluidaEm })
+    .from(pendencias);
+  const pendenciasHoje = pendenciasAtivas.filter(
+    (p) => p.status === "pendente" && diasAtePendencia(p.data) <= 0
+  ).length;
+  const pendenciasAtrasadas = pendenciasAtivas.filter(
+    (p) => p.status === "pendente" && diasAtePendencia(p.data) < 0
+  ).length;
+  const pendenciasSemana = pendenciasAtivas.filter(
+    (p) => p.status === "pendente" && diasAtePendencia(p.data) >= 0 && diasAtePendencia(p.data) <= 7
+  ).length;
+  const concluidasHoje = pendenciasAtivas.filter((p) => {
+    if (p.status !== "concluida" || !p.concluidaEm) return false;
+    const d = new Date(p.concluidaEm);
+    const hoje = new Date();
+    return (
+      d.getFullYear() === hoje.getFullYear() &&
+      d.getMonth() === hoje.getMonth() &&
+      d.getDate() === hoje.getDate()
+    );
+  }).length;
+
   const alertas: { tone: "danger" | "warning"; title: string; description?: string; href: string }[] = [];
   if (docsPendentes > 0) {
     alertas.push({
@@ -165,7 +191,7 @@ export default async function HomePage() {
     alertas.push({
       tone: "warning",
       title: `${lembretesAbertos.length} lembrete(s) sem resolver`,
-      href: "/lembretes",
+      href: "/pendencias",
     });
   }
 
@@ -234,6 +260,37 @@ export default async function HomePage() {
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-gutter lg:grid-cols-4">
+        <StatCard
+          label="Pendências de Hoje"
+          value={pendenciasHoje}
+          icon={FolderClock}
+          tone={pendenciasHoje > 0 ? "warning" : "success"}
+          href="/pendencias"
+        />
+        <StatCard
+          label="Pendências Atrasadas"
+          value={pendenciasAtrasadas}
+          icon={FileWarning}
+          tone={pendenciasAtrasadas > 0 ? "danger" : "success"}
+          href="/pendencias"
+        />
+        <StatCard
+          label="Pendências da Semana"
+          value={pendenciasSemana}
+          icon={CalendarClock}
+          tone="info"
+          href="/pendencias"
+        />
+        <StatCard
+          label="Concluídas Hoje"
+          value={concluidasHoje}
+          icon={CalendarPlus}
+          tone="success"
+          href="/pendencias"
+        />
+      </div>
+
       <div className="grid grid-cols-1 gap-gutter lg:grid-cols-3">
         <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6 lg:col-span-2">
           <h2 className="mb-4 font-display text-title-lg font-semibold text-primary">
@@ -290,7 +347,7 @@ export default async function HomePage() {
 
           {lembretesAbertos.length > 0 && (
             <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
-              <h2 className="mb-4 font-display text-title-lg font-semibold text-primary">Lembretes</h2>
+              <h2 className="mb-4 font-display text-title-lg font-semibold text-primary">Central de Pendências</h2>
               <ul className="space-y-2">
                 {lembretesAbertos.map((l) => (
                   <li key={l.id} className="text-body-sm">
@@ -299,7 +356,7 @@ export default async function HomePage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/lembretes" className="mt-3 inline-block text-body-sm text-primary hover:underline">
+              <Link href="/pendencias" className="mt-3 inline-block text-body-sm text-primary hover:underline">
                 Ver todos →
               </Link>
             </div>

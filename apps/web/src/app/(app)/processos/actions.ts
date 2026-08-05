@@ -21,6 +21,8 @@ import { idUsuarioEquipe } from "@/lib/sessao";
 import { enviarEmail } from "@/lib/mail/adapter";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 import { validarArquivo } from "@/lib/upload";
+import { hojeMais } from "@/lib/pendencias";
+import { criarPendencias } from "@/lib/pendencias-db";
 
 function uploadsDir() {
   return process.env.UPLOADS_DIR ?? "./data/uploads";
@@ -81,6 +83,66 @@ export async function criarProcesso(
     .returning({ id: processos.id });
 
   await reclassificarProcesso(processo.id);
+
+  // Criação automática de pendências — a Central conduz o trabalho em vez de depender
+  // da memória da equipe.
+  await criarPendencias([
+    {
+      descricao: "Conferir documentação do processo",
+      categoria: "processos",
+      prioridade: "media",
+      data: hojeMais(1),
+      clienteId,
+      processoId: processo.id,
+      responsavelId,
+      origem: "auto",
+      criadoPorId: await idUsuarioEquipe(),
+    },
+    {
+      descricao: "Emitir anexos do processo",
+      categoria: "processos",
+      prioridade: "media",
+      data: hojeMais(1),
+      clienteId,
+      processoId: processo.id,
+      responsavelId,
+      origem: "auto",
+      criadoPorId: await idUsuarioEquipe(),
+    },
+    {
+      descricao: "Protocolar processo",
+      categoria: "processos",
+      prioridade: "alta",
+      data: hojeMais(3),
+      clienteId,
+      processoId: processo.id,
+      responsavelId,
+      origem: "auto",
+      criadoPorId: await idUsuarioEquipe(),
+    },
+    {
+      descricao: "Acompanhar andamento do processo",
+      categoria: "processos",
+      prioridade: "media",
+      data: hojeMais(7),
+      clienteId,
+      processoId: processo.id,
+      responsavelId,
+      origem: "auto",
+      criadoPorId: await idUsuarioEquipe(),
+    },
+    {
+      descricao: "Entregar documentação ao cliente",
+      categoria: "processos",
+      prioridade: "baixa",
+      data: hojeMais(10),
+      clienteId,
+      processoId: processo.id,
+      responsavelId,
+      origem: "auto",
+      criadoPorId: await idUsuarioEquipe(),
+    },
+  ]);
 
   redirect(`/processos/${processo.id}`);
 }

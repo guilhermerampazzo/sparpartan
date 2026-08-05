@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { mensagens, usuarios } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { salvarArquivoLocal } from "@/lib/storage";
+import { validarArquivo } from "@/lib/upload";
 
 async function usuarioEquipeLogado() {
   const session = await auth();
@@ -22,6 +24,15 @@ export async function enviarMensagem(formData: FormData) {
   let anexoCaminho: string | null = null;
   let anexoNome: string | null = null;
   if (anexo instanceof File && anexo.size > 0) {
+    // Arquivo inválido (tipo/tamanho) não pode derrubar a página inteira —
+    // volta para o chat com a mensagem de erro.
+    const erroArquivo = validarArquivo(anexo);
+    if (erroArquivo) {
+      const params = new URLSearchParams();
+      if (destinatarioId) params.set("com", destinatarioId);
+      params.set("erro", erroArquivo);
+      redirect(`/chat?${params.toString()}`);
+    }
     anexoCaminho = await salvarArquivoLocal(anexo, "chat", "documento");
     anexoNome = anexo.name;
   }

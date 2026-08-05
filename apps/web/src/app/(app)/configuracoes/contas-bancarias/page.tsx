@@ -1,7 +1,7 @@
-import { Landmark, Trash2 } from "lucide-react";
+import { Landmark, Trash2, Pencil } from "lucide-react";
 import { db } from "@/db";
 import { contasBancarias } from "@/db/schema";
-import { BackButton, EmptyState, DataTable, type Column } from "@/components/ui";
+import { BackButton, EmptyState, DataTable, LinkButton, type Column } from "@/components/ui";
 import { NovaContaBancariaForm } from "./form";
 import { excluirContaBancaria } from "./actions";
 import { ConfirmButton } from "@/components/ui";
@@ -21,11 +21,16 @@ export default async function ContasBancariasPage() {
       header: "",
       align: "right",
       cell: (c) => (
-        <form action={excluirContaBancaria.bind(null, c.id)}>
-          <ConfirmButton mensagem={`Excluir a conta "${c.apelido}"?`} icon={<Trash2 size={14} />}>
-            Excluir
-          </ConfirmButton>
-        </form>
+        <div className="flex items-center justify-end gap-2">
+          <LinkButton href={`/configuracoes/contas-bancarias/${c.id}/editar`} variant="text" size="sm" icon={Pencil}>
+            Editar
+          </LinkButton>
+          <form action={excluirContaBancaria.bind(null, c.id)}>
+            <ConfirmButton mensagem={`Excluir a conta "${c.apelido}"?`} icon={<Trash2 size={14} />}>
+              Excluir
+            </ConfirmButton>
+          </form>
+        </div>
       ),
     },
   ];

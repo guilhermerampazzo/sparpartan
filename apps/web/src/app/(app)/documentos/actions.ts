@@ -18,8 +18,7 @@ function uploadsDir() {
 export async function gerarDocumento(
   _estadoAnterior: EstadoForm,
   formData: FormData
-): Promise<EstadoForm> {
-  const modeloId = String(formData.get("modeloId") ?? "");
+): Promise<EstadoForm> {  const modeloId = String(formData.get("modeloId") ?? "");
   const clienteId = String(formData.get("clienteId") ?? "");
   const embarcacaoId = String(formData.get("embarcacaoId") ?? "") || null;
   const obraId = String(formData.get("obraId") ?? "") || null;
@@ -140,4 +139,59 @@ export async function gerarDocumento(
   }
 
   redirect(`/documentos/${documento.id}`);
+}
+
+/**
+ * Quando o Gotenberg cai no momento da geração, o documento fica só com o DOCX.
+ * Esta action tenta gerar o PDF a partir do DOCX já salvo — para regenerar depois
+ * sem precisar refazer o documento.
+ */
+export async function regenerarPdf(documentoId: string) {
+  const [documento] = await db
+    .select()
+    .from(documentosGerados)
+    .where(eq(documentosGerados.id, documentoId))
+    .limit(1);
+  if (!documento) throw new Error("Documento não encontrado");
+
+  const docxBuffer = await readFile(path.join(uploadsDir(), documento.docxCaminho));
+
+  const gotenbergUrl = process.env.GOTENBERG_URL ?? "http://gotenberg:3000";
+  const body = new FormData();
+  body.append(
+    "files",
+    new Blob([new Uint8Array(docxBuffer)], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }),
+    "documento.docx"
+  );
+
+  let pdfCaminho: string | null = null;
+  try {
+    const res = await fetch(`${gotenbergUrl}/forms/libreoffice/convert`, {
+      method: "POST",
+      body,
+    });
+    if (res.ok) {
+      const pdfBuffer = Buffer.from(await res.arrayBuffer());
+      const geradosDir = path.join(uploadsDir(), "gerados");
+      await mkdir(geradosDir, { recursive: true });
+      const pdfNome = `${randomUUID()}.pdf`;
+      pdfCaminho = path.join("gerados", pdfNome);
+      await writeFile(path.join(uploadsDir(), pdfCaminho), pdfBuffer);
+    }
+  } catch {
+    // Gotenberg indisponível — o erro aparece na tela como redirect com ?erro=
+  }
+
+  if (!pdfCaminho) {
+    redirect(`/documentos/${documentoId}?erro=Gotenberg não respondeu — tente novamente em instantes.`);
+  }
+
+  await db
+    .update(documentosGerados)
+    .set({ pdfCaminho })
+    .where(eq(documentosGerados.id, documentoId));
+
+  redirect(`/documentos/${documentoId}`);
 }

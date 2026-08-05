@@ -1,9 +1,10 @@
 import { desc, eq, isNull } from "drizzle-orm";
-import { Receipt, Trash2 } from "lucide-react";
+import { Receipt, Trash2, Landmark } from "lucide-react";
 import { db } from "@/db";
 import { orcamentos, clientes, servicos } from "@/db/schema";
 import {
   StatusBadge,
+  Button,
   LinkButton,
   ConfirmButton,
   EmptyState,
@@ -11,7 +12,7 @@ import {
   type Column,
 } from "@/components/ui";
 import { statusOrcamento } from "@/lib/status";
-import { excluirOrcamento } from "./actions";
+import { excluirOrcamento, aprovarOrcamento, recusarOrcamento } from "./actions";
 
 function formatMoney(v: string) {
   return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -55,12 +56,26 @@ export default async function OrcamentosPage() {
       align: "right",
       cell: (o) => {
         const excluirComId = excluirOrcamento.bind(null, o.id);
+        const aprovarComId = aprovarOrcamento.bind(null, o.id);
+        const recusarComId = recusarOrcamento.bind(null, o.id);
         return (
           <div className="flex items-center justify-end gap-2">
             {o.status === "pendente" && (
-              <LinkButton href={`/orcamentos/${o.id}/editar`} variant="text" size="sm">
-                Editar
-              </LinkButton>
+              <>
+                <form action={aprovarComId}>
+                  <Button type="submit" variant="tonal" size="sm">
+                    Aprovar
+                  </Button>
+                </form>
+                <form action={recusarComId}>
+                  <Button type="submit" variant="outlined" size="sm">
+                    Recusar
+                  </Button>
+                </form>
+                <LinkButton href={`/orcamentos/${o.id}/editar`} variant="text" size="sm">
+                  Editar
+                </LinkButton>
+              </>
             )}
             <form action={excluirComId}>
               <ConfirmButton
@@ -81,7 +96,12 @@ export default async function OrcamentosPage() {
     <div className="space-y-gutter">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Orçamentos</h1>
-        <LinkButton href="/orcamentos/novo">+ Novo Orçamento</LinkButton>
+        <div className="flex gap-3">
+          <LinkButton href="/configuracoes/contas-bancarias" variant="outlined" icon={Landmark}>
+            Gerenciar Contas Bancárias
+          </LinkButton>
+          <LinkButton href="/orcamentos/novo">+ Novo Orçamento</LinkButton>
+        </div>
       </div>
 
       <DataTable

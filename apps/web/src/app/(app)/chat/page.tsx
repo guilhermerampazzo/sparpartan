@@ -11,9 +11,9 @@ import { MensagemItem } from "./mensagem-item";
 export default async function ChatPage({
   searchParams,
 }: {
-  searchParams: Promise<{ com?: string }>;
+  searchParams: Promise<{ com?: string; erro?: string }>;
 }) {
-  const { com } = await searchParams;
+  const { com, erro } = await searchParams;
   const session = await auth();
   const meuId = (session?.user as { id?: string } | undefined)?.id;
 
@@ -84,6 +84,11 @@ export default async function ChatPage({
         </div>
 
         <div className="flex-1 overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
+          {erro && (
+            <div className="mb-4 rounded-lg bg-error-container p-3 text-body-sm text-on-error-container">
+              {erro}
+            </div>
+          )}
           {lista.length === 0 ? (
             <EmptyState icon={MessageSquare} title="Nenhuma mensagem ainda — comece a conversa" />
           ) : (

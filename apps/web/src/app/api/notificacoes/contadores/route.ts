@@ -2,7 +2,7 @@ import { and, count, eq, gt, isNull, lte, ne, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { agendaEventos, lembretes, mensagens, orcamentos, taxasPagar, usuarios } from "@/db/schema";
+import { agendaEventos, pendencias, mensagens, orcamentos, taxasPagar, usuarios } from "@/db/schema";
 
 export async function GET() {
   const session = await auth();
@@ -25,7 +25,7 @@ export async function GET() {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
-  const [[chat], [lembretesCount], [taxasCount], [agendaCount], [orcamentosCount]] = await Promise.all([
+  const [[chat], [pendenciasCount], [taxasCount], [agendaCount], [orcamentosCount]] = await Promise.all([
     db
       .select({ total: count() })
       .from(mensagens)
@@ -39,8 +39,8 @@ export async function GET() {
       ),
     db
       .select({ total: count() })
-      .from(lembretes)
-      .where(eq(lembretes.resolvido, false)),
+      .from(pendencias)
+      .where(and(eq(pendencias.status, "pendente"), or(isNull(pendencias.privada), eq(pendencias.privada, false)))),
     db
       .select({ total: count() })
       .from(taxasPagar)
@@ -57,7 +57,7 @@ export async function GET() {
 
   return NextResponse.json({
     chat: chat?.total ?? 0,
-    lembretes: lembretesCount?.total ?? 0,
+    lembretes: pendenciasCount?.total ?? 0,
     taxas: taxasCount?.total ?? 0,
     agenda: agendaCount?.total ?? 0,
     orcamentos: orcamentosCount?.total ?? 0,

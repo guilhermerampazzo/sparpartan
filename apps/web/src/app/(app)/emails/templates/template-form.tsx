@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Campo, SectionCard } from "@/components/ui/form-field";
-import { SubmitButton, FormError, BackButton } from "@/components/ui";
+import { SubmitButton, FormError, BackButton, RichTextEditor } from "@/components/ui";
 import type { EstadoForm } from "@/lib/validacao";
 
 const TIPOS_PADRAO = [
@@ -14,6 +14,11 @@ const TIPOS_PADRAO = [
   { value: "prova", label: "Prova" },
   { value: "aniversario", label: "Aniversário" },
   { value: "geral", label: "Geral" },
+];
+
+const VARIAVEIS = [
+  { nome: "nome", etiqueta: "Nome do cliente" },
+  { nome: "email", etiqueta: "E-mail do cliente" },
 ];
 
 export function TemplateForm({
@@ -98,18 +103,14 @@ export function TemplateForm({
           <div className="mt-4">
             <Campo label="Assunto" name="assunto" required defaultValue={v("assunto")} />
           </div>
-          <label className="mt-4 flex flex-col gap-1">
-            <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
-              Corpo (HTML)
-            </span>
-            <textarea
-              name="corpo"
-              rows={8}
-              required
-              defaultValue={v("corpo")}
-              className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
-            />
-          </label>
+          <div className="mt-4">
+            <label className="flex flex-col gap-1">
+              <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+                Corpo do e-mail
+              </span>
+              <RichTextEditor name="corpo" defaultValue={v("corpo")} variaveis={VARIAVEIS} />
+            </label>
+          </div>
         </SectionCard>
 
         <SubmitButton>{textoBotao}</SubmitButton>

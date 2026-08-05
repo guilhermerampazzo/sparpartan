@@ -147,9 +147,12 @@ function Toolbar({ editor }: { editor: Editor }) {
 export function RichTextEditor({
   name,
   defaultValue = "",
+  variaveis = [],
 }: {
   name: string;
   defaultValue?: string;
+  /** Variáveis clicáveis (ex.: templates de e-mail) — insere `{{nome}}` no cursor. */
+  variaveis?: { nome: string; etiqueta: string }[];
 }) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
 
@@ -171,6 +174,14 @@ export function RichTextEditor({
     },
   });
 
+  const inserirVariavel = useCallback(
+    (nome: string) => {
+      if (!editor) return;
+      editor.chain().focus().insertContent(`{{${nome}}}`).run();
+    },
+    [editor]
+  );
+
   if (!editor) {
     return (
       <div className="rounded-lg border border-outline-variant bg-surface">
@@ -182,6 +193,24 @@ export function RichTextEditor({
   return (
     <div className="overflow-hidden rounded-lg border border-outline-variant bg-surface focus-within:border-primary">
       <Toolbar editor={editor} />
+      {variaveis.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-outline-variant bg-surface-container-lowest px-2 py-1.5">
+          <span className="font-mono-caps text-[10px] uppercase tracking-wide text-outline">
+            Inserir variável:
+          </span>
+          {variaveis.map((v) => (
+            <button
+              key={v.nome}
+              type="button"
+              title={`Inserir {{${v.nome}}} — ${v.etiqueta}`}
+              onClick={() => inserirVariavel(v.nome)}
+              className="rounded-pill border border-outline-variant bg-surface px-2 py-0.5 font-mono text-[11px] text-primary transition-colors hover:bg-primary-container hover:text-on-primary-container"
+            >
+              {`{{${v.nome}}}`}
+            </button>
+          ))}
+        </div>
+      )}
       <EditorContent editor={editor} />
       <input ref={hiddenInputRef} type="hidden" name={name} defaultValue={defaultValue} />
     </div>

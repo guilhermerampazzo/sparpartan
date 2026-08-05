@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { primeiraPaginaComoCanvas } from "@/lib/ocr/pdf-para-imagem";
+
+function ehPdf(nome: string): boolean {
+  return nome.toLowerCase().endsWith(".pdf");
+}
 
 export function OcrUploader() {
   const [texto, setTexto] = useState("");
@@ -11,6 +16,18 @@ export function OcrUploader() {
     setProcessando(true);
     setTexto("");
     setProgresso(0);
+
+    // PDF (CNH Digital etc.) vira imagem antes de ir pro Tesseract.
+    let alvo: Blob | HTMLCanvasElement = file;
+    if (ehPdf(file.name)) {
+      try {
+        alvo = await primeiraPaginaComoCanvas(file);
+      } catch {
+        setTexto("Não foi possível ler este PDF.");
+        setProcessando(false);
+        return;
+      }
+    }
 
     const { createWorker } = await import("tesseract.js");
     const worker = await createWorker("por", 1, {
@@ -23,7 +40,7 @@ export function OcrUploader() {
 
     const {
       data: { text },
-    } = await worker.recognize(file);
+    } = await worker.recognize(alvo);
     await worker.terminate();
 
     setTexto(text);
@@ -34,11 +51,11 @@ export function OcrUploader() {
     <div className="space-y-4">
       <label className="flex flex-col gap-1">
         <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
-          Foto do documento (RG, CRLV, etc.)
+          Foto do documento (RG, CRLV, etc.) ou PDF
         </span>
         <input
           type="file"
-          accept="image/*"
+          accept="image/*,.pdf"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) processarArquivo(file);

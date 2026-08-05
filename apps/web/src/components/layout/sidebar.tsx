@@ -10,7 +10,7 @@ import { ChatPopover } from "./chat-popover";
 import { NavBadge, useContadoresNotificacao } from "./nav-notificacoes";
 
 const CONTADOR_POR_HREF: Record<string, "lembretes" | "taxas" | "agenda" | "orcamentos"> = {
-  "/lembretes": "lembretes",
+  "/pendencias": "lembretes",
   "/taxas": "taxas",
   "/agenda": "agenda",
   "/orcamentos": "orcamentos",

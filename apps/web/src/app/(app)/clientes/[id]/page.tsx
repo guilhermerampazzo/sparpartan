@@ -201,6 +201,13 @@ export default async function ClienteDetalhesPage({
       label: `Evento: ${ev.titulo}`,
       tipo: "evento" as const,
     })),
+    ...taxasDoCliente
+      .filter((t) => t.status === "pago" && t.pagoEm)
+      .map((t) => ({
+        data: t.pagoEm!,
+        label: `Taxa paga: ${t.descricao}${t.numero ? ` (GRU ${t.numero})` : ""} — R$ ${Number(t.valor).toLocaleString("pt-BR")}`,
+        tipo: "pagamento" as const,
+      })),
   ].sort((a, b) => b.data.getTime() - a.data.getTime());
 
   return (

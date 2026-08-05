@@ -2,21 +2,25 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { notFound } from "next/navigation";
 import { eq, desc } from "drizzle-orm";
-import { Download } from "lucide-react";
+import { Download, FileDown, AlertCircle } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
 import { db } from "@/db";
 import { documentosGerados, modelosDocumento, clientes, assinaturas } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { LinkButton, Button, StatusBadge } from "@/components/ui";
+import { LinkButton, Button, StatusBadge, BackButton } from "@/components/ui";
 import { statusAssinatura } from "@/lib/status";
 import { solicitarAssinatura } from "./actions";
+import { regenerarPdf } from "../actions";
 
 export default async function DocumentoDetalhesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro?: string }>;
 }) {
   const { id } = await params;
+  const { erro } = await searchParams;
 
   const [documento] = await db
     .select()
@@ -44,6 +48,7 @@ export default async function DocumentoDetalhesPage({
     .limit(1);
 
   const solicitarAssinaturaComId = solicitarAssinatura.bind(null, id);
+  const regenerarPdfComId = regenerarPdf.bind(null, id);
 
   let totalPaginas = 0;
   if (documento.pdfCaminho) {
@@ -59,24 +64,37 @@ export default async function DocumentoDetalhesPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href={documento.processoId ? `/processos/${documento.processoId}` : "/documentos"} />
       <h1 className="font-display text-headline-lg font-bold text-primary">
         {modelo?.nome} — {cliente?.nome}
       </h1>
+
+      {erro && (
+        <div className="flex items-center gap-2 rounded-lg bg-error-container p-3 text-body-sm text-on-error-container">
+          <AlertCircle size={16} /> {erro}
+        </div>
+      )}
 
       <SectionCard title="Documento Gerado">
         <div className="flex flex-wrap items-center gap-3">
           <LinkButton href={`/api/documentos/${documento.id}?tipo=docx`} icon={Download}>
             Baixar DOCX
           </LinkButton>
-          {documento.pdfCaminho && (
+          {documento.pdfCaminho ? (
             <LinkButton href={`/api/documentos/${documento.id}?tipo=pdf`} variant="outlined" icon={Download}>
               Baixar PDF
             </LinkButton>
-          )}
-          {!documento.pdfCaminho && (
-            <p className="text-body-sm text-outline">
-              PDF indisponível (Gotenberg não respondeu) — o DOCX gerado continua utilizável.
-            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <form action={regenerarPdfComId}>
+                <Button type="submit" variant="tonal" icon={FileDown}>
+                  Gerar PDF
+                </Button>
+              </form>
+              <p className="text-body-sm text-outline">
+                PDF ainda não foi gerado (o Gotenberg pode ter caído) — o DOCX continua utilizável.
+              </p>
+            </div>
           )}
         </div>
       </SectionCard>

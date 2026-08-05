@@ -49,15 +49,29 @@ export function DataTable<T>({
             return (
               <tr
                 key={rowKey(row)}
-                className="border-b border-outline-variant last:border-0 hover:bg-surface"
+                className={`relative border-b border-outline-variant last:border-0 hover:bg-surface ${
+                  href ? "cursor-pointer" : ""
+                }`}
               >
-                {columns.map((col) => (
+                {columns.map((col, i) => (
                   <td
                     key={col.header}
-                    className={`px-4 py-3 ${col.align === "right" ? "text-right" : "text-left"} ${col.className ?? ""}`}
+                    className={`px-4 py-3 ${
+                      col.align === "right" ? "text-right" : "text-left"
+                    } ${col.className ?? ""} ${
+                      // A última coluna (ações) fica acima do link de linha
+                      // inteira — os controles dela continuam clicáveis.
+                      href && i === columns.length - 1 ? "relative z-10" : ""
+                    }`}
                   >
                     {href && col === columns[0] ? (
-                      <Link href={href} className="hover:underline">
+                      // O primeiro link "estica" sobre a linha toda via ::after —
+                      // clicar em qualquer célula abre o registro, sem event
+                      // handler (que Server Components não podem passar).
+                      <Link
+                        href={href}
+                        className="after:absolute after:inset-0 hover:underline"
+                      >
                         {col.cell(row)}
                       </Link>
                     ) : (

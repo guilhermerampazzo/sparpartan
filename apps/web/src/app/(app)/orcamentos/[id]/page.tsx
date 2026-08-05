@@ -90,7 +90,9 @@ export default async function OrcamentoDetalhesPage({
           <div>
             <dt className="font-mono-caps text-label-sm uppercase text-outline">Válido até</dt>
             <dd className="flex items-center gap-2 text-primary">
-              {orcamento.validoAte ?? "—"}
+              {orcamento.validoAte
+                ? new Date(`${orcamento.validoAte}T00:00:00`).toLocaleDateString("pt-BR")
+                : "—"}
               {urgenciaValidade && urgenciaValidade !== "sem_data" && urgenciaValidade !== "em_dia" && (
                 <StatusBadge status={infoUrgencia(urgenciaValidade)} size="sm" />
               )}
@@ -100,6 +102,22 @@ export default async function OrcamentoDetalhesPage({
             </dd>
           </div>
         </dl>
+        {(orcamento.formaPagamento || orcamento.condicaoPagamento) && (
+          <dl className="mt-4 grid grid-cols-1 gap-4 text-body-md sm:grid-cols-2">
+            {orcamento.formaPagamento && (
+              <div>
+                <dt className="font-mono-caps text-label-sm uppercase text-outline">Forma de pagamento</dt>
+                <dd className="text-primary">{orcamento.formaPagamento}</dd>
+              </div>
+            )}
+            {orcamento.condicaoPagamento && (
+              <div>
+                <dt className="font-mono-caps text-label-sm uppercase text-outline">Condição de pagamento</dt>
+                <dd className="text-primary">{orcamento.condicaoPagamento}</dd>
+              </div>
+            )}
+          </dl>
+        )}
         {(orcamento.descricao || orcamento.observacoes) && (
           <dl className="mt-4 grid grid-cols-1 gap-4 text-body-md sm:grid-cols-2">
             {orcamento.descricao && (

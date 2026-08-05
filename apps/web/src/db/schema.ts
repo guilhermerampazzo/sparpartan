@@ -122,6 +122,19 @@ export const lojaVendaStatusEnum = pgEnum("loja_venda_status", [
   "cancelada",
 ]);
 
+export const pendenciaCategoria = pgEnum("pendencia_categoria", [
+  "clientes",
+  "embarcacoes",
+  "processos",
+  "financeiro",
+  "loja",
+  "escola",
+  "empresa",
+  "pessoal",
+]);
+export const pendenciaPrioridade = pgEnum("pendencia_prioridade", ["alta", "media", "baixa"]);
+export const pendenciaStatus = pgEnum("pendencia_status", ["pendente", "concluida", "arquivada"]);
+
 export const usuarios = pgTable("usuarios", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull(),
@@ -498,6 +511,8 @@ export const orcamentos = pgTable("orcamentos", {
   valor: numeric("valor").notNull(),
   descricao: text("descricao"),
   observacoes: text("observacoes"),
+  formaPagamento: text("forma_pagamento"),
+  condicaoPagamento: text("condicao_pagamento"),
   status: orcamentoStatus("status").notNull().default("pendente"),
   validoAte: date("valido_ate"),
   pdfCaminho: text("pdf_caminho"),
@@ -1118,4 +1133,39 @@ export const lojaTransportadoras = pgTable("loja_transportadoras", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull(),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Central de Pendências — sucede o módulo de Lembretes
+// ---------------------------------------------------------------------------
+
+/**
+ * Pendências da Central de Pendências. Toda ação do sistema que gera uma próxima
+ * tarefa cria uma pendência aqui (origem "auto"), e a equipe também pode criar
+ * manualmente (origem "manual"). Nada é apagado: concluir marca status e
+ * concluidaEm; "excluir" arquiva para o histórico.
+ */
+export const pendencias = pgTable("pendencias", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  descricao: text("descricao").notNull(),
+  categoria: pendenciaCategoria("categoria").notNull().default("processos"),
+  prioridade: pendenciaPrioridade("prioridade").notNull().default("media"),
+  status: pendenciaStatus("status").notNull().default("pendente"),
+  data: date("data").notNull(),
+  horario: text("horario"),
+  clienteId: uuid("cliente_id").references(() => clientes.id, { onDelete: "set null" }),
+  embarcacaoId: uuid("embarcacao_id").references(() => embarcacoes.id, { onDelete: "set null" }),
+  processoId: uuid("processo_id").references(() => processos.id, { onDelete: "set null" }),
+  responsavel: text("responsavel"),
+  responsavelId: uuid("responsavel_id").references(() => usuarios.id, { onDelete: "set null" }),
+  observacoes: text("observacoes"),
+  origem: text("origem").notNull().default("manual"),
+  /** Verdadeiro para pendências pessoais — visíveis apenas para o responsável/criador. */
+  privada: boolean("privada").notNull().default(false),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  concluidoPorId: uuid("concluido_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  concluidaEm: timestamp("concluida_em"),
+  arquivadaEm: timestamp("arquivada_em"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
 });

@@ -188,3 +188,12 @@ export async function removerFotoObra(obraId: string, fotoId: string) {
   }
   revalidatePath(`/obras/${obraId}`);
 }
+
+export async function excluirObra(obraId: string) {
+  await db
+    .update(obras)
+    .set({ excluidoEm: new Date() })
+    .where(eq(obras.id, obraId));
+  await registrarAuditoria("excluir", "obra", obraId, "obra excluída");
+  revalidatePath("/obras");
+}

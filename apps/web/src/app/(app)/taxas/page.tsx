@@ -18,8 +18,13 @@ type LinhaTaxa = {
   status: "pendente" | "pago";
   arquivoCaminho: string | null;
   clienteNome: string | null;
+  cpfCnpj: string | null;
   servicoNome: string | null;
 };
+
+function formatarData(d: string | null) {
+  return d ? new Date(`${d}T00:00:00`).toLocaleDateString("pt-BR") : "—";
+}
 
 export default async function TaxasPage({
   searchParams,
@@ -44,6 +49,7 @@ export default async function TaxasPage({
       status: taxasPagar.status,
       arquivoCaminho: taxasPagar.arquivoCaminho,
       clienteNome: clientes.nome,
+      cpfCnpj: clientes.cpfCnpj,
       servicoNome: servicos.nome,
     })
     .from(taxasPagar)
@@ -54,11 +60,12 @@ export default async function TaxasPage({
     .orderBy(desc(taxasPagar.criadoEm));
 
   const columns: Column<LinhaTaxa>[] = [
+    { header: "Cliente", cell: (t) => <span className="font-medium text-primary">{t.clienteNome ?? "—"}</span> },
+    { header: "CPF", cell: (t) => <span className="whitespace-nowrap">{t.cpfCnpj ?? "—"}</span> },
     { header: "Descrição", cell: (t) => <span className="font-medium text-primary">{t.descricao}</span> },
     { header: "Nº GRU/Guia", cell: (t) => t.numero ?? "—" },
-    { header: "Cliente/Serviço", cell: (t) => [t.clienteNome, t.servicoNome].filter(Boolean).join(" — ") || "—" },
     { header: "Valor", cell: (t) => formatMoney(Number(t.valor)) },
-    { header: "Vencimento", cell: (t) => t.vencimento ?? "—" },
+    { header: "Vencimento", cell: (t) => <span className="whitespace-nowrap">{formatarData(t.vencimento)}</span> },
     {
       header: "Status",
       cell: (t) =>

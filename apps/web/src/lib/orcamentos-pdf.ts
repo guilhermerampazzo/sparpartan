@@ -69,6 +69,9 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
     : `<tr><td>1</td><td>Item 1</td><td>${descricaoItem}</td><td>${valorFormatado}</td><td>${valorFormatado}</td></tr>`;
 
   const dataEmissao = orcamento.criadoEm.toLocaleDateString("pt-BR");
+  const validoAteFormatado = orcamento.validoAte
+    ? new Date(`${orcamento.validoAte}T00:00:00`).toLocaleDateString("pt-BR")
+    : null;
   const enderecoPartes = [
     cliente?.rua,
     cliente?.numero,
@@ -81,24 +84,27 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
   const html = `<!doctype html>
 <html><head><meta charset="utf-8"><style>
   * { box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; padding: 40px; color: #001736; font-size: 12px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-  .brand h1 { margin: 0; font-size: 26px; color: #002b5b; letter-spacing: 1px; }
-  .brand p { margin: 2px 0; }
-  .numero-box { border: 1px solid #002b5b; border-radius: 6px; padding: 12px 20px; text-align: center; min-width: 180px; }
+  body { font-family: Arial, Helvetica, sans-serif; padding: 48px 44px; color: #001736; font-size: 12px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
+  .brand h1 { margin: 0 0 8px; font-size: 30px; color: #002b5b; letter-spacing: 1.5px; }
+  .brand p { margin: 3px 0; line-height: 1.5; }
+  .numero-box { border: 1.5px solid #002b5b; border-radius: 6px; padding: 18px 24px; text-align: center; min-width: 190px; }
   .numero-box .label { font-size: 11px; font-weight: bold; color: #002b5b; }
-  .numero-box .numero { font-size: 20px; font-weight: bold; color: #002b5b; margin: 4px 0; }
-  .section { border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 16px; overflow: hidden; }
-  .section-title { background: #002b5b; color: #fff; padding: 6px 12px; font-weight: bold; font-size: 12px; }
-  .section-body { padding: 12px; }
+  .numero-box .numero { font-size: 22px; font-weight: bold; color: #002b5b; margin: 6px 0; }
+  .section { border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 18px; overflow: hidden; page-break-inside: avoid; }
+  .section-title { background: #002b5b; color: #fff; padding: 8px 14px; font-weight: bold; font-size: 12px; letter-spacing: 0.5px; }
+  .section-body { padding: 14px; }
+  .section-body p { margin: 6px 0; line-height: 1.6; }
   table.itens { width: 100%; border-collapse: collapse; }
-  table.itens th { background: #002b5b; color: #fff; text-align: left; padding: 8px; font-size: 11px; }
-  table.itens td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
+  table.itens th { background: #002b5b; color: #fff; text-align: left; padding: 9px; font-size: 11px; }
+  table.itens td { padding: 9px; border-bottom: 1px solid #e2e8f0; }
   table.itens tr.total td { background: #002b5b; color: #fff; font-weight: bold; }
-  .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 8px; }
-  .section { page-break-inside: avoid; }
-  .assinaturas { display: flex; justify-content: space-between; margin-top: 80px; gap: 40px; page-break-inside: avoid; }
-  .assinatura-box { flex: 1; border-top: 1px solid #001736; padding-top: 8px; text-align: center; }
+  .footer { margin-top: 28px; text-align: center; font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+  .aviso-assinatura { margin-top: 56px; page-break-after: avoid; }
+  .assinaturas { display: flex; justify-content: space-between; margin-top: 90px; gap: 48px; page-break-inside: avoid; }
+  .assinatura-box { flex: 1; padding-top: 12px; text-align: center; }
+  .assinatura-box .linha { border-top: 1.5px solid #001736; height: 0; }
+  .assinatura-box p { margin: 6px 0; }
 </style></head><body>
 
 <div class="header">
@@ -123,6 +129,7 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
     <p><strong>Endereço:</strong> ${enderecoPartes || "—"}</p>
     <p><strong>CEP:</strong> ${cliente?.cep ?? "—"}</p>
     <p><strong>Telefone:</strong> ${cliente?.telefone ?? cliente?.celular ?? "—"}</p>
+    <p><strong>E-mail:</strong> ${cliente?.email ?? "—"}</p>
   </div>
 </div>
 
@@ -140,8 +147,16 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
 </div>
 
 ${
-  orcamento.validoAte
-    ? `<div class="section"><div class="section-title">VALIDADE</div><div class="section-body"><p>Esta proposta é válida até ${orcamento.validoAte}.</p></div></div>`
+  (orcamento.formaPagamento || orcamento.condicaoPagamento) &&
+  `<div class="section"><div class="section-title">CONDIÇÕES DE PAGAMENTO</div><div class="section-body">
+    ${orcamento.formaPagamento ? `<p><strong>Forma de pagamento:</strong> ${orcamento.formaPagamento}</p>` : ""}
+    ${orcamento.condicaoPagamento ? `<p><strong>Condição:</strong> ${orcamento.condicaoPagamento}</p>` : ""}
+  </div></div>`
+}
+
+${
+  validoAteFormatado
+    ? `<div class="section"><div class="section-title">VALIDADE</div><div class="section-body"><p>Esta proposta é válida até ${validoAteFormatado}.</p></div></div>`
     : ""
 }
 
@@ -163,14 +178,16 @@ ${
     : ""
 }
 
-<p>Para aceitar este orçamento, assine abaixo e devolva para o remetente.</p>
+<p class="aviso-assinatura">Para aceitar este orçamento, assine abaixo e devolva para o remetente.</p>
 
 <div class="assinaturas">
   <div class="assinatura-box">
+    <div class="linha"></div>
     <p>Assinatura do Contratante</p>
     <p><strong>${cliente?.nome ?? ""}</strong></p>
   </div>
   <div class="assinatura-box">
+    <div class="linha"></div>
     <p>Assinatura — ${EMPRESA.nome} ${EMPRESA.razaoSocial}</p>
     <p><strong>CNPJ: ${EMPRESA.cnpj}</strong></p>
   </div>

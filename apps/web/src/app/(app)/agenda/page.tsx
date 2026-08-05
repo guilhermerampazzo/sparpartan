@@ -1,13 +1,14 @@
 import { asc, eq, gte, and, inArray, isNotNull } from "drizzle-orm";
-import { ChevronLeft, ChevronRight, CalendarClock, Landmark, Eye, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarClock, Landmark, Eye, Trash2, FileDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
 import { agendaEventos, agendaInteressados, clientes, processos, servicos, taxasPagar } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Badge, LinkButton, Button, EmptyState, CalendarMonth, ConfirmButton } from "@/components/ui";
+import { Badge, LinkButton, Button, EmptyState, CalendarMonth, ConfirmButton, DataTable } from "@/components/ui";
 import { statusEvento, tipoEvento, fonteCalendario, type FonteCalendarioTipo } from "@/lib/status";
 import { gradeDoMes, buscarItensCalendario, FONTES_PADRAO, TODAS_FONTES } from "@/lib/calendario";
+import { buscarProcessosAgendados } from "@/lib/agenda-processos";
 import { confirmarEvento, concluirEvento } from "./actions";
 import { marcarTaxaComoPaga, excluirTaxa } from "../taxas/actions";
 
@@ -122,7 +123,110 @@ export default async function AgendaPage({
 
       <CalendarMonth celulas={celulas} itens={itens} />
 
+      <ProcessosAgendados />
+
       <ListaLevarMarinha />
+    </div>
+  );
+}
+
+async function ProcessosAgendados() {
+  const eventos = await buscarProcessosAgendados();
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display text-lg font-semibold text-primary">Processos Agendados</h2>
+        <div className="flex gap-2">
+          <LinkButton href="/api/agenda/processos-agendados/pdf" variant="outlined" size="sm" icon={FileDown}>
+            Baixar PDF
+          </LinkButton>
+          <LinkButton href="/agenda/novo" size="sm" icon={Plus}>
+            + Novo Processo
+          </LinkButton>
+        </div>
+      </div>
+
+      <DataTable
+        columns={[
+            {
+              header: "Representante Legal",
+              cell: (ev) => ev.representanteLegal || "—",
+            },
+            {
+              header: "Data/Hora",
+              cell: (ev) =>
+                new Date(ev.dataHora).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" }),
+            },
+            {
+              header: "Clientes e Serviço",
+              cell: (ev) => {
+                const clientes = [
+                  ev.clienteNome,
+                  ...ev.interessados.map((i) => i.nomeInteressado),
+                ].filter(Boolean) as string[];
+                const servicos = [
+                  ev.servicoNome,
+                  ...ev.interessados.map((i) => i.servicoSolicitado).filter(Boolean),
+                ].filter(Boolean) as string[];
+                return (
+                  <div className="flex flex-col gap-1">
+                    {clientes.length > 0 && (
+                      <span className="font-medium text-primary">{clientes.join(", ")}</span>
+                    )}
+                    {servicos.length > 0 && <span className="text-body-sm text-outline">{servicos.join(", ")}</span>}
+                  </div>
+                );
+              },
+            },
+            {
+              header: "Status",
+              cell: (ev) => (
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge tone={tipoEvento(ev.tipo).tone} icon={tipoEvento(ev.tipo).icon} size="sm">
+                    {tipoEvento(ev.tipo).label}
+                  </Badge>
+                  <Badge tone={statusEvento(ev.status).tone} icon={statusEvento(ev.status).icon} size="sm">
+                    {statusEvento(ev.status).label}
+                  </Badge>
+                </div>
+              ),
+            },
+            {
+              header: "Ações",
+              cell: (ev) => {
+                const confirmarComId = confirmarEvento.bind(null, ev.id);
+                const concluirComId = concluirEvento.bind(null, ev.id);
+                return (
+                  <div className="flex shrink-0 gap-2">
+                    {ev.processoId && (
+                      <LinkButton href={`/processos/${ev.processoId}`} variant="text" size="sm">
+                        Ver processo
+                      </LinkButton>
+                    )}
+                    {ev.status === "pendente" && (
+                      <form action={confirmarComId}>
+                        <Button type="submit" variant="outlined" size="sm">
+                          Confirmar
+                        </Button>
+                      </form>
+                    )}
+                    {ev.status !== "concluido" && ev.status !== "cancelado" && (
+                      <form action={concluirComId}>
+                        <Button type="submit" size="sm">
+                          Concluir
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                );
+              },
+            },
+          ]}
+          rows={eventos}
+          rowKey={(ev) => ev.id}
+          empty={<EmptyState icon={CalendarClock} title="Nenhum processo agendado" />}
+        />
     </div>
   );
 }

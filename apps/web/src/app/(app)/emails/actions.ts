@@ -62,6 +62,11 @@ export async function atualizarTemplate(
   redirect("/emails");
 }
 
+export async function excluirTemplate(templateId: string) {
+  await db.delete(templatesEmail).where(eq(templatesEmail.id, templateId));
+  redirect("/emails");
+}
+
 export async function enviarEmailCliente(
   _estadoAnterior: EstadoForm,
   formData: FormData
