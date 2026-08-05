@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clientes,
@@ -12,7 +12,7 @@ import {
   processos,
 } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Button } from "@/components/ui";
+import { Button, LinkButton } from "@/components/ui";
 import { resolverCamposConhecidos } from "@/lib/docx/resolver";
 import { GerarDocumentoForm } from "./form";
 
@@ -30,25 +30,36 @@ export default async function GerarDocumentoPage({
   const { clienteId, embarcacaoId, obraId, processoId } = await searchParams;
   let { modeloId } = await searchParams;
 
+  const listaModelos = await db
+    .select({
+      id: modelosDocumento.id,
+      nome: modelosDocumento.nome,
+      categoria: modelosDocumento.categoria,
+      padraoParaObra: modelosDocumento.padraoParaObra,
+    })
+    .from(modelosDocumento)
+    .where(
+      and(
+        eq(modelosDocumento.ativo, true),
+        // Ao gerar a partir de uma obra, só faz sentido oferecer os documentos dela.
+        obraId
+          ? or(
+              eq(modelosDocumento.categoria, "Obras (NORMAM-303)"),
+              eq(modelosDocumento.padraoParaObra, true)
+            )
+          : undefined
+      )
+    )
+    .orderBy(modelosDocumento.nome);
+
   if (!modeloId && obraId) {
-    const [modeloPadrao] = await db
-      .select({ id: modelosDocumento.id })
-      .from(modelosDocumento)
-      .where(eq(modelosDocumento.padraoParaObra, true))
-      .limit(1);
-    if (modeloPadrao) modeloId = modeloPadrao.id;
+    modeloId = listaModelos.find((m) => m.padraoParaObra)?.id ?? listaModelos[0]?.id;
   }
 
   const listaClientes = await db
     .select({ id: clientes.id, nome: clientes.nome })
     .from(clientes)
     .orderBy(clientes.nome);
-
-  const listaModelos = await db
-    .select({ id: modelosDocumento.id, nome: modelosDocumento.nome })
-    .from(modelosDocumento)
-    .where(eq(modelosDocumento.ativo, true))
-    .orderBy(modelosDocumento.nome);
 
   const embarcacoesDoCliente = clienteId
     ? await db.select().from(embarcacoes).where(eq(embarcacoes.clienteId, clienteId))
@@ -157,6 +168,37 @@ export default async function GerarDocumentoPage({
           </div>
         </form>
       </SectionCard>
+
+      {obraId && (
+        <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
+          <p className="font-mono-caps text-label-sm uppercase tracking-wide text-outline">
+            Documentos desta obra (NORMAM-303)
+          </p>
+          <p className="mt-1 text-body-sm text-outline">
+            São apenas estes dois. Gere um, confira, depois alterne para o outro no seletor acima —
+            os dados da obra são os mesmos.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {listaModelos.map((m) => {
+              const params = new URLSearchParams();
+              if (clienteId) params.set("clienteId", clienteId);
+              if (obraId) params.set("obraId", obraId);
+              if (processoId) params.set("processoId", processoId);
+              params.set("modeloId", m.id);
+              return (
+                <LinkButton
+                  key={m.id}
+                  href={`/documentos/gerar?${params.toString()}`}
+                  variant={m.id === modeloId ? "filled" : "outlined"}
+                  size="sm"
+                >
+                  {m.nome}
+                </LinkButton>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {modeloSelecionado && (
         <GerarDocumentoForm

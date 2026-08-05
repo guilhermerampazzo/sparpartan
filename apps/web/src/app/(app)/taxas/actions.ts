@@ -2,10 +2,12 @@
 
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { taxasPagar } from "@/db/schema";
-import { salvarArquivoLocal } from "@/lib/storage";
+import { salvarArquivoLocal, uploadsDir } from "@/lib/storage";
 import { registrarAuditoria } from "@/lib/audit";
 import { idUsuarioEquipe } from "@/lib/sessao";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
@@ -52,6 +54,12 @@ export async function criarTaxa(
 }
 
 export async function marcarTaxaComoPaga(taxaId: string, formData: FormData) {
+  const [taxa] = await db
+    .select({ clienteId: taxasPagar.clienteId })
+    .from(taxasPagar)
+    .where(eq(taxasPagar.id, taxaId))
+    .limit(1);
+
   await db
     .update(taxasPagar)
     .set({
@@ -63,4 +71,31 @@ export async function marcarTaxaComoPaga(taxaId: string, formData: FormData) {
 
   await registrarAuditoria("atualizar", "taxa_pagar", taxaId, "marcada como paga");
   revalidatePath("/taxas");
+  if (taxa?.clienteId) revalidatePath(`/clientes/${taxa.clienteId}`);
+  revalidatePath("/agenda");
+}
+
+export async function excluirTaxa(taxaId: string) {
+  const [taxa] = await db.select().from(taxasPagar).where(eq(taxasPagar.id, taxaId)).limit(1);
+  if (!taxa) throw new Error("Taxa não encontrada");
+
+  if (taxa.arquivoCaminho) {
+    try {
+      await unlink(path.join(uploadsDir(), taxa.arquivoCaminho));
+    } catch {
+      // arquivo já não existe no disco — sem problema
+    }
+  }
+
+  await db.delete(taxasPagar).where(eq(taxasPagar.id, taxaId));
+  await registrarAuditoria(
+    "excluir",
+    "taxa_pagar",
+    taxaId,
+    `${taxa.descricao}${taxa.numero ? ` (GRU ${taxa.numero})` : ""}`
+  );
+
+  revalidatePath("/taxas");
+  if (taxa.clienteId) revalidatePath(`/clientes/${taxa.clienteId}`);
+  revalidatePath("/agenda");
 }

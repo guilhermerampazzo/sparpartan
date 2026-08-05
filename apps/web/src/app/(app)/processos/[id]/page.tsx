@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { eq, and } from "drizzle-orm";
-import { Ship } from "lucide-react";
+import { Ship, XCircle } from "lucide-react";
 import { db } from "@/db";
 import {
   processos,
@@ -12,13 +12,14 @@ import {
   documentosGerados,
 } from "@/db/schema";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Stepper, ChecklistItem, ProgressBar, AlertCard, Button } from "@/components/ui";
+import { Stepper, ChecklistItem, ProgressBar, AlertCard, Button, ConfirmButton } from "@/components/ui";
 import { CadastradoPor } from "@/components/ui/cadastrado-por";
 import { PROCESSO_STEPS, urgenciaVencimento, infoUrgencia, vencimentoProtocolo, rotuloPrazo } from "@/lib/status";
 import {
   definirEmbarcacao,
   protocolarProcesso,
   concluirProcesso,
+  cancelarProcesso,
   gerarLinkDocumentos,
   gerarLinkAcompanhamento,
 } from "../actions";
@@ -78,6 +79,7 @@ export default async function ProcessoDetalhesPage({
   const definirEmbarcacaoComId = definirEmbarcacao.bind(null, id);
   const protocolarComId = protocolarProcesso.bind(null, id);
   const concluirComId = concluirProcesso.bind(null, id);
+  const cancelarComId = cancelarProcesso.bind(null, id);
   const gerarLinkDocumentosComId = gerarLinkDocumentos.bind(null, id);
   const gerarLinkAcompanhamentoComId = gerarLinkAcompanhamento.bind(null, id);
 
@@ -96,6 +98,17 @@ export default async function ProcessoDetalhesPage({
           currentKey={processo.status}
           cancelled={processo.status === "cancelado"}
         />
+        {processo.status !== "cancelado" && processo.status !== "concluido" && (
+          <form action={cancelarComId} className="mt-4 flex justify-end">
+            <ConfirmButton
+              mensagem={`Cancelar o atendimento "${servico?.nome ?? "deste serviço"}"? O cliente desistiu ou o serviço não será mais feito.`}
+              variant="text"
+              icon={<XCircle size={14} />}
+            >
+              Cancelar Atendimento
+            </ConfirmButton>
+          </form>
+        )}
       </div>
 
       <SectionCard title="Links de autoatendimento">

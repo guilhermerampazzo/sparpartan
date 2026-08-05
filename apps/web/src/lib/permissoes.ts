@@ -1,10 +1,6 @@
-import { NAV_ITEMS, type NavItem } from "@/lib/nav-items";
+import { NAV_ITEMS } from "@/lib/nav-items";
 
 const SEMPRE_LIBERADOS = ["/", "/configuracoes", "/chat"];
-
-function todosHrefsModulo(items: NavItem[]): string[] {
-  return items.flatMap((item) => [item.href, ...(item.children?.map((filho) => filho.href) ?? [])]);
-}
 
 function correspondeHref(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -26,9 +22,19 @@ export function opcoesDeModulos(): { href: string; label: string }[] {
 export function moduloLiberado(pathname: string, modulosPermitidos: string[] | null | undefined): boolean {
   if (!modulosPermitidos) return true;
   if (SEMPRE_LIBERADOS.some((href) => correspondeHref(pathname, href))) return true;
-  return todosHrefsModulo(NAV_ITEMS).some(
-    (href) => correspondeHref(pathname, href) && modulosPermitidos.includes(href)
-  );
+  return NAV_ITEMS.some((item) => {
+    const filhos = item.children ?? [];
+    // Página principal (ex.: /escola) fica liberada quando qualquer subpágina dela está liberada.
+    if (correspondeHref(pathname, item.href)) {
+      return (
+        modulosPermitidos.includes(item.href) ||
+        filhos.some((filho) => modulosPermitidos.includes(filho.href))
+      );
+    }
+    return filhos.some(
+      (filho) => correspondeHref(pathname, filho.href) && modulosPermitidos.includes(filho.href)
+    );
+  });
 }
 
 export function itemNavLiberado(href: string, modulosPermitidos: string[] | null | undefined): boolean {

@@ -18,7 +18,7 @@ export default async function AssinarPage({
 
   if (!assinatura) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-surface px-4">
+      <main className="flex min-h-screen items-center justify-center bg-background px-4">
         <p className="text-sm text-outline">Link de assinatura inválido.</p>
       </main>
     );
@@ -42,7 +42,7 @@ export default async function AssinarPage({
   const assinarComToken = assinarDocumento.bind(null, token);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md rounded-xl border border-outline-variant bg-surface-container-lowest p-8 shadow-md">
         <h1 className="font-display text-headline-md font-bold text-primary">
           Assinatura Digital

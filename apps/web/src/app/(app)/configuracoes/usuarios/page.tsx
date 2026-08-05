@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { UserCog, ShieldCheck } from "lucide-react";
+import { UserCog, ShieldCheck, UserPlus, Trash2 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { usuarios } from "@/db/schema";
-import { BackButton, EmptyState, DataTable, Badge, type Column } from "@/components/ui";
+import { BackButton, EmptyState, DataTable, Badge, LinkButton, ConfirmButton, type Column } from "@/components/ui";
+import { excluirUsuario } from "./actions";
 
 type LinhaUsuario = typeof usuarios.$inferSelect;
 
@@ -38,13 +39,24 @@ export default async function UsuariosPage() {
         u.role === "admin" ? (
           <span className="text-body-sm text-outline">—</span>
         ) : (
-          <Link
-            href={`/configuracoes/usuarios/${u.id}`}
-            className="inline-flex items-center gap-1 text-body-sm font-medium text-primary hover:underline"
-          >
-            <UserCog size={14} />
-            Permissões
-          </Link>
+          <div className="flex items-center justify-end gap-2">
+            <Link
+              href={`/configuracoes/usuarios/${u.id}`}
+              className="inline-flex items-center gap-1 text-body-sm font-medium text-primary hover:underline"
+            >
+              <UserCog size={14} />
+              Permissões
+            </Link>
+            <form action={excluirUsuario.bind(null, u.id)}>
+              <ConfirmButton
+                mensagem={`Excluir o usuário "${u.nome}"? Ele perderá o acesso ao sistema.`}
+                variant="text"
+                icon={<Trash2 size={12} />}
+              >
+                Excluir
+              </ConfirmButton>
+            </form>
+          </div>
         ),
     },
   ];
@@ -52,11 +64,18 @@ export default async function UsuariosPage() {
   return (
     <div className="space-y-gutter">
       <BackButton href="/configuracoes" />
-      <h1 className="font-display text-headline-lg font-bold text-primary">Usuários</h1>
-      <p className="max-w-2xl text-body-sm text-outline">
-        Defina quais módulos cada colaborador pode acessar. Administradores sempre têm acesso
-        total e não aparecem para edição aqui.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-headline-lg font-bold text-primary">Usuários</h1>
+          <p className="max-w-2xl text-body-sm text-outline">
+            Cadastre colaboradores, remova quem saiu e defina em quais módulos cada um pode
+            acessar. Administradores sempre têm acesso total.
+          </p>
+        </div>
+        <LinkButton href="/configuracoes/usuarios/novo" icon={UserPlus}>
+          + Novo Usuário
+        </LinkButton>
+      </div>
 
       <DataTable
         columns={columns}

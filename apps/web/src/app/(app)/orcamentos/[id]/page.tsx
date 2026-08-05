@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "@/db";
-import { orcamentos, clientes, servicos } from "@/db/schema";
+import { orcamentos, orcamentoItens, clientes, servicos } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
 import { StatusBadge, Button, LinkButton, BackButton } from "@/components/ui";
 import { CadastradoPor } from "@/components/ui/cadastrado-por";
@@ -12,9 +12,10 @@ import {
   recusarOrcamento,
   gerarLinkAprovacao,
   enviarOrcamentoPorEmail,
+  removerPdfOrcamento,
 } from "../actions";
 
-function formatMoney(v: string) {
+function formatMoney(v: number | string) {
   return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
@@ -39,12 +40,18 @@ export default async function OrcamentoDetalhesPage({
   const [servico] = orcamento.servicoId
     ? await db.select().from(servicos).where(eq(servicos.id, orcamento.servicoId)).limit(1)
     : [];
+  const itens = await db
+    .select()
+    .from(orcamentoItens)
+    .where(eq(orcamentoItens.orcamentoId, id))
+    .orderBy(asc(orcamentoItens.ordem));
 
   const gerarPdfComId = gerarPdfOrcamento.bind(null, id);
   const aprovarComId = aprovarOrcamento.bind(null, id);
   const recusarComId = recusarOrcamento.bind(null, id);
   const gerarLinkAprovacaoComId = gerarLinkAprovacao.bind(null, id);
   const enviarPorEmailComId = enviarOrcamentoPorEmail.bind(null, id);
+  const removerPdfComId = removerPdfOrcamento.bind(null, id);
 
   const urgenciaValidade = orcamento.status === "pendente" ? urgenciaVencimento(orcamento.validoAte) : null;
 
@@ -111,12 +118,50 @@ export default async function OrcamentoDetalhesPage({
         )}
       </SectionCard>
 
+      {itens.length > 0 && (
+        <SectionCard title="Itens do Orçamento">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-outline-variant text-left font-mono-caps text-label-sm uppercase tracking-wide text-outline">
+                <th className="py-2 pr-4">Qtd.</th>
+                <th className="py-2 pr-4">Descrição</th>
+                <th className="py-2 pr-4 text-right">Valor unit.</th>
+                <th className="py-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {itens.map((item) => (
+                <tr key={item.id} className="border-b border-outline-variant/60 text-body-md text-primary">
+                  <td className="py-2 pr-4">{item.quantidade}</td>
+                  <td className="py-2 pr-4">{item.descricao}</td>
+                  <td className="py-2 pr-4 text-right">{formatMoney(item.valorUnitario)}</td>
+                  <td className="py-2 text-right">
+                    {formatMoney(Number(item.valorUnitario) * item.quantidade)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <span className="font-mono-caps text-label-sm uppercase tracking-wide text-outline">Total</span>
+            <span className="font-display text-lg font-bold text-primary">{formatMoney(orcamento.valor)}</span>
+          </div>
+        </SectionCard>
+      )}
+
       <SectionCard title="Ações">
         <div className="flex flex-wrap gap-3">
           {orcamento.pdfCaminho ? (
-            <LinkButton href={`/api/orcamentos/${orcamento.id}`} variant="outlined">
-              Baixar PDF
-            </LinkButton>
+            <div className="flex items-center gap-2">
+              <LinkButton href={`/api/orcamentos/${orcamento.id}`} variant="outlined">
+                Baixar PDF
+              </LinkButton>
+              <form action={removerPdfComId}>
+                <Button type="submit" variant="text">
+                  Remover PDF
+                </Button>
+              </form>
+            </div>
           ) : (
             <form action={gerarPdfComId}>
               <Button type="submit" variant="outlined">

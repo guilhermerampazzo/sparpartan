@@ -10,6 +10,15 @@ import {
 
 export type Pendencia = { tipo: "modelo" | "requisito"; nome: string };
 
+export const STATUS_PROCESSO_VALIDOS = [
+  "aberto",
+  "documentos_pendentes",
+  "pronto_para_protocolo",
+  "protocolado",
+  "concluido",
+  "cancelado",
+] as const;
+
 /**
  * O que falta para o processo poder ser protocolado. Duas fontes:
  * - `modelosDocumento.obrigatorio` — documentos que o escritório gera;

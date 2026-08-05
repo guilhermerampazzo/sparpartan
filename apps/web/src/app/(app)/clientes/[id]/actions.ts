@@ -8,9 +8,50 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { habilitacoes, arquivos, clientes } from "@/db/schema";
+import { habilitacoes, arquivos, clientes, despesas } from "@/db/schema";
 import { criarSolicitacao } from "@/lib/solicitacoes";
 import { validarArquivo } from "@/lib/upload";
+import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
+import { Validador } from "@/lib/validacao";
+
+/** Gasto extra vinculado ao cliente (correio, terceirizado...) — vira saída automática do financeiro. */
+export async function criarDespesaCliente(clienteId: string, formData: FormData) {
+  const descricao = String(formData.get("descricao") ?? "").trim();
+  const valor = String(formData.get("valor") ?? "");
+  const data = String(formData.get("data") ?? "") || new Date().toISOString().slice(0, 10);
+
+  const erro = new Validador()
+    .exigir(!!descricao, "Informe a descrição do gasto.")
+    .exigir(!!valor && Number(valor) > 0, "Informe um valor válido.").erro;
+  if (erro) throw new Error(erro);
+
+  await db.insert(despesas).values({
+    descricao,
+    valor,
+    data,
+    categoria: "variavel",
+    clienteId,
+    criadoPorId: await idUsuarioEquipe(),
+  });
+
+  await registrarAuditoria("criar", "despesa", descricao, `gasto extra do cliente ${clienteId}`);
+  revalidatePath(`/clientes/${clienteId}`);
+  revalidatePath("/vendas/despesas");
+  revalidatePath("/vendas/financeiro");
+}
+
+export async function excluirDespesaCliente(despesaId: string) {
+  const [despesa] = await db.select().from(despesas).where(eq(despesas.id, despesaId)).limit(1);
+  if (!despesa) throw new Error("Gasto não encontrado");
+
+  await db.delete(despesas).where(eq(despesas.id, despesaId));
+  await registrarAuditoria("excluir", "despesa", despesaId, despesa.descricao);
+
+  revalidatePath(`/clientes/${despesa.clienteId ?? ""}`);
+  revalidatePath("/vendas/despesas");
+  revalidatePath("/vendas/financeiro");
+}
 
 export async function adicionarHabilitacao(clienteId: string, formData: FormData) {
   const tipo = String(formData.get("tipo") ?? "") as "CHA" | "CIR";

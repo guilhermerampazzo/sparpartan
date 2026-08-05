@@ -6,8 +6,8 @@ import path from "node:path";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { modelosDocumento, documentosGerados, processos } from "@/db/schema";
-import { renderDocx } from "@/lib/docx/document";
+import { modelosDocumento, documentosGerados, processos, obraFotos } from "@/db/schema";
+import { renderDocx, type ImagemDocx } from "@/lib/docx/document";
 import { reclassificarProcesso } from "@/lib/processos";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
@@ -60,8 +60,26 @@ export async function gerarDocumento(
     valores[campo] = String(formData.get(`campo_${campo}`) ?? "");
   }
 
+  // O Memorial Descritivo leva as fotos da obra antes das assinaturas (mín. 3).
+  const imagens: ImagemDocx[] = [];
+  if (obraId && /memorial/i.test(modelo.nome)) {
+    const fotos = await db
+      .select({ caminho: obraFotos.caminho })
+      .from(obraFotos)
+      .where(eq(obraFotos.obraId, obraId))
+      .orderBy(obraFotos.criadoEm);
+    for (const foto of fotos.slice(0, 6)) {
+      try {
+        const bytes = await readFile(path.join(uploadsDir(), foto.caminho));
+        imagens.push({ buffer: bytes, extensao: path.extname(foto.caminho).replace(".", "") || "png" });
+      } catch {
+        // foto ilegível no disco — segue sem ela, sem quebrar a geração
+      }
+    }
+  }
+
   const modeloBuffer = await readFile(path.join(uploadsDir(), modelo.arquivoCaminho));
-  const docxBuffer = await renderDocx(modeloBuffer, valores);
+  const docxBuffer = await renderDocx(modeloBuffer, valores, { imagens });
 
   const geradosDir = path.join(uploadsDir(), "gerados");
   await mkdir(geradosDir, { recursive: true });

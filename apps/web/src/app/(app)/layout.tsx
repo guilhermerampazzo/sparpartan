@@ -17,7 +17,7 @@ export default async function AppLayout({
     | undefined;
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-background">
       <Sidebar
         userName={session?.user?.name}
         userRole={usuarioSessao?.role}

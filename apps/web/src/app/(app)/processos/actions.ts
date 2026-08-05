@@ -4,10 +4,11 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { eq, and, gte, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { criarSolicitacao } from "@/lib/solicitacoes";
-import { pendenciasDoProcesso, reclassificarProcesso } from "@/lib/processos";
+import { pendenciasDoProcesso, reclassificarProcesso, STATUS_PROCESSO_VALIDOS } from "@/lib/processos";
 import {
   processos,
   documentosGerados,
@@ -199,6 +200,100 @@ export async function concluirProcesso(processoId: string) {
     .where(eq(processos.id, processoId));
 
   redirect(`/processos/${processoId}`);
+}
+
+export async function cancelarProcesso(processoId: string) {
+  const [processo] = await db.select().from(processos).where(eq(processos.id, processoId)).limit(1);
+  if (!processo) throw new Error("Processo não encontrado");
+
+  await db
+    .update(processos)
+    .set({ status: "cancelado", atualizadoEm: new Date() })
+    .where(eq(processos.id, processoId));
+  await registrarAuditoria("atualizar", "processo", processoId, "atendimento cancelado");
+
+  revalidatePath(`/clientes/${processo.clienteId}`);
+  revalidatePath("/processos");
+  revalidatePath("/agenda");
+  redirect(`/processos/${processoId}`);
+}
+
+/**
+ * Mudança de status manual e fluida, direto do cadastro do cliente: o operador
+ * acompanha o atendimento sem sair do cliente — marca protocolado (com número,
+ * data e scan), conclui (com vencimento do documento) ou cancela se o cliente
+ * desistiu. Não bloqueia por pendências: a equipe usa o checklist no processo
+ * para conferir; aqui o controle de andamento é dela.
+ */
+export async function atualizarStatusProcesso(processoId: string, formData: FormData) {
+  const status = String(formData.get("status") ?? "");
+  if (!STATUS_PROCESSO_VALIDOS.includes(status as (typeof STATUS_PROCESSO_VALIDOS)[number])) {
+    throw new Error("Status inválido.");
+  }  const statusValido = status as (typeof STATUS_PROCESSO_VALIDOS)[number];
+
+  const [processo] = await db.select().from(processos).where(eq(processos.id, processoId)).limit(1);
+  if (!processo) throw new Error("Processo não encontrado");
+
+  if (status === "protocolado") {
+    const numeroProtocolo = String(formData.get("numeroProtocolo") ?? "").trim();
+    if (!numeroProtocolo) throw new Error("Informe o número do protocolo.");
+
+    let protocoloEscaneadoCaminho = processo.protocoloEscaneadoCaminho;
+    const comprovante = formData.get("comprovante") as File | null;
+    if (comprovante && comprovante.size > 0) {
+      const erroArquivo = validarArquivo(comprovante);
+      if (erroArquivo) throw new Error(erroArquivo);
+      const processosDir = path.join(uploadsDir(), "processos", processoId);
+      await mkdir(processosDir, { recursive: true });
+      const extensao = path.extname(comprovante.name) || ".pdf";
+      const nomeArquivo = `protocolo-${randomUUID()}${extensao}`;
+      const bytes = Buffer.from(await comprovante.arrayBuffer());
+      await writeFile(path.join(processosDir, nomeArquivo), bytes);
+      protocoloEscaneadoCaminho = path.join("processos", processoId, nomeArquivo);
+    }
+
+    await db
+      .update(processos)
+      .set({
+        status: "protocolado",
+        numeroProtocolo,
+        dataProtocolo:
+          String(formData.get("dataProtocolo") ?? "").trim() || processo.dataProtocolo,
+        ...(protocoloEscaneadoCaminho ? { protocoloEscaneadoCaminho } : {}),
+        atualizadoEm: new Date(),
+      })
+      .where(eq(processos.id, processoId));
+
+    await db
+      .update(documentosGerados)
+      .set({ status: "protocolado" })
+      .where(and(eq(documentosGerados.processoId, processoId), eq(documentosGerados.status, "gerado")));
+
+    await registrarAuditoria("atualizar", "processo", processoId, `protocolado sob nº ${numeroProtocolo}`);
+  } else {
+    await db
+      .update(processos)
+      .set({ status: statusValido, atualizadoEm: new Date() })
+      .where(eq(processos.id, processoId));
+    await registrarAuditoria("atualizar", "processo", processoId, `status → ${statusValido}`);
+  }
+
+  // Ao concluir, o operador informa quando o documento vence — vira acompanhamento
+  // de vencimentos (a mesma data que aparece na listagem de documentos).
+  if (status === "concluido") {
+    const vencimento = String(formData.get("vencimentoDocumento") ?? "").trim();
+    if (vencimento) {
+      await db
+        .update(documentosGerados)
+        .set({ vencimento })
+        .where(eq(documentosGerados.processoId, processoId));
+    }
+  }
+
+  revalidatePath(`/clientes/${processo.clienteId}`);
+  revalidatePath(`/processos/${processoId}`);
+  revalidatePath("/processos");
+  revalidatePath("/agenda");
 }
 
 export async function gerarLinkDocumentos(processoId: string) {

@@ -2,7 +2,11 @@
 
 import { useRef, useState } from "react";
 import { extrairCamposTaxa } from "@/lib/ocr/extrair-campos-taxa";
-import { primeiraPaginaComoCanvas } from "@/lib/ocr/pdf-para-imagem";
+import { primeiraPaginaComoCanvas, textoDaPrimeiraPagina } from "@/lib/ocr/pdf-para-imagem";
+
+function limparDigitos(valor?: string | null) {
+  return (valor ?? "").replace(/\D/g, "");
+}
 
 export function OcrTaxa({
   listaClientes,
@@ -24,11 +28,39 @@ export function OcrTaxa({
     return false;
   }
 
+  /**
+   * CampoMoeda guarda o número num input hidden (name) e mostra o valor formatado
+   * num input de texto controlado pelo React. Para o número reconhecido aparecer
+   * na tela é preciso preencher os dois e disparar o evento que o React escuta.
+   */
+  function preencherMoeda(form: HTMLFormElement, valor?: string) {
+    if (!valor) return false;
+    const campo = form.elements.namedItem("valor");
+    if (!(campo instanceof HTMLInputElement) || campo.value) return false;
+
+    campo.value = valor;
+
+    const label = campo.closest("label");
+    const visual = label?.querySelector<HTMLInputElement>('input[type="text"]');
+    if (visual) {
+      const formatado = Number(valor.replace(",", ".")).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(visual, formatado);
+      visual.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    return true;
+  }
+
   function selecionarCliente(form: HTMLFormElement, cpfCnpj?: string, nomeCliente?: string) {
     const select = form.elements.namedItem("clienteId");
     if (!(select instanceof HTMLSelectElement) || select.value) return false;
 
-    const porCpf = cpfCnpj && listaClientes.find((c) => c.cpfCnpj === cpfCnpj);
+    // O cadastro pode guardar o CPF/CNPJ com ou sem máscara — compara só os dígitos.
+    const porCpf =
+      cpfCnpj && listaClientes.find((c) => limparDigitos(c.cpfCnpj) === limparDigitos(cpfCnpj));
     const porNome =
       !porCpf &&
       nomeCliente &&
@@ -46,27 +78,42 @@ export function OcrTaxa({
     setProgresso(0);
 
     try {
-      const canvas = await primeiraPaginaComoCanvas(file);
+      let texto: string | null = null;
 
-      const { createWorker } = await import("tesseract.js");
-      const worker = await createWorker("por", 1, {
-        logger: (m) => {
-          if (m.status === "recognizing text") setProgresso(Math.round(m.progress * 100));
-        },
-      });
+      // PDFs digitais (gerados por sistema) têm camada de texto exata — tenta primeiro.
+      try {
+        texto = await textoDaPrimeiraPagina(file);
+      } catch {
+        texto = null;
+      }
 
-      const {
-        data: { text },
-      } = await worker.recognize(canvas);
-      await worker.terminate();
+      // Vazio/escaneado: cai para OCR com Tesseract sobre a imagem da página.
+      if (!texto || texto.trim().length < 20) {
+        setProgresso(5);
+        const canvas = await primeiraPaginaComoCanvas(file);
 
-      const campos = extrairCamposTaxa(text);
+        const { createWorker } = await import("tesseract.js");
+        const worker = await createWorker("por", 1, {
+          logger: (m) => {
+            if (m.status === "recognizing text") setProgresso(Math.round(m.progress * 100));
+          },
+        });
+
+        const {
+          data: { text },
+        } = await worker.recognize(canvas);
+        await worker.terminate();
+        texto = text;
+      }
+
+      const campos = extrairCamposTaxa(texto);
       const form = marcadorRef.current?.closest("form");
       let achouAlgo = false;
       if (form) {
         if (preencherInput(form, "numero", campos.numero)) achouAlgo = true;
         if (preencherInput(form, "vencimento", campos.validade)) achouAlgo = true;
         if (preencherInput(form, "descricao", campos.servicoNome)) achouAlgo = true;
+        if (preencherMoeda(form, campos.valor)) achouAlgo = true;
         if (selecionarCliente(form, campos.cpfCnpj, campos.nomeCliente)) achouAlgo = true;
       }
 

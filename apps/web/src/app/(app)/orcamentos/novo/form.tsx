@@ -2,12 +2,33 @@
 
 import { useMemo, useState } from "react";
 import { useActionState } from "react";
+import { Trash2, Plus } from "lucide-react";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
 import { SubmitButton, FormError, CampoMoeda } from "@/components/ui";
 import { criarOrcamento } from "../actions";
 import type { EstadoForm } from "@/lib/validacao";
 import { NovoClienteInline } from "./novo-cliente-inline";
 import { NovaEmbarcacaoInline } from "./nova-embarcacao-inline";
+import { NovaContaBancariaInline } from "./nova-conta-bancaria-inline";
+
+const MAX_ITENS = 20;
+
+type ItemForm = { id: number; descricao: string; quantidade: string; valor: string };
+
+let proximoIdItem = 1;
+
+function formatMoney(v: number) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function itensIniciais(itens: { descricao: string; quantidade: number; valorUnitario: string }[]) {
+  return itens.map((item) => ({
+    id: proximoIdItem++,
+    descricao: item.descricao,
+    quantidade: String(item.quantidade),
+    valor: String(Number(item.valorUnitario) || ""),
+  }));
+}
 
 export function NovoOrcamentoForm({
   listaClientes,
@@ -15,6 +36,7 @@ export function NovoOrcamentoForm({
   listaEmbarcacoes,
   listaContasBancarias,
   orcamentoInicial,
+  itensIniciais: itensParaEdicao = [],
   action = criarOrcamento,
   submitLabel = "Criar Orçamento",
 }: {
@@ -23,6 +45,7 @@ export function NovoOrcamentoForm({
   listaEmbarcacoes: { id: string; nome: string; clienteId: string }[];
   listaContasBancarias: { id: string; apelido: string }[];
   orcamentoInicial?: Record<string, unknown>;
+  itensIniciais?: { descricao: string; quantidade: number; valorUnitario: string }[];
   action?: (estado: EstadoForm, formData: FormData) => Promise<EstadoForm>;
   submitLabel?: string;
 }) {
@@ -33,13 +56,32 @@ export function NovoOrcamentoForm({
 
   const [clientes, setClientes] = useState(listaClientes);
   const [embarcacoesTodas, setEmbarcacoesTodas] = useState(listaEmbarcacoes);
+  const [contasBancarias, setContasBancarias] = useState(listaContasBancarias);
   const [clienteId, setClienteId] = useState(String(v("clienteId")));
   const [servicoLivre, setServicoLivre] = useState(!v("servicoId"));
+  const [itens, setItens] = useState<ItemForm[]>(() => itensIniciais(itensParaEdicao));
 
   const embarcacoesDoCliente = useMemo(
     () => embarcacoesTodas.filter((e) => e.clienteId === clienteId),
     [embarcacoesTodas, clienteId]
   );
+
+  const total = useMemo(
+    () =>
+      itens.reduce((acc, item) => {
+        const quantidade = Number(item.quantidade) > 0 ? Number(item.quantidade) : 1;
+        return acc + (Number(item.valor) || 0) * quantidade;
+      }, 0),
+    [itens]
+  );
+
+  const atualizarItem = (id: number, campo: Partial<ItemForm>) =>
+    setItens((atual) => atual.map((item) => (item.id === id ? { ...item, ...campo } : item)));
+
+  const adicionarItem = () =>
+    setItens((atual) => [...atual, { id: proximoIdItem++, descricao: "", quantidade: "1", valor: "" }]);
+
+  const removerItem = (id: number) => setItens((atual) => atual.filter((item) => item.id !== id));
 
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
@@ -124,43 +166,128 @@ export function NovoOrcamentoForm({
             )}
           </div>
 
-          <CampoMoeda label="Valor" name="valor" required defaultValue={v("valor")} />
           <Campo label="Válido até" name="validoAte" type="date" defaultValue={v("validoAte")} />
-        </div>
-        <label className="mt-4 flex flex-col gap-1">
-          <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
-            Descrição do item/serviço (aparece no PDF)
-          </span>
-          <textarea
-            name="descricao"
-            rows={2}
-            defaultValue={v("descricao")}
-            className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
-          />
-        </label>
-        <label className="mt-4 flex flex-col gap-1">
-          <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
-            Observações (aparece no PDF)
-          </span>
-          <textarea
-            name="observacoes"
-            rows={3}
-            defaultValue={v("observacoes")}
-            className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
-          />
-        </label>
 
-        <div className="mt-4">
-          <CampoSelect
-            label="Dados bancários para pagamento (opcional, aparece no PDF)"
-            name="contaBancariaId"
-            defaultValue={String(v("contaBancariaId"))}
-            options={[
-              { value: "", label: "—" },
-              ...listaContasBancarias.map((c) => ({ value: c.id, label: c.apelido })),
-            ]}
-          />
+          <div className="space-y-2">
+            <CampoSelect
+              label="Dados bancários para pagamento (opcional, aparece no PDF)"
+              name="contaBancariaId"
+              defaultValue={String(v("contaBancariaId"))}
+              options={[
+                { value: "", label: "—" },
+                ...contasBancarias.map((c) => ({ value: c.id, label: c.apelido })),
+              ]}
+            />
+            <NovaContaBancariaInline
+              onCriada={(conta) => {
+                setContasBancarias((atual) => [...atual, conta].sort((a, b) => a.apelido.localeCompare(b.apelido)));
+              }}
+            />
+          </div>
         </div>
+      </SectionCard>
+
+      <SectionCard title="Itens do Orçamento">
+        {itens.length === 0 ? (
+          <div className="space-y-4">
+            <CampoMoeda label="Valor" name="valor" required defaultValue={v("valor")} />
+            <label className="flex flex-col gap-1">
+              <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+                Descrição do item/serviço (aparece no PDF)
+              </span>
+              <textarea
+                name="descricao"
+                rows={2}
+                defaultValue={v("descricao")}
+                className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={adicionarItem}
+              className="flex items-center gap-1 text-body-sm font-medium text-primary hover:underline"
+            >
+              <Plus size={14} /> Adicionar itens ao orçamento
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {itens.map((item, i) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-1 gap-3 rounded-lg border border-outline-variant p-3 sm:grid-cols-[1fr_80px_140px_auto]"
+                >
+                  <label className="flex flex-col gap-1">
+                    <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+                      Descrição
+                    </span>
+                    <input
+                      name={`itemDescricao${i}`}
+                      value={item.descricao}
+                      onChange={(e) => atualizarItem(item.id, { descricao: e.target.value })}
+                      placeholder="Ex.: Acompanhamento de processo NORMAM-211"
+                      className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+                      Qtd.
+                    </span>
+                    <input
+                      type="number"
+                      name={`itemQuantidade${i}`}
+                      min={1}
+                      value={item.quantidade}
+                      onChange={(e) => atualizarItem(item.id, { quantidade: e.target.value })}
+                      className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+                    />
+                  </label>
+                  <CampoMoeda
+                    label="Valor unitário"
+                    name={`itemValor${i}`}
+                    defaultValue={item.valor}
+                    onChange={(valor) => atualizarItem(item.id, { valor })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removerItem(item.id)}
+                    title="Remover item"
+                    className="self-end rounded-lg border border-outline-variant p-2 text-outline transition-colors hover:border-danger hover:text-danger"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {itens.length < MAX_ITENS && (
+              <button
+                type="button"
+                onClick={adicionarItem}
+                className="mt-3 flex items-center gap-1 text-body-sm font-medium text-primary hover:underline"
+              >
+                <Plus size={14} /> Adicionar item
+              </button>
+            )}
+
+            <div className="mt-4 flex items-center justify-between border-t border-outline-variant pt-3">
+              <span className="font-mono-caps text-label-sm uppercase tracking-wide text-outline">
+                Total do orçamento
+              </span>
+              <span className="font-display text-lg font-bold text-primary">{formatMoney(total)}</span>
+            </div>
+          </>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Observações (aparece no PDF)">
+        <textarea
+          name="observacoes"
+          rows={3}
+          defaultValue={v("observacoes")}
+          className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+        />
       </SectionCard>
 
       <SubmitButton>{submitLabel}</SubmitButton>

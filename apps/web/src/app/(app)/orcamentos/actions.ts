@@ -1,15 +1,54 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { orcamentos, clientes, servicos, enviosEmail } from "@/db/schema";
+import { orcamentos, orcamentoItens, clientes, servicos, contasBancarias, enviosEmail } from "@/db/schema";
 import { aprovarOrcamentoCore, recusarOrcamentoCore } from "@/lib/orcamentos";
 import { gerarPdfCore, lerPdfOrcamento } from "@/lib/orcamentos-pdf";
 import { criarSolicitacao } from "@/lib/solicitacoes";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 import { enviarEmail } from "@/lib/mail/adapter";
 import { auth } from "@/lib/auth";
+
+function uploadsDir() {
+  return process.env.UPLOADS_DIR ?? "./data/uploads";
+}
+
+/** Remove o PDF do disco quando o orçamento é editado/regenerado/excluído — evita acumular arquivos órfãos. */
+async function apagarPdfDoDisco(pdfCaminho: string | null) {
+  if (!pdfCaminho) return;
+  try {
+    await unlink(path.join(uploadsDir(), pdfCaminho));
+  } catch {
+    // arquivo já não existe — sem problema
+  }
+}
+
+const MAX_ITENS = 20;
+
+function itensDoFormData(formData: FormData) {
+  const itens: { descricao: string; quantidade: number; valorUnitario: string }[] = [];
+  for (let i = 0; i < MAX_ITENS; i++) {
+    const descricao = String(formData.get(`itemDescricao${i}`) ?? "").trim();
+    const valorUnitario = String(formData.get(`itemValor${i}`) ?? "").trim();
+    if (!descricao && !valorUnitario) continue;
+    const quantidade = Number(formData.get(`itemQuantidade${i}`) ?? "1");
+    itens.push({
+      descricao: descricao || `Item ${i + 1}`,
+      quantidade: Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 1,
+      valorUnitario: valorUnitario || "0",
+    });
+  }
+  return itens;
+}
+
+function totalDeItens(itens: { quantidade: number; valorUnitario: string }[]): string {
+  const total = itens.reduce((acc, item) => acc + Number(item.valorUnitario) * item.quantidade, 0);
+  return total.toFixed(2);
+}
 
 async function gerarNumeroOrcamento(): Promise<string> {
   const agora = new Date();
@@ -34,17 +73,27 @@ export async function criarOrcamento(
   const servicoId = String(formData.get("servicoId") ?? "") || null;
   const servicoLivreNome = String(formData.get("servicoLivreNome") ?? "").trim();
   const valor = String(formData.get("valor") ?? "");
+  const itens = itensDoFormData(formData);
   const valores = valoresDoFormData(formData);
+
+  const totalItens = itens.length > 0 ? Number(totalDeItens(itens)) : null;
+  const temValor = totalItens !== null ? totalItens > 0 : Number(valor) > 0;
 
   const erro = new Validador()
     .exigir(!!clienteId, "Selecione o cliente.")
     .exigir(!!servicoId || !!servicoLivreNome, "Selecione um serviço ou informe o nome do serviço avulso.")
-    .exigir(!!valor && Number(valor) > 0, "Informe um valor válido.").erro;
+    .exigir(
+      !!temValor,
+      totalItens !== null
+        ? "Informe valores válidos nos itens do orçamento."
+        : "Informe um valor válido."
+    ).erro;
 
   if (erro) return { erro, valores };
 
   const descricaoInformada = String(formData.get("descricao") ?? "").trim();
-  const descricao = descricaoInformada || (!servicoId ? servicoLivreNome : "") || null;
+  const descricao =
+    itens.length > 0 ? null : descricaoInformada || (!servicoId ? servicoLivreNome : "") || null;
 
   const session = await auth();
   const usuarioSessao = session?.user as { id?: string; tipo?: string } | undefined;
@@ -66,7 +115,7 @@ export async function criarOrcamento(
           embarcacaoId: String(formData.get("embarcacaoId") ?? "") || null,
           vendedorId,
           contaBancariaId: String(formData.get("contaBancariaId") ?? "") || null,
-          valor,
+          valor: totalItens !== null ? totalItens.toFixed(2) : valor,
           descricao,
           observacoes: String(formData.get("observacoes") ?? "") || null,
           validoAte: String(formData.get("validoAte") ?? "") || null,
@@ -83,6 +132,20 @@ export async function criarOrcamento(
     }
   }
 
+  if (orcamentoId && itens.length > 0) {
+    await db
+      .insert(orcamentoItens)
+      .values(
+        itens.map((item, i) => ({
+          orcamentoId: orcamentoId!,
+          descricao: item.descricao,
+          quantidade: item.quantidade,
+          valorUnitario: item.valorUnitario,
+          ordem: i + 1,
+        }))
+      );
+  }
+
   redirect(`/orcamentos/${orcamentoId}`);
 }
 
@@ -95,17 +158,26 @@ export async function atualizarOrcamento(
   const servicoId = String(formData.get("servicoId") ?? "") || null;
   const servicoLivreNome = String(formData.get("servicoLivreNome") ?? "").trim();
   const valor = String(formData.get("valor") ?? "");
+  const itens = itensDoFormData(formData);
   const valores = valoresDoFormData(formData);
+
+  const totalItens = itens.length > 0 ? Number(totalDeItens(itens)) : null;
+  const temValor = totalItens !== null ? totalItens > 0 : Number(valor) > 0;
 
   const erro = new Validador()
     .exigir(!!clienteId, "Selecione o cliente.")
     .exigir(!!servicoId || !!servicoLivreNome, "Selecione um serviço ou informe o nome do serviço avulso.")
-    .exigir(!!valor && Number(valor) > 0, "Informe um valor válido.").erro;
+    .exigir(
+      !!temValor,
+      totalItens !== null
+        ? "Informe valores válidos nos itens do orçamento."
+        : "Informe um valor válido."
+    ).erro;
 
   if (erro) return { erro, valores };
 
   const [orcamentoAtual] = await db
-    .select({ status: orcamentos.status })
+    .select({ status: orcamentos.status, pdfCaminho: orcamentos.pdfCaminho })
     .from(orcamentos)
     .where(eq(orcamentos.id, orcamentoId))
     .limit(1);
@@ -115,7 +187,12 @@ export async function atualizarOrcamento(
   }
 
   const descricaoInformada = String(formData.get("descricao") ?? "").trim();
-  const descricao = descricaoInformada || (!servicoId ? servicoLivreNome : "") || null;
+  const descricao =
+    itens.length > 0 ? null : descricaoInformada || (!servicoId ? servicoLivreNome : "") || null;
+
+  // O PDF antigo ficaria desatualizado e ninguém apagaria o arquivo — remove do disco
+  // junto com a referência.
+  await apagarPdfDoDisco(orcamentoAtual.pdfCaminho);
 
   await db
     .update(orcamentos)
@@ -124,7 +201,7 @@ export async function atualizarOrcamento(
       servicoId,
       embarcacaoId: String(formData.get("embarcacaoId") ?? "") || null,
       contaBancariaId: String(formData.get("contaBancariaId") ?? "") || null,
-      valor,
+      valor: totalItens !== null ? totalItens.toFixed(2) : valor,
       descricao,
       observacoes: String(formData.get("observacoes") ?? "") || null,
       validoAte: String(formData.get("validoAte") ?? "") || null,
@@ -132,15 +209,55 @@ export async function atualizarOrcamento(
     })
     .where(eq(orcamentos.id, orcamentoId));
 
+  await db.delete(orcamentoItens).where(eq(orcamentoItens.orcamentoId, orcamentoId));
+  if (itens.length > 0) {
+    await db
+      .insert(orcamentoItens)
+      .values(
+        itens.map((item, i) => ({
+          orcamentoId,
+          descricao: item.descricao,
+          quantidade: item.quantidade,
+          valorUnitario: item.valorUnitario,
+          ordem: i + 1,
+        }))
+      );
+  }
+
   redirect(`/orcamentos/${orcamentoId}`);
 }
 
 export async function excluirOrcamento(orcamentoId: string) {
+  const [orcamento] = await db
+    .select({ pdfCaminho: orcamentos.pdfCaminho })
+    .from(orcamentos)
+    .where(eq(orcamentos.id, orcamentoId))
+    .limit(1);
+
+  await apagarPdfDoDisco(orcamento?.pdfCaminho ?? null);
+
   await db
     .update(orcamentos)
     .set({ excluidoEm: new Date() })
     .where(eq(orcamentos.id, orcamentoId));
   redirect("/orcamentos");
+}
+
+export async function removerPdfOrcamento(orcamentoId: string) {
+  const [orcamento] = await db
+    .select({ pdfCaminho: orcamentos.pdfCaminho })
+    .from(orcamentos)
+    .where(eq(orcamentos.id, orcamentoId))
+    .limit(1);
+  if (!orcamento) throw new Error("Orçamento não encontrado");
+
+  await apagarPdfDoDisco(orcamento.pdfCaminho);
+  await db
+    .update(orcamentos)
+    .set({ pdfCaminho: null })
+    .where(eq(orcamentos.id, orcamentoId));
+
+  redirect(`/orcamentos/${orcamentoId}`);
 }
 
 export async function gerarPdfOrcamento(orcamentoId: string) {
@@ -234,4 +351,34 @@ export async function gerarLinkAprovacao(orcamentoId: string) {
     clienteId: orcamento.clienteId,
   });
   redirect(`/orcamentos/${orcamentoId}?link=${token}`);
+}
+
+export type EstadoContaRapida =
+  | { erro: string; valores?: Record<string, string> }
+  | { erro?: undefined; conta: { id: string; apelido: string } }
+  | null;
+
+/** Cria a conta bancária direto do formulário do orçamento — devolve o registro criado. */
+export async function criarContaBancariaRapida(
+  _estadoAnterior: EstadoContaRapida,
+  formData: FormData
+): Promise<EstadoContaRapida> {
+  const apelido = String(formData.get("contaNovoApelido") ?? "").trim();
+  const valores = valoresDoFormData(formData);
+
+  const erro = new Validador().exigir(!!apelido, "Informe um apelido para a conta.").erro;
+  if (erro) return { erro, valores };
+
+  const [conta] = await db
+    .insert(contasBancarias)
+    .values({
+      apelido,
+      banco: String(formData.get("contaNovoBanco") ?? "").trim() || null,
+      agencia: String(formData.get("contaNovoAgencia") ?? "").trim() || null,
+      conta: String(formData.get("contaNovoNumero") ?? "").trim() || null,
+      pix: String(formData.get("contaNovoPix") ?? "").trim() || null,
+    })
+    .returning({ id: contasBancarias.id, apelido: contasBancarias.apelido });
+
+  return { conta };
 }

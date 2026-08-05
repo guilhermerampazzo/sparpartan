@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "@/db";
-import { orcamentos, clientes, servicos, contasBancarias } from "@/db/schema";
+import { orcamentos, orcamentoItens, clientes, servicos, contasBancarias } from "@/db/schema";
 import { EMPRESA } from "@/lib/empresa";
 
 function uploadsDir() {
@@ -39,10 +39,34 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
         .limit(1)
     : [];
 
+  const itens = await db
+    .select()
+    .from(orcamentoItens)
+    .where(eq(orcamentoItens.orcamentoId, orcamentoId))
+    .orderBy(asc(orcamentoItens.ordem));
+
+  const descricaoItem = orcamento.descricao?.trim() || servico?.nome || "Serviço";
+
   const valorFormatado = Number(orcamento.valor).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
   });
+
+  const linhasItens = itens.length > 0
+    ? itens
+        .map((item) => {
+          const preco = Number(item.valorUnitario).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          });
+          const totalLinha = (Number(item.valorUnitario) * item.quantidade).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          });
+          return `<tr><td>${item.quantidade}</td><td>Item ${item.ordem}</td><td>${item.descricao}</td><td>${preco}</td><td>${totalLinha}</td></tr>`;
+        })
+        .join("")
+    : `<tr><td>1</td><td>Item 1</td><td>${descricaoItem}</td><td>${valorFormatado}</td><td>${valorFormatado}</td></tr>`;
 
   const dataEmissao = orcamento.criadoEm.toLocaleDateString("pt-BR");
   const enderecoPartes = [
@@ -53,7 +77,6 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
   ]
     .filter(Boolean)
     .join(", ");
-  const descricaoItem = orcamento.descricao?.trim() || servico?.nome || "Serviço";
 
   const html = `<!doctype html>
 <html><head><meta charset="utf-8"><style>
@@ -109,7 +132,7 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
     <table class="itens">
       <thead><tr><th>Qtd</th><th>Item</th><th>Descrição</th><th>Preço Unit.</th><th>Total</th></tr></thead>
       <tbody>
-        <tr><td>1</td><td>Item 1</td><td>${descricaoItem}</td><td>${valorFormatado}</td><td>${valorFormatado}</td></tr>
+        ${linhasItens}
         <tr class="total"><td colspan="4">VALOR TOTAL</td><td>${valorFormatado}</td></tr>
       </tbody>
     </table>

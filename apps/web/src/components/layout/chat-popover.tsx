@@ -65,7 +65,7 @@ export function ChatPopover() {
       <button
         type="button"
         onClick={abrirPopover}
-        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-on-primary/70 hover:bg-on-primary/10"
+        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-nav-text/70 hover:bg-nav-text/10"
       >
         <MessageSquare size={18} strokeWidth={2} />
         <span className="font-mono-caps text-[11px] uppercase tracking-wide">Chat da Equipe</span>

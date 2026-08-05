@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   CalendarDays,
   Users,
-  Ship,
   FileStack,
   Clock,
   FileText,
@@ -30,6 +29,8 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   children?: NavItem[];
+  /** Esconde o submenu na sidebar — os filhos viram opções dentro da própria página (padrão da Loja). */
+  esconderSubmenu?: boolean;
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -41,7 +42,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/lembretes", label: "Lembretes", icon: AlarmClock },
   { href: "/chat", label: "Chat da Equipe", icon: MessageSquare },
   { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/embarcacoes", label: "Embarcações", icon: Ship },
   { href: "/obras", label: "Obras", icon: HardHat },
   { href: "/processos", label: "Processos", icon: FileStack },
   { href: "/pendentes", label: "Pendentes", icon: Clock },
@@ -52,12 +52,14 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/vendas", label: "Financeiro", icon: BarChart3 },
   { href: "/emails", label: "Enviar E-mails", icon: Mail },
   {
-    href: "/area-de-estudos",
+    href: "/escola",
     label: "Escola Náutica",
     icon: GraduationCap,
+    esconderSubmenu: true,
     children: [
       { href: "/lms/materias", label: "LMS", icon: BookOpen },
       { href: "/alunos", label: "Alunos", icon: UserCog },
+      { href: "/area-de-estudos", label: "Área de Estudos", icon: BookMarked },
     ],
   },
   { href: "/configuracoes", label: "Configurações", icon: Settings },

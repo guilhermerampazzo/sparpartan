@@ -15,7 +15,7 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between border-b border-outline-variant bg-surface-container-lowest px-6 py-4">
         <Link href="/aluno" className="font-display text-title-lg font-bold text-primary hover:opacity-80">
           Área do Aluno

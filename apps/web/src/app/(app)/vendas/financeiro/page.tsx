@@ -1,7 +1,7 @@
 import { and, sql, eq, gte, lt } from "drizzle-orm";
 import { TrendingUp, TrendingDown, Wallet, Clock } from "lucide-react";
 import { db } from "@/db";
-import { servicosContratados, pagamentos, despesas, servicos, processos, usuarios } from "@/db/schema";
+import { servicosContratados, pagamentos, despesas, taxasPagar, servicos, processos, usuarios } from "@/db/schema";
 import { StatCard, LinkButton, Button, BarChart, DataTable, BackButton, type Column } from "@/components/ui";
 
 function formatMoney(v: number) {
@@ -43,7 +43,26 @@ export default async function FinanceiroPage({
     .from(despesas)
     .where(filtroMesDespesas);
 
-  const lucro = totalEntradas - totalSaidas;
+  // Taxas de órgãos (GRU etc.) pagas para os clientes também são saída.
+  let filtroMesTaxas = undefined;
+  if (mesValido) {
+    const [ano, mesNum] = mesValido.split("-").map(Number);
+    filtroMesTaxas = and(
+      gte(taxasPagar.pagoEm, new Date(ano, mesNum - 1, 1)),
+      lt(taxasPagar.pagoEm, new Date(ano, mesNum, 1))
+    );
+  }
+  const [{ totalSaidasTaxas }] = await db
+    .select({ totalSaidasTaxas: sql<number>`coalesce(sum(${taxasPagar.valor}), 0)::float` })
+    .from(taxasPagar)
+    .where(
+      mesValido
+        ? and(eq(taxasPagar.status, "pago"), filtroMesTaxas)
+        : eq(taxasPagar.status, "pago")
+    );
+
+  const totalSaidasGeral = totalSaidas + totalSaidasTaxas;
+  const lucro = totalEntradas - totalSaidasGeral;
 
   const margemPorServico = await db
     .select({
@@ -152,7 +171,7 @@ export default async function FinanceiroPage({
 
       <div className="grid grid-cols-2 gap-gutter sm:grid-cols-4">
         <StatCard label="Entradas" value={formatMoney(totalEntradas)} icon={TrendingUp} tone="success" />
-        <StatCard label="Saídas" value={formatMoney(totalSaidas)} icon={TrendingDown} tone="danger" />
+        <StatCard label="Saídas" value={formatMoney(totalSaidasGeral)} icon={TrendingDown} tone="danger" />
         <StatCard
           label="Lucro"
           value={formatMoney(lucro)}

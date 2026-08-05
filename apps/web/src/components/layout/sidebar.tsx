@@ -31,20 +31,24 @@ export function Sidebar({
   const itensVisiveis =
     userRole === "admin"
       ? NAV_ITEMS
-      : NAV_ITEMS.filter((item) => itemNavLiberado(item.href, modulosPermitidos)).map((item) => ({
+      : NAV_ITEMS.filter(
+          (item) =>
+            itemNavLiberado(item.href, modulosPermitidos) ||
+            item.children?.some((filho) => itemNavLiberado(filho.href, modulosPermitidos))
+        ).map((item) => ({
           ...item,
           children: item.children?.filter((filho) => itemNavLiberado(filho.href, modulosPermitidos)),
         }));
 
   return (
-    <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-primary lg:flex">
+    <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-nav lg:flex">
       <div className="flex items-center gap-3 px-6 py-6">
         <Image src="/logo.svg" alt="Sparapan" width={64} height={64} className="h-16 w-16 object-contain" />
         <div>
-          <p className="font-display text-base font-bold leading-tight text-on-primary">
+          <p className="font-display text-base font-bold leading-tight text-nav-text">
             Sparapan
           </p>
-          <p className="font-mono-caps text-[10px] uppercase tracking-wide text-on-primary/70">
+          <p className="font-mono-caps text-[10px] uppercase tracking-wide text-nav-text/70">
             Nautical Management
           </p>
         </div>
@@ -73,8 +77,8 @@ export function Sidebar({
                 href={item.href}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                   active
-                    ? "border-r-2 border-on-primary bg-on-primary/15 font-bold text-on-primary"
-                    : "text-on-primary/70 hover:bg-on-primary/10"
+                    ? "border-r-2 border-nav-text bg-nav-text/15 font-bold text-nav-text"
+                    : "text-nav-text/70 hover:bg-nav-text/10"
                 }`}
               >
                 <Icon size={18} strokeWidth={active ? 2.5 : 2} />
@@ -83,8 +87,8 @@ export function Sidebar({
                 </span>
                 <NavBadge total={total} />
               </Link>
-              {item.children && (
-                <div className="ml-6 space-y-1 border-l border-on-primary/20 pl-2">
+              {item.children && !item.esconderSubmenu && (
+                <div className="ml-6 space-y-1 border-l border-nav-text/20 pl-2">
                   {item.children.map((sub) => {
                     const subActive = pathname.startsWith(sub.href);
                     const SubIcon = sub.icon;
@@ -94,8 +98,8 @@ export function Sidebar({
                         href={sub.href}
                         className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors ${
                           subActive
-                            ? "bg-on-primary/15 font-bold text-on-primary"
-                            : "text-on-primary/60 hover:bg-on-primary/10"
+                            ? "bg-nav-text/15 font-bold text-nav-text"
+                            : "text-nav-text/60 hover:bg-nav-text/10"
                         }`}
                       >
                         <SubIcon size={16} strokeWidth={subActive ? 2.5 : 2} />
@@ -112,16 +116,16 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-on-primary/20 p-4">
+      <div className="border-t border-nav-text/20 p-4">
         <div className="mb-3 flex items-center gap-3 rounded-lg px-2 py-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-pill bg-on-primary text-sm font-bold text-primary">
+          <div className="flex h-9 w-9 items-center justify-center rounded-pill bg-nav-text text-sm font-bold text-nav">
             {(userName ?? "?").charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-on-primary">
+            <p className="truncate text-sm font-semibold text-nav-text">
               {userName ?? "Usuário"}
             </p>
-            <p className="truncate text-xs capitalize text-on-primary/70">
+            <p className="truncate text-xs capitalize text-nav-text/70">
               {userRole ?? ""}
             </p>
           </div>
@@ -129,7 +133,7 @@ export function Sidebar({
         <form action="/api/auth/signout" method="post">
           <button
             type="submit"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-on-primary/80 hover:bg-on-primary/10"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-nav-text/80 hover:bg-nav-text/10"
           >
             <LogOut size={16} />
             Sair

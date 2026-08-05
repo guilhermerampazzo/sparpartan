@@ -506,6 +506,18 @@ export const orcamentos = pgTable("orcamentos", {
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
+export const orcamentoItens = pgTable("orcamento_itens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orcamentoId: uuid("orcamento_id")
+    .notNull()
+    .references(() => orcamentos.id, { onDelete: "cascade" }),
+  descricao: text("descricao").notNull(),
+  quantidade: integer("quantidade").notNull().default(1),
+  valorUnitario: numeric("valor_unitario").notNull().default("0"),
+  ordem: integer("ordem").notNull().default(1),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
 export const contasBancarias = pgTable("contas_bancarias", {
   id: uuid("id").primaryKey().defaultRandom(),
   apelido: text("apelido").notNull(),
@@ -635,6 +647,10 @@ export const despesas = pgTable("despesas", {
   data: date("data").notNull(),
   recorrente: boolean("recorrente").notNull().default(false),
   diaVencimento: integer("dia_vencimento"),
+  /** Gastos extras vinculados a um cliente (correio, terceirizado etc.) entram
+   *  como saída automática do financeiro direto do cadastro do cliente. */
+  clienteId: uuid("cliente_id").references(() => clientes.id, { onDelete: "set null" }),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 

@@ -1,14 +1,19 @@
 import { asc, eq, gte, and, inArray, isNotNull } from "drizzle-orm";
-import { ChevronLeft, ChevronRight, CalendarClock, Landmark } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarClock, Landmark, Eye, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
-import { agendaEventos, agendaInteressados, clientes, processos, servicos } from "@/db/schema";
+import { agendaEventos, agendaInteressados, clientes, processos, servicos, taxasPagar } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Badge, LinkButton, Button, EmptyState, CalendarMonth } from "@/components/ui";
+import { Badge, LinkButton, Button, EmptyState, CalendarMonth, ConfirmButton } from "@/components/ui";
 import { statusEvento, tipoEvento, fonteCalendario, type FonteCalendarioTipo } from "@/lib/status";
 import { gradeDoMes, buscarItensCalendario, FONTES_PADRAO, TODAS_FONTES } from "@/lib/calendario";
 import { confirmarEvento, concluirEvento } from "./actions";
+import { marcarTaxaComoPaga, excluirTaxa } from "../taxas/actions";
+
+function formatMoney(v: string | number) {
+  return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
 const NOMES_MES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -231,6 +236,24 @@ async function VistaLista({ clienteId, processoId }: { clienteId?: string; proce
         .where(eq(processos.clienteId, clienteId))
     : [];
 
+  const condicoesTaxas = [eq(taxasPagar.status, "pendente")];
+  if (clienteId) condicoesTaxas.push(eq(taxasPagar.clienteId, clienteId));
+
+  const taxasPendentes = await db
+    .select({
+      id: taxasPagar.id,
+      numero: taxasPagar.numero,
+      descricao: taxasPagar.descricao,
+      valor: taxasPagar.valor,
+      vencimento: taxasPagar.vencimento,
+      arquivoCaminho: taxasPagar.arquivoCaminho,
+      clienteNome: clientes.nome,
+    })
+    .from(taxasPagar)
+    .leftJoin(clientes, eq(taxasPagar.clienteId, clientes.id))
+    .where(and(...condicoesTaxas))
+    .orderBy(asc(taxasPagar.vencimento));
+
   return (
     <div className="space-y-gutter">
       <div className="flex items-center justify-between">
@@ -321,6 +344,59 @@ async function VistaLista({ clienteId, processoId }: { clienteId?: string; proce
           </ul>
         )}
       </div>
+
+      <SectionCard title="Taxas a pagar">
+        {taxasPendentes.length === 0 ? (
+          <EmptyState icon={Landmark} title="Nenhuma taxa pendente" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {taxasPendentes.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-primary">
+                      {t.clienteNome ?? "Sem cliente"}
+                      {t.numero && <span className="font-mono text-body-sm text-outline"> — GRU {t.numero}</span>}
+                    </p>
+                    <Badge tone="warning" size="sm">Pendente</Badge>
+                  </div>
+                  <p className="text-body-sm text-outline">
+                    {t.descricao} — {formatMoney(t.valor)}
+                    {t.vencimento && ` — vence ${new Date(`${t.vencimento}T00:00:00`).toLocaleDateString("pt-BR")}`}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  {t.arquivoCaminho && (
+                    <a
+                      href={`/api/taxas/${t.id}?inline=1`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
+                    >
+                      <Eye size={12} /> Abrir boleto
+                    </a>
+                  )}
+                  <form action={marcarTaxaComoPaga.bind(null, t.id)}>
+                    <input type="hidden" name="formaPagamento" value="" />
+                    <Button type="submit" variant="outlined" size="sm">
+                      Marcar Paga
+                    </Button>
+                  </form>
+                  <form action={excluirTaxa.bind(null, t.id)}>
+                    <ConfirmButton
+                      mensagem={`Excluir a taxa "${t.descricao}"? O arquivo também será removido.`}
+                      variant="text"
+                      icon={<Trash2 size={12} />}
+                    >
+                      Excluir
+                    </ConfirmButton>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
     </div>
   );
 }

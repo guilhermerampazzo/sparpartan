@@ -23,7 +23,7 @@ import {
 
 function Casca({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-2xl space-y-6">
         <div>
           <h1 className="font-display text-headline-md font-bold text-primary">{titulo}</h1>

@@ -1,9 +1,9 @@
 import { desc, eq, sql } from "drizzle-orm";
-import { Landmark, Download } from "lucide-react";
+import { Landmark, Download, Trash2, Eye } from "lucide-react";
 import { db } from "@/db";
 import { taxasPagar, clientes, processos, servicos } from "@/db/schema";
-import { StatCard, Button, LinkButton, EmptyState, DataTable, type Column } from "@/components/ui";
-import { marcarTaxaComoPaga } from "./actions";
+import { StatCard, Button, LinkButton, Badge, EmptyState, DataTable, ConfirmButton, type Column } from "@/components/ui";
+import { marcarTaxaComoPaga, excluirTaxa } from "./actions";
 
 function formatMoney(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -55,20 +55,39 @@ export default async function TaxasPage({
 
   const columns: Column<LinhaTaxa>[] = [
     { header: "Descrição", cell: (t) => <span className="font-medium text-primary">{t.descricao}</span> },
-    { header: "Número", cell: (t) => t.numero ?? "—" },
+    { header: "Nº GRU/Guia", cell: (t) => t.numero ?? "—" },
     { header: "Cliente/Serviço", cell: (t) => [t.clienteNome, t.servicoNome].filter(Boolean).join(" — ") || "—" },
     { header: "Valor", cell: (t) => formatMoney(Number(t.valor)) },
     { header: "Vencimento", cell: (t) => t.vencimento ?? "—" },
     {
+      header: "Status",
+      cell: (t) =>
+        t.status === "pago" ? (
+          <Badge tone="success" size="sm">Paga</Badge>
+        ) : (
+          <Badge tone="warning" size="sm">Pendente</Badge>
+        ),
+    },
+    {
       header: "Boleto",
       cell: (t) =>
         t.arquivoCaminho ? (
-          <a
-            href={`/api/taxas/${t.id}`}
-            className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
-          >
-            <Download size={12} /> PDF
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href={`/api/taxas/${t.id}?inline=1`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
+            >
+              <Eye size={12} /> Abrir
+            </a>
+            <a
+              href={`/api/taxas/${t.id}`}
+              className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
+            >
+              <Download size={12} /> Baixar
+            </a>
+          </div>
         ) : (
           "—"
         ),
@@ -76,17 +95,29 @@ export default async function TaxasPage({
     {
       header: "",
       align: "right",
-      cell: (t) =>
-        t.status === "pendente" ? (
-          <form action={marcarTaxaComoPaga.bind(null, t.id)} className="flex items-center justify-end gap-2">
-            <input type="hidden" name="formaPagamento" value="" />
-            <Button type="submit" variant="outlined" size="sm">
-              Marcar como Paga
-            </Button>
+      cell: (t) => (
+        <div className="flex items-center justify-end gap-2">
+          {t.status === "pendente" ? (
+            <form action={marcarTaxaComoPaga.bind(null, t.id)}>
+              <input type="hidden" name="formaPagamento" value="" />
+              <Button type="submit" variant="outlined" size="sm">
+                Marcar Paga
+              </Button>
+            </form>
+          ) : (
+            <span className="text-body-sm text-success">Paga</span>
+          )}
+          <form action={excluirTaxa.bind(null, t.id)}>
+            <ConfirmButton
+              mensagem={`Excluir a taxa "${t.descricao}"? O arquivo também será removido.`}
+              variant="text"
+              icon={<Trash2 size={12} />}
+            >
+              Excluir
+            </ConfirmButton>
           </form>
-        ) : (
-          <span className="text-body-sm text-success">Paga</span>
-        ),
+        </div>
+      ),
     },
   ];
 

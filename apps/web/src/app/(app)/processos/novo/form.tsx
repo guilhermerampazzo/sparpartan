@@ -9,10 +9,14 @@ export function NovoProcessoForm({
   listaClientes,
   listaServicos,
   listaUsuarios,
+  clienteInicial,
+  servicoInicial,
 }: {
   listaClientes: { id: string; nome: string }[];
   listaServicos: { id: string; nome: string }[];
   listaUsuarios: { id: string; nome: string }[];
+  clienteInicial?: string;
+  servicoInicial?: string;
 }) {
   const [estado, formAction] = useActionState(criarProcesso, null);
   const [modoCliente, setModoCliente] = useState<"existente" | "novo">("existente");
@@ -50,7 +54,7 @@ export function NovoProcessoForm({
               label="Cliente"
               name="clienteId"
               required
-              defaultValue={v("clienteId")}
+              defaultValue={v("clienteId") || clienteInicial || ""}
               options={[
                 { value: "", label: "Selecione..." },
                 ...listaClientes.map((c) => ({ value: c.id, label: c.nome })),
@@ -60,7 +64,7 @@ export function NovoProcessoForm({
               label="Serviço"
               name="servicoId"
               required
-              defaultValue={v("servicoId")}
+              defaultValue={v("servicoId") || servicoInicial || ""}
               options={[
                 { value: "", label: "Selecione..." },
                 ...listaServicos.map((s) => ({ value: s.id, label: s.nome })),

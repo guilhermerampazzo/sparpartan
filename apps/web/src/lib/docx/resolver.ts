@@ -73,7 +73,9 @@ export function resolverCamposConhecidos(context: {
     const cidade = s(cliente.cidade);
     const uf = s(cliente.uf);
     const complemento = s(cliente.complemento);
-    const endereco = [cliente.rua, cliente.numero].filter(Boolean).join(", ");
+    const rua = s(cliente.rua);
+    const numero = s(cliente.numero);
+    const enderecoComNumero = [rua, numero].filter(Boolean).join(", ");
 
     // NOME_ (com underscore) é o mesmo dado em NORMAM 303 — a Marinha só nomeia diferente.
     valores.NOME = nome;
@@ -99,9 +101,17 @@ export function resolverCamposConhecidos(context: {
     valores.UF = uf;
     valores.ESTADO = uf;
     valores.COMPLEMENTO = complemento;
-    valores["ENDEREÇO_N"] = endereco;
-    valores["ENDEREÇO_2"] = endereco;
-    valores["ENDEREÇO_PROPRIETARIO"] = endereco;
+    // Os formulários da Marinha separam o endereço do número em campos distintos
+    // ("Endereço: ..., Nº [N] — Bairro ..."). Preencher N evita o "Rua A, 100, , Centro".
+    valores["ENDEREÇO_N"] = rua;
+    valores["ENDEREÇO_2"] = rua;
+    valores["ENDEREÇO_PROPRIETARIO"] = rua;
+    valores.N = numero;
+    valores["N°"] = numero;
+    valores["Nº"] = numero;
+    // ENDEREÇO_1/ENDERECO_OBRA: modelos antigos com o endereço num campo único.
+    valores["ENDEREÇO_1"] = enderecoComNumero;
+    valores.ENDERECO_OBRA = enderecoComNumero;
   }
 
   if (embarcacao) {
@@ -170,8 +180,9 @@ export function resolverCamposConhecidos(context: {
   }
 
   if (obra) {
-    valores.ID_OBRA = s(obra.idObra);
-    valores.TITULO = s(obra.titulo);
+    // No memorial, o campo "ID_OBRA" aparece na frase "instalada no endereço: [ID_OBRA]" —
+    // o que o formulário quer ali é o endereço da obra, não o código interno.
+    valores.ID_OBRA = s(obra.endereco) || s(obra.idObra);
     valores.TIPO_DE_OBRA = s(obra.tipoObra);
     valores.ITEM_DA_OBRA_CODIGO = s(obra.itemObraCodigo);
     valores["DESCRIÇÃO_DA_OBRA"] = s(obra.descricaoObra);
@@ -182,6 +193,8 @@ export function resolverCamposConhecidos(context: {
       valores.N_CREA = s(engenheiro.crea);
       valores.NOME_ENGENHEIRO = s(engenheiro.nomeCompleto);
       valores.TITULO_PROFISSIONAL = s(engenheiro.tituloProfissional);
+      // No memorial, TITULO é o "Título Profissional" do responsável técnico, não o título da obra.
+      valores.TITULO = s(engenheiro.tituloProfissional);
     } else {
       valores.RESP_TECNICO = s(obra.respTecnico);
       valores.N_CREA = s(obra.nCrea);

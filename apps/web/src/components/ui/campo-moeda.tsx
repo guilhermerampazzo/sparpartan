@@ -17,11 +17,13 @@ export function CampoMoeda({
   name,
   required = false,
   defaultValue,
+  onChange,
 }: {
   label: string;
   name: string;
   required?: boolean;
   defaultValue?: string | number;
+  onChange?: (valor: string) => void;
 }) {
   const [digitos, setDigitos] = useState(() => {
     if (defaultValue === undefined || defaultValue === "") return "";
@@ -43,7 +45,11 @@ export function CampoMoeda({
           type="text"
           inputMode="decimal"
           value={formatar(digitos)}
-          onChange={(e) => setDigitos(paraCentavos(e.target.value))}
+          onChange={(e) => {
+            const novosDigitos = paraCentavos(e.target.value);
+            setDigitos(novosDigitos);
+            onChange?.(novosDigitos ? (Number(novosDigitos) / 100).toFixed(2) : "");
+          }}
           placeholder="0,00"
           className="w-full bg-transparent text-sm text-primary outline-none"
         />

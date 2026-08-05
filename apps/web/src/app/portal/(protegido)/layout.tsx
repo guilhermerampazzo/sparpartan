@@ -9,7 +9,7 @@ export default async function PortalLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-background">
       <header className="flex h-16 items-center justify-between border-b border-outline-variant bg-surface-bright px-6">
         <p className="font-display text-lg font-bold text-primary">
           Sparapan — Portal do Cliente

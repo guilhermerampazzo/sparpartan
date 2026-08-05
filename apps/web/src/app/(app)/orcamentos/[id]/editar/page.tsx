@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "@/db";
-import { orcamentos, clientes, servicos, embarcacoes, contasBancarias } from "@/db/schema";
+import { orcamentos, orcamentoItens, clientes, servicos, embarcacoes, contasBancarias } from "@/db/schema";
 import { BackButton } from "@/components/ui";
 import { NovoOrcamentoForm } from "../../novo/form";
 import { atualizarOrcamento } from "../../actions";
@@ -33,6 +33,11 @@ export default async function EditarOrcamentoPage({
     .select({ id: contasBancarias.id, apelido: contasBancarias.apelido })
     .from(contasBancarias)
     .orderBy(contasBancarias.apelido);
+  const itens = await db
+    .select({ descricao: orcamentoItens.descricao, quantidade: orcamentoItens.quantidade, valorUnitario: orcamentoItens.valorUnitario })
+    .from(orcamentoItens)
+    .where(eq(orcamentoItens.orcamentoId, id))
+    .orderBy(asc(orcamentoItens.ordem));
 
   return (
     <div className="space-y-gutter">
@@ -46,6 +51,7 @@ export default async function EditarOrcamentoPage({
         listaEmbarcacoes={listaEmbarcacoes}
         listaContasBancarias={listaContasBancarias}
         orcamentoInicial={orcamento}
+        itensIniciais={itens}
         action={atualizarOrcamento.bind(null, id)}
         submitLabel="Salvar Alterações"
       />

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   /* Material 3 tokens — Sparapan Nautical Management (light) */
   --color-primary: #001736;
   --color-primary-container: #002b5b;
@@ -73,13 +74,18 @@
   --color-neutral: #747780;
   --color-neutral-container: #e5eeff;
   --color-on-neutral-container: #43474f;
+
+  /* Sidebar — azul-marinho no claro */
+  --color-nav: #001736;
+  --color-nav-text: #ffffff;
 }
 
 :root[data-theme="dark"] {
-  /* Material 3 dark ramp derivada da mesma cor-fonte #002b5b */
+  color-scheme: dark;
+  /* Material 3 dark — preto de fundo, letras brancas, campos grafite (pedido do cliente) */
   --color-primary: #a9c7ff;
-  --color-primary-container: #264778;
-  --color-on-primary: #002e69;
+  --color-primary-container: #1f3a63;
+  --color-on-primary: #001b3d;
   --color-on-primary-container: #d6e3ff;
   --color-primary-fixed: #d6e3ff;
   --color-primary-fixed-dim: #a9c7ff;
@@ -108,25 +114,26 @@
   --color-on-error: #690005;
   --color-on-error-container: #ffdad6;
 
+  /* Fundo preto; superfícies/campos em grafite próximo ao preto */
   --color-background: #000000;
-  --color-surface: #000000;
-  --color-surface-bright: #262626;
-  --color-surface-container-lowest: #000000;
+  --color-surface: #0f0f0f;
+  --color-surface-bright: #0d0d0d;
+  --color-surface-container-lowest: #0a0a0a;
   --color-surface-container-low: #141414;
-  --color-surface-container: #1c1c1c;
-  --color-surface-container-high: #242424;
-  --color-surface-container-highest: #2c2c2c;
-  --color-surface-variant: #2c2c2c;
+  --color-surface-container: #1a1a1a;
+  --color-surface-container-high: #222222;
+  --color-surface-container-highest: #2a2a2a;
+  --color-surface-variant: #2a2a2a;
   --color-surface-dim: #000000;
   --color-surface-tint: #a9c7ff;
 
   --color-on-background: #ffffff;
   --color-on-surface: #ffffff;
-  --color-on-surface-variant: #d4d4d4;
-  --color-outline: #8e8e8e;
-  --color-outline-variant: #3a3a3a;
+  --color-on-surface-variant: #b3b3b3;
+  --color-outline: #7a7a7a;
+  --color-outline-variant: #333333;
   --color-inverse-surface: #ffffff;
-  --color-inverse-on-surface: #1c1c1c;
+  --color-inverse-on-surface: #0f0f0f;
 
   /* Status semânticos — dark (tons próprios, não é flip automático) */
   --color-success: #00dce5;
@@ -145,9 +152,13 @@
   --color-info-container: #264778;
   --color-on-info-container: #d6e3ff;
 
-  --color-neutral: #8e9099;
-  --color-neutral-container: #2c3544;
-  --color-on-neutral-container: #c4c6d0;
+  --color-neutral: #a0a0a0;
+  --color-neutral-container: #1e1e1e;
+  --color-on-neutral-container: #d4d4d4;
+
+  /* Sidebar — preto no escuro, letras brancas */
+  --color-nav: #0b0b0c;
+  --color-nav-text: #ffffff;
 }
 
 @theme inline {
@@ -226,6 +237,9 @@
   --color-neutral-container: var(--color-neutral-container);
   --color-on-neutral-container: var(--color-on-neutral-container);
 
+  --color-nav: var(--color-nav);
+  --color-nav-text: var(--color-nav-text);
+
   --radius-lg: 0.25rem;
   --radius-xl: 0.5rem;
   --radius-full: 0.75rem;
@@ -290,6 +304,42 @@ body {
   background: var(--color-background);
   color: var(--color-on-background);
   font-family: var(--font-hanken-grotesk), sans-serif;
+}
+
+/* Browser surfaces — partes que o navegador desenha também carregam o tema */
+::selection {
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--color-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+:root[data-theme="dark"] {
+  scrollbar-color: #3a3a3a #000000;
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar {
+  width: 10px;
+  background: #000000;
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: #3a3a3a;
+  border-radius: 9999px;
+  border: 2px solid #000000;
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background-color: #4a4a4a;
 }
 
 .sidebar-scroll {
