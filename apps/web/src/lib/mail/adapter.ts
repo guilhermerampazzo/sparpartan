@@ -12,6 +12,10 @@ async function enviarViaSmtp(input: EnviarEmailInput) {
     host: process.env.SMTP_HOST ?? "mailpit",
     port: Number(process.env.SMTP_PORT ?? 1025),
     secure: false,
+    // Certificados auto-assinados são comuns em servidores de e-mail próprios
+    // (Postfix/Dovecot). Sem isso, o STARTTLS falha com "self-signed certificate"
+    // e nenhum e-mail sai.
+    tls: { rejectUnauthorized: false },
     auth: process.env.SMTP_USER
       ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
       : undefined,
