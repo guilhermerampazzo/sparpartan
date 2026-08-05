@@ -114,26 +114,27 @@
   --color-on-error: #690005;
   --color-on-error-container: #ffdad6;
 
-  /* Fundo preto; superfícies/campos em grafite próximo ao preto */
+  /* Fundo preto; caixas em grafite mais claro (para destacar no preto),
+     campos grafite próximo ao preto, como pedido */
   --color-background: #000000;
-  --color-surface: #0f0f0f;
-  --color-surface-bright: #0d0d0d;
-  --color-surface-container-lowest: #0a0a0a;
-  --color-surface-container-low: #141414;
-  --color-surface-container: #1a1a1a;
-  --color-surface-container-high: #222222;
-  --color-surface-container-highest: #2a2a2a;
-  --color-surface-variant: #2a2a2a;
+  --color-surface: #151515;
+  --color-surface-bright: #171717;
+  --color-surface-container-lowest: #1a1a1a;
+  --color-surface-container-low: #212121;
+  --color-surface-container: #272727;
+  --color-surface-container-high: #2e2e2e;
+  --color-surface-container-highest: #343434;
+  --color-surface-variant: #2e2e2e;
   --color-surface-dim: #000000;
   --color-surface-tint: #a9c7ff;
 
   --color-on-background: #ffffff;
   --color-on-surface: #ffffff;
-  --color-on-surface-variant: #b3b3b3;
-  --color-outline: #7a7a7a;
-  --color-outline-variant: #333333;
+  --color-on-surface-variant: #bdbdbd;
+  --color-outline: #828282;
+  --color-outline-variant: #3d3d3d;
   --color-inverse-surface: #ffffff;
-  --color-inverse-on-surface: #0f0f0f;
+  --color-inverse-on-surface: #1a1a1a;
 
   /* Status semânticos — dark (tons próprios, não é flip automático) */
   --color-success: #00dce5;
@@ -152,9 +153,9 @@
   --color-info-container: #264778;
   --color-on-info-container: #d6e3ff;
 
-  --color-neutral: #a0a0a0;
-  --color-neutral-container: #1e1e1e;
-  --color-on-neutral-container: #d4d4d4;
+  --color-neutral: #a8a8a8;
+  --color-neutral-container: #2a2a2a;
+  --color-on-neutral-container: #d6d6d6;
 
   /* Sidebar — preto no escuro, letras brancas */
   --color-nav: #0b0b0c;

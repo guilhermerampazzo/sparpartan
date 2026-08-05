@@ -18,8 +18,11 @@ export function AlertCard({
   return (
     <div className={`flex items-start gap-3 rounded-xl border ${TONE_BORDER[tone]} ${TONE_SOFT[tone]} p-4`}>
       {Icon && (
-        <span className="mt-0.5 shrink-0">
-          <Icon size={20} />
+        <span
+          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-pill"
+          style={{ background: "color-mix(in srgb, currentColor 12%, transparent)" }}
+        >
+          <Icon size={18} />
         </span>
       )}
       <div className="min-w-0 flex-1">

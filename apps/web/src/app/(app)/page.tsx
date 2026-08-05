@@ -353,9 +353,11 @@ export default async function HomePage() {
               <Link
                 key={acao.href}
                 href={acao.href}
-                className="flex flex-col items-center gap-2 rounded-lg bg-primary-container p-4 text-center text-on-primary-container hover:opacity-90"
+                className="flex flex-col items-center gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-primary transition-colors hover:bg-surface-container-low"
               >
-                <acao.icon size={20} />
+                <span className="rounded-pill bg-primary-container p-2.5 text-on-primary-container">
+                  <acao.icon size={18} />
+                </span>
                 <span className="text-label-sm">{acao.label}</span>
               </Link>
             ))}

@@ -31,8 +31,8 @@ export function StatCard({
       <div className="flex items-center justify-between">
         <p className="font-mono-caps text-label-sm uppercase text-outline">{label}</p>
         {Icon && (
-          <span className={`rounded-pill p-2 ${iconClass}`}>
-            <Icon size={16} />
+          <span className={`rounded-pill p-2.5 ${iconClass}`}>
+            <Icon size={18} />
           </span>
         )}
       </div>
