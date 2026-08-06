@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { obras, obraFotos } from "@/db/schema";
+import { obras, obraFotos, obrasDocumentosTecnicos } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
 import { idUsuarioEquipe } from "@/lib/sessao";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
@@ -195,5 +195,66 @@ export async function excluirObra(obraId: string) {
     .set({ excluidoEm: new Date() })
     .where(eq(obras.id, obraId));
   await registrarAuditoria("excluir", "obra", obraId, "obra excluída");
+  revalidatePath("/obras");
+}
+
+const STATUS_OBRA_VALIDOS = ["em_projeto", "em_execucao", "concluida", "cancelada"] as const;
+
+export async function atualizarStatusObra(obraId: string, formData: FormData) {
+  const status = String(formData.get("status") ?? "");
+  if (!STATUS_OBRA_VALIDOS.includes(status as (typeof STATUS_OBRA_VALIDOS)[number])) {
+    throw new Error("Status inválido.");
+  }
+
+  await db
+    .update(obras)
+    .set({ status: status as (typeof STATUS_OBRA_VALIDOS)[number], atualizadoEm: new Date() })
+    .where(eq(obras.id, obraId));
+
+  await registrarAuditoria("atualizar", "obra", obraId, `status → ${status}`);
+  revalidatePath(`/obras/${obraId}`);
+  revalidatePath("/obras");
+}
+
+export async function registrarDocumentoTecnico(obraId: string, formData: FormData) {
+  const tipo = String(formData.get("tipo") ?? "");
+  const descricao = String(formData.get("descricao") ?? "").trim();
+  if (tipo !== "laudo" && tipo !== "art") throw new Error("Tipo inválido.");
+  if (!descricao) throw new Error("Informe a descrição.");
+
+  let arquivoCaminho: string | null = null;
+  const arquivo = formData.get("arquivo") as File | null;
+  if (arquivo && arquivo.size > 0) {
+    const erroArquivo = validarArquivo(arquivo, "documento");
+    if (erroArquivo) throw new Error(erroArquivo);
+    const obraDir = path.join(uploadsDir(), "obras", obraId, "tecnicos");
+    await mkdir(obraDir, { recursive: true });
+    const extensao = path.extname(arquivo.name) || ".pdf";
+    const nomeArquivo = `${randomUUID()}${extensao}`;
+    const bytes = Buffer.from(await arquivo.arrayBuffer());
+    await writeFile(path.join(obraDir, nomeArquivo), bytes);
+    arquivoCaminho = path.join("obras", obraId, "tecnicos", nomeArquivo);
+  }
+
+  await db.insert(obrasDocumentosTecnicos).values({
+    obraId,
+    tipo,
+    descricao,
+    arquivoCaminho,
+    criadoPorId: await idUsuarioEquipe(),
+  });
+
+  await registrarAuditoria("criar", "documento_obra", obraId, `${tipo}: ${descricao}`);
+  revalidatePath(`/obras/${obraId}`);
+  revalidatePath("/obras");
+}
+
+export async function marcarDocumentoTecnicoEmitido(docId: string) {
+  await db
+    .update(obrasDocumentosTecnicos)
+    .set({ status: "emitido" })
+    .where(eq(obrasDocumentosTecnicos.id, docId));
+
+  await registrarAuditoria("atualizar", "documento_obra", docId, "marcado como emitido");
   revalidatePath("/obras");
 }

@@ -28,6 +28,7 @@ const ABAS = [
   { key: "geral", label: "Geral", status: null as string[] | null },
   { key: "andamento", label: "Em Andamento", status: ["aberto", "documentos_pendentes", "pronto_para_protocolo"] },
   { key: "protocolado", label: "Protocolado", status: ["protocolado"] },
+  { key: "retorno", label: "Retorno Marinha", status: ["aguardando_retorno_marinha"] },
   { key: "prontos", label: "Prontos", status: ["concluido"] },
 ] as const;
 
@@ -37,7 +38,7 @@ export default async function ProcessosPage({
   searchParams: Promise<{ q?: string; page?: string; aba?: string; status?: string }>;
 }) {
   const { q, page, aba: abaParam, status: statusParam } = await searchParams;
-  const STATUS_VALIDOS = new Set(["aberto", "documentos_pendentes", "pronto_para_protocolo", "protocolado", "concluido", "cancelado"]);
+  const STATUS_VALIDOS = new Set(["aberto", "documentos_pendentes", "pronto_para_protocolo", "protocolado", "aguardando_retorno_marinha", "concluido", "cancelado"]);
   const statusDireto = statusParam && STATUS_VALIDOS.has(statusParam) ? statusParam : undefined;
   const aba = ABAS.find((a) => a.key === abaParam) ?? ABAS[0];
 

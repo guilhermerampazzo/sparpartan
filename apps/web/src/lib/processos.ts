@@ -18,6 +18,7 @@ export const STATUS_PROCESSO_VALIDOS = [
   "documentos_pendentes",
   "pronto_para_protocolo",
   "protocolado",
+  "aguardando_retorno_marinha",
   "concluido",
   "cancelado",
 ] as const;
@@ -86,8 +87,8 @@ export async function reclassificarProcesso(processoId: string, con: Tx = db) {
   const [processo] = await con.select().from(processos).where(eq(processos.id, processoId)).limit(1);
   if (!processo) return;
 
-  // Não mexe em processo já finalizado ou protocolado.
-  if (["protocolado", "concluido", "cancelado"].includes(processo.status)) return;
+  // Não mexe em processo já finalizado, protocolado ou aguardando retorno da Marinha.
+  if (["protocolado", "aguardando_retorno_marinha", "concluido", "cancelado"].includes(processo.status)) return;
 
   const pendencias = await pendenciasDoProcesso(processoId, con);
   const novoStatus = pendencias.length > 0 ? "documentos_pendentes" : "pronto_para_protocolo";

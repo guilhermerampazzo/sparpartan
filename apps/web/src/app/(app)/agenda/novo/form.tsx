@@ -31,6 +31,7 @@ export function NovoEventoForm({
             options={[
               { value: "compromisso", label: "Compromisso" },
               { value: "prova", label: "Prova" },
+              { value: "vistoria", label: "Vistoria" },
               { value: "vencimento", label: "Vencimento" },
             ]}
           />

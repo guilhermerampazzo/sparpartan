@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { asc, eq, gte, and, ne, lt, count, desc } from "drizzle-orm";
-import { BookOpen, UserCog, GraduationCap, CalendarClock, ClipboardCheck, BadgeX } from "lucide-react";
+import { BookOpen, UserCog, GraduationCap, CalendarClock, ClipboardCheck, BadgeX, UsersRound, ScrollText } from "lucide-react";
 import { db } from "@/db";
 import { alunos, agendaEventos, clientes, tentativasProva, provas } from "@/db/schema";
 import { StatCard, Badge, EmptyState } from "@/components/ui";
@@ -18,6 +18,18 @@ const CARTOES = [
     icon: UserCog,
     title: "Alunos",
     description: "Cadastro de alunos, matrículas, pedidos de pagamento e acesso ao portal.",
+  },
+  {
+    href: "/escola/turmas",
+    icon: UsersRound,
+    title: "Turmas",
+    description: "Turmas abertas do curso — alimentam a Central Operacional.",
+  },
+  {
+    href: "/escola/certificados",
+    icon: ScrollText,
+    title: "Certificados",
+    description: "Certificados para emitir e emitidos — aprovados em provas geram automaticamente.",
   },
   {
     href: "/area-de-estudos",

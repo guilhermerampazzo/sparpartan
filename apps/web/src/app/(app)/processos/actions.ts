@@ -279,6 +279,21 @@ export async function concluirProcesso(processoId: string) {
   redirect(`/processos/${processoId}`);
 }
 
+export async function marcarAguardandoRetornoMarinha(processoId: string) {
+  const [processo] = await db.select().from(processos).where(eq(processos.id, processoId)).limit(1);
+  if (!processo) throw new Error("Processo não encontrado");
+  if (processo.status !== "protocolado")
+    throw new Error("Só é possível aguardar retorno da Marinha para um processo protocolado.");
+
+  await db
+    .update(processos)
+    .set({ status: "aguardando_retorno_marinha", atualizadoEm: new Date() })
+    .where(eq(processos.id, processoId));
+
+  await registrarAuditoria("atualizar", "processo", processoId, "aguardando retorno da Marinha");
+  redirect(`/processos/${processoId}`);
+}
+
 export async function cancelarProcesso(processoId: string) {
   const [processo] = await db.select().from(processos).where(eq(processos.id, processoId)).limit(1);
   if (!processo) throw new Error("Processo não encontrado");

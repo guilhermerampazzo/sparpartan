@@ -1,10 +1,10 @@
 import { desc } from "drizzle-orm";
-import { Receipt, Repeat } from "lucide-react";
+import { Receipt, Repeat, CheckCircle2 } from "lucide-react";
 import { db } from "@/db";
 import { despesas } from "@/db/schema";
 import { Badge, Button, EmptyState, DataTable, BackButton, type Column } from "@/components/ui";
 import { NovaDespesaForm } from "./form";
-import { replicarDespesasRecorrentes } from "./actions";
+import { marcarDespesaComoPaga, replicarDespesasRecorrentes } from "./actions";
 
 function formatMoney(v: string) {
   return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -35,6 +35,33 @@ export default async function DespesasPage() {
     },
     { header: "Data", cell: (d) => d.data },
     { header: "Valor", cell: (d) => formatMoney(d.valor) },
+    {
+      header: "Situação",
+      cell: (d) =>
+        d.paga ? (
+          <Badge tone="success" size="sm">
+            Paga
+          </Badge>
+        ) : (
+          <Badge tone="warning" size="sm">
+            A Pagar
+          </Badge>
+        ),
+    },
+    {
+      header: "",
+      align: "right",
+      cell: (d) =>
+        d.paga ? (
+          <span className="text-body-sm text-success">Paga</span>
+        ) : (
+          <form action={marcarDespesaComoPaga.bind(null, d.id)}>
+            <Button type="submit" variant="outlined" size="sm" icon={CheckCircle2}>
+              Marcar Paga
+            </Button>
+          </form>
+        ),
+    },
   ];
 
   return (

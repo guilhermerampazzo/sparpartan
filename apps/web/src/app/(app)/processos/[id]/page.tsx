@@ -18,6 +18,7 @@ import { PROCESSO_STEPS, urgenciaVencimento, infoUrgencia, vencimentoProtocolo, 
 import {
   definirEmbarcacao,
   protocolarProcesso,
+  marcarAguardandoRetornoMarinha,
   concluirProcesso,
   cancelarProcesso,
   gerarLinkDocumentos,
@@ -74,10 +75,14 @@ export default async function ProcessoDetalhesPage({
 
   const obrigatoriosFaltando = checklist.filter((item) => item.modelo.obrigatorio && !item.gerado);
   const podeProtocolar =
-    obrigatoriosFaltando.length === 0 && processo.status !== "protocolado" && processo.status !== "concluido";
+    obrigatoriosFaltando.length === 0 &&
+    processo.status !== "protocolado" &&
+    processo.status !== "aguardando_retorno_marinha" &&
+    processo.status !== "concluido";
 
   const definirEmbarcacaoComId = definirEmbarcacao.bind(null, id);
   const protocolarComId = protocolarProcesso.bind(null, id);
+  const aguardandoRetornoComId = marcarAguardandoRetornoMarinha.bind(null, id);
   const concluirComId = concluirProcesso.bind(null, id);
   const cancelarComId = cancelarProcesso.bind(null, id);
   const gerarLinkDocumentosComId = gerarLinkDocumentos.bind(null, id);
@@ -193,24 +198,27 @@ export default async function ProcessoDetalhesPage({
         )}
       </SectionCard>
 
-      {processo.status === "protocolado" || processo.status === "concluido" ? (
+      {processo.status === "protocolado" ||
+      processo.status === "aguardando_retorno_marinha" ||
+      processo.status === "concluido" ? (
         <SectionCard title="Protocolo">
-          {processo.status === "protocolado" && processo.dataProtocolo && (
-            <div className="mb-4">
-              {(() => {
-                const venc = vencimentoProtocolo(processo.dataProtocolo);
-                const urgencia = urgenciaVencimento(venc);
-                const info = infoUrgencia(urgencia);
-                return (
-                  <AlertCard
-                    tone={info.tone}
-                    title={`Prazo do protocolo (60 dias): ${info.label}`}
-                    description={`Vence ${rotuloPrazo(venc)} (${venc.toLocaleDateString("pt-BR")}).`}
-                  />
-                );
-              })()}
-            </div>
-          )}
+          {(processo.status === "protocolado" || processo.status === "aguardando_retorno_marinha") &&
+            processo.dataProtocolo && (
+              <div className="mb-4">
+                {(() => {
+                  const venc = vencimentoProtocolo(processo.dataProtocolo);
+                  const urgencia = urgenciaVencimento(venc);
+                  const info = infoUrgencia(urgencia);
+                  return (
+                    <AlertCard
+                      tone={info.tone}
+                      title={`Prazo do protocolo (60 dias): ${info.label}`}
+                      description={`Vence ${rotuloPrazo(venc)} (${venc.toLocaleDateString("pt-BR")}).`}
+                    />
+                  );
+                })()}
+              </div>
+            )}
           <dl className="grid grid-cols-2 gap-4 text-body-md sm:grid-cols-3">
             <div>
               <dt className="font-mono-caps text-label-sm uppercase text-outline">Número</dt>
@@ -237,6 +245,18 @@ export default async function ProcessoDetalhesPage({
             </div>
           </dl>
           {processo.status === "protocolado" && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <form action={aguardandoRetornoComId}>
+                <Button type="submit">Aguardando Retorno da Marinha</Button>
+              </form>
+              <form action={concluirComId}>
+                <Button type="submit" variant="outlined">
+                  Marcar como Concluído
+                </Button>
+              </form>
+            </div>
+          )}
+          {processo.status === "aguardando_retorno_marinha" && (
             <form action={concluirComId} className="mt-4">
               <Button type="submit">Marcar como Concluído</Button>
             </form>

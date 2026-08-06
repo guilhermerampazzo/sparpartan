@@ -45,12 +45,32 @@ export async function criarTaxa(
       clienteId: String(formData.get("clienteId") ?? "") || null,
       processoId: String(formData.get("processoId") ?? "") || null,
       arquivoCaminho,
+      // Sem boleto anexado ainda não foi emitida — o indicador "Taxas para emissão"
+      // da Central Operacional é alimentado automaticamente por esta regra.
+      status: arquivoCaminho ? "pendente" : "para_emissao",
       criadoPorId: await idUsuarioEquipe(),
     })
     .returning({ id: taxasPagar.id });
 
   await registrarAuditoria("criar", "taxa_pagar", taxa.id, descricao);
   redirect("/taxas");
+}
+
+export async function marcarTaxaComoEmitida(taxaId: string) {
+  const [taxa] = await db
+    .select({ clienteId: taxasPagar.clienteId })
+    .from(taxasPagar)
+    .where(eq(taxasPagar.id, taxaId))
+    .limit(1);
+
+  await db
+    .update(taxasPagar)
+    .set({ status: "pendente" })
+    .where(eq(taxasPagar.id, taxaId));
+
+  await registrarAuditoria("atualizar", "taxa_pagar", taxaId, "marcada como emitida");
+  revalidatePath("/taxas");
+  if (taxa?.clienteId) revalidatePath(`/clientes/${taxa.clienteId}`);
 }
 
 export async function marcarTaxaComoPaga(taxaId: string, formData: FormData) {

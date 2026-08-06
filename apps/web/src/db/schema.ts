@@ -23,13 +23,14 @@ export const servicoCategoria = pgEnum("servico_categoria", [
 ]);
 export const catalogoTipo = pgEnum("catalogo_tipo", ["embarcacao", "motor", "carreta"]);
 export const embarcacaoClasse = pgEnum("embarcacao_classe", ["esporte_recreio", "comercial"]);
-export const taxaStatus = pgEnum("taxa_status", ["pendente", "pago"]);
-export const documentoStatus = pgEnum("documento_status", ["gerado", "protocolado", "vencido"]);
+export const taxaStatus = pgEnum("taxa_status", ["para_emissao", "pendente", "pago"]);
+export const documentoStatus = pgEnum("documento_status", ["gerado", "protocolado", "entregue", "vencido"]);
 export const processoStatus = pgEnum("processo_status", [
   "aberto",
   "documentos_pendentes",
   "pronto_para_protocolo",
   "protocolado",
+  "aguardando_retorno_marinha",
   "concluido",
   "cancelado",
 ]);
@@ -40,7 +41,12 @@ export const orcamentoStatus = pgEnum("orcamento_status", [
   "expirado",
 ]);
 export const pagamentoStatus = pgEnum("pagamento_status", ["pendente", "pago", "atrasado"]);
-export const eventoTipo = pgEnum("evento_tipo", ["compromisso", "prova", "vencimento"]);
+export const eventoTipo = pgEnum("evento_tipo", [
+  "compromisso",
+  "prova",
+  "vistoria",
+  "vencimento",
+]);
 export const eventoStatus = pgEnum("evento_status", [
   "pendente",
   "confirmado",
@@ -56,6 +62,16 @@ export const despesaCategoria = pgEnum("despesa_categoria", [
 ]);
 export const materialTipo = pgEnum("material_tipo", ["pdf", "video", "link"]);
 export const obraSimNao = pgEnum("obra_sim_nao", ["sim", "nao"]);
+export const obraStatus = pgEnum("obra_status", [
+  "em_projeto",
+  "em_execucao",
+  "concluida",
+  "cancelada",
+]);
+export const documentoObraTipo = pgEnum("documento_obra_tipo", ["laudo", "art"]);
+export const documentoObraStatus = pgEnum("documento_obra_status", ["pendente", "emitido"]);
+export const turmaStatus = pgEnum("turma_status", ["aberta", "concluida", "cancelada"]);
+export const certificadoStatus = pgEnum("certificado_status", ["para_emitir", "emitido"]);
 export const auditAcao = pgEnum("audit_acao", ["criar", "atualizar", "excluir", "login"]);
 export const assinaturaStatus = pgEnum("assinatura_status", ["pendente", "assinado", "expirado"]);
 export const solicitacaoTipo = pgEnum("solicitacao_tipo", [
@@ -341,6 +357,8 @@ export const obras = pgTable("obras", {
   matTambores: text("mat_tambores"),
   qntTambores: integer("qnt_tambores"),
   volumeTambores: numeric("volume_tambores"),
+  /** Fase da obra — alimenta os indicadores "Projetos em andamento" e "Obras em execução". */
+  status: obraStatus("status").notNull().default("em_projeto"),
   excluidoEm: timestamp("excluido_em"),
   criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
@@ -353,6 +371,20 @@ export const obraFotos = pgTable("obra_fotos", {
     .notNull()
     .references(() => obras.id, { onDelete: "cascade" }),
   caminho: text("caminho").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+/** Laudos e ARTs de uma obra — alimentam os indicadores de Engenharia. */
+export const obrasDocumentosTecnicos = pgTable("obras_documentos_tecnicos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  obraId: uuid("obra_id")
+    .notNull()
+    .references(() => obras.id, { onDelete: "cascade" }),
+  tipo: documentoObraTipo("tipo").notNull(),
+  descricao: text("descricao").notNull(),
+  status: documentoObraStatus("status").notNull().default("pendente"),
+  arquivoCaminho: text("arquivo_caminho"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
@@ -662,6 +694,8 @@ export const despesas = pgTable("despesas", {
   data: date("data").notNull(),
   recorrente: boolean("recorrente").notNull().default(false),
   diaVencimento: integer("dia_vencimento"),
+  paga: boolean("paga").notNull().default(false),
+  pagaEm: timestamp("paga_em"),
   /** Gastos extras vinculados a um cliente (correio, terceirizado etc.) entram
    *  como saída automática do financeiro direto do cadastro do cliente. */
   clienteId: uuid("cliente_id").references(() => clientes.id, { onDelete: "set null" }),
@@ -863,6 +897,38 @@ export const tentativasProva = pgTable("tentativas_prova", {
   finalizadaEm: timestamp("finalizada_em"),
   notaObtida: integer("nota_obtida"),
   status: statusTentativaProva("status").notNull().default("em_andamento"),
+});
+
+/** Turmas da Escola Náutica — alimenta o indicador "Turmas abertas". */
+export const turmas = pgTable("turmas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  status: turmaStatus("status").notNull().default("aberta"),
+  inicioEm: date("inicio_em"),
+  observacoes: text("observacoes"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+/**
+ * Certificados da Escola Náutica. O sistema cria automaticamente um certificado
+ * "para_emitir" quando o aluno é aprovado numa prova (origem automática); a equipe
+ * também pode cadastrar manualmente.
+ */
+export const certificados = pgTable("certificados", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  alunoId: uuid("aluno_id")
+    .notNull()
+    .references(() => alunos.id, { onDelete: "cascade" }),
+  materiaId: uuid("materia_id").references(() => materias.id, { onDelete: "set null" }),
+  provaId: uuid("prova_id").references(() => provas.id, { onDelete: "set null" }),
+  tentativaId: uuid("tentativa_id").references(() => tentativasProva.id, { onDelete: "set null" }),
+  status: certificadoStatus("status").notNull().default("para_emitir"),
+  emitidoEm: timestamp("emitido_em"),
+  arquivoCaminho: text("arquivo_caminho"),
+  origem: text("origem").notNull().default("manual"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
 export const respostasAluno = pgTable("respostas_aluno", {

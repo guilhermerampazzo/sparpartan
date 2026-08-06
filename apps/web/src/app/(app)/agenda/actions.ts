@@ -34,7 +34,7 @@ export async function criarEvento(
 
   const clienteId = uuidOuNull(formData.get("clienteId"));
   const processoId = uuidOuNull(formData.get("processoId"));
-  const tipo = String(formData.get("tipo") ?? "compromisso") as "compromisso" | "prova" | "vencimento";
+  const tipo = String(formData.get("tipo") ?? "compromisso") as "compromisso" | "prova" | "vistoria" | "vencimento";
   const data = dataHoraLocal(dataHora);
   if (!data) return { erro: "Data e hora inválidas.", valores };
 

@@ -1,9 +1,9 @@
-import { desc, eq, sql, and, lte, gte, isNotNull } from "drizzle-orm";
+import { desc, eq, sql, and, lte, gte, isNotNull, inArray } from "drizzle-orm";
 import { Landmark, Download, Trash2, Eye, AlarmClockOff, CalendarClock, CircleCheckBig } from "lucide-react";
 import { db } from "@/db";
 import { taxasPagar, clientes, processos, servicos } from "@/db/schema";
 import { StatCard, Button, LinkButton, Badge, EmptyState, DataTable, ConfirmButton, type Column } from "@/components/ui";
-import { marcarTaxaComoPaga, excluirTaxa } from "./actions";
+import { marcarTaxaComoEmitida, marcarTaxaComoPaga, excluirTaxa } from "./actions";
 
 function formatMoney(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -15,7 +15,7 @@ type LinhaTaxa = {
   numero: string | null;
   valor: string;
   vencimento: string | null;
-  status: "pendente" | "pago";
+  status: "para_emissao" | "pendente" | "pago";
   arquivoCaminho: string | null;
   clienteNome: string | null;
   cpfCnpj: string | null;
@@ -32,7 +32,10 @@ export default async function TaxasPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
-  const statusValido = status === "pendente" || status === "pago" ? status : undefined;
+  const statusValido =
+    status === "para_emissao" || status === "pendente" || status === "pago" ? status : undefined;
+
+  const naoPagas = ["para_emissao", "pendente"] as const;
 
   const [{ totalPendente }] = await db
     .select({ totalPendente: sql<number>`coalesce(sum(${taxasPagar.valor}), 0)::float` })
@@ -46,11 +49,11 @@ export default async function TaxasPage({
     db
       .select({ vencemHoje: sql<number>`count(*)::int` })
       .from(taxasPagar)
-      .where(and(eq(taxasPagar.status, "pendente"), eq(taxasPagar.vencimento, hojeStr))),
+      .where(and(inArray(taxasPagar.status, naoPagas), eq(taxasPagar.vencimento, hojeStr))),
     db
       .select({ atrasadas: sql<number>`count(*)::int` })
       .from(taxasPagar)
-      .where(and(eq(taxasPagar.status, "pendente"), isNotNull(taxasPagar.vencimento), lte(taxasPagar.vencimento, hojeStr))),
+      .where(and(inArray(taxasPagar.status, naoPagas), isNotNull(taxasPagar.vencimento), lte(taxasPagar.vencimento, hojeStr))),
     db
       .select({ pagasNoMes: sql<number>`count(*)::int` })
       .from(taxasPagar)
@@ -89,8 +92,10 @@ export default async function TaxasPage({
       cell: (t) =>
         t.status === "pago" ? (
           <Badge tone="success" size="sm">Paga</Badge>
+        ) : t.status === "para_emissao" ? (
+          <Badge tone="neutral" size="sm">Para Emissão</Badge>
         ) : (
-          <Badge tone="warning" size="sm">Pendente</Badge>
+          <Badge tone="warning" size="sm">Aguardando Pagamento</Badge>
         ),
     },
     {
@@ -122,7 +127,13 @@ export default async function TaxasPage({
       align: "right",
       cell: (t) => (
         <div className="flex items-center justify-end gap-2">
-          {t.status === "pendente" ? (
+          {t.status === "para_emissao" ? (
+            <form action={marcarTaxaComoEmitida.bind(null, t.id)}>
+              <Button type="submit" variant="outlined" size="sm">
+                Marcar Emitida
+              </Button>
+            </form>
+          ) : t.status === "pendente" ? (
             <form action={marcarTaxaComoPaga.bind(null, t.id)}>
               <input type="hidden" name="formaPagamento" value="" />
               <Button type="submit" variant="outlined" size="sm">
@@ -164,8 +175,11 @@ export default async function TaxasPage({
         <LinkButton href="/taxas" variant={!statusValido ? "filled" : "outlined"} size="sm">
           Todas
         </LinkButton>
+        <LinkButton href="/taxas?status=para_emissao" variant={statusValido === "para_emissao" ? "filled" : "outlined"} size="sm">
+          Para Emissão
+        </LinkButton>
         <LinkButton href="/taxas?status=pendente" variant={statusValido === "pendente" ? "filled" : "outlined"} size="sm">
-          Pendentes
+          Aguardando Pagamento
         </LinkButton>
         <LinkButton href="/taxas?status=pago" variant={statusValido === "pago" ? "filled" : "outlined"} size="sm">
           Pagas

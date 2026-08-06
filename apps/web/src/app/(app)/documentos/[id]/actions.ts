@@ -7,6 +7,26 @@ import { db } from "@/db";
 import { assinaturas, documentosGerados, clientes } from "@/db/schema";
 import { enviarEmail } from "@/lib/mail/adapter";
 
+export async function marcarDocumentoComoEntregue(documentoId: string) {
+  const [documento] = await db
+    .select()
+    .from(documentosGerados)
+    .where(eq(documentosGerados.id, documentoId))
+    .limit(1);
+  if (!documento) throw new Error("Documento não encontrado");
+  if (documento.status !== "protocolado")
+    throw new Error("Só é possível entregar um documento já protocolado.");
+
+  await db
+    .update(documentosGerados)
+    .set({ status: "entregue" })
+    .where(eq(documentosGerados.id, documentoId));
+
+  revalidatePath(`/documentos/${documentoId}`);
+  revalidatePath("/documentos");
+  if (documento.processoId) revalidatePath(`/processos/${documento.processoId}`);
+}
+
 export async function solicitarAssinatura(documentoId: string) {
   const [documento] = await db
     .select()

@@ -9,7 +9,7 @@ import { documentosGerados, modelosDocumento, clientes, assinaturas } from "@/db
 import { SectionCard } from "@/components/ui/form-field";
 import { LinkButton, Button, StatusBadge, BackButton } from "@/components/ui";
 import { statusAssinatura } from "@/lib/status";
-import { solicitarAssinatura } from "./actions";
+import { solicitarAssinatura, marcarDocumentoComoEntregue } from "./actions";
 import { regenerarPdf } from "../actions";
 
 export default async function DocumentoDetalhesPage({
@@ -49,6 +49,7 @@ export default async function DocumentoDetalhesPage({
 
   const solicitarAssinaturaComId = solicitarAssinatura.bind(null, id);
   const regenerarPdfComId = regenerarPdf.bind(null, id);
+  const marcarEntregueComId = marcarDocumentoComoEntregue.bind(null, id);
 
   let totalPaginas = 0;
   if (documento.pdfCaminho) {
@@ -95,6 +96,13 @@ export default async function DocumentoDetalhesPage({
                 PDF ainda não foi gerado (o Gotenberg pode ter caído) — o DOCX continua utilizável.
               </p>
             </div>
+          )}
+          {documento.status === "protocolado" && (
+            <form action={marcarEntregueComId}>
+              <Button type="submit" variant="filled">
+                Marcar como Entregue
+              </Button>
+            </form>
           )}
         </div>
       </SectionCard>

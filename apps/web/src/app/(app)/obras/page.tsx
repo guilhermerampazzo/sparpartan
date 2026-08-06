@@ -2,30 +2,52 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { HardHat, Eye, Download, Trash2, FilePlus } from "lucide-react";
 import { db } from "@/db";
 import { obras, clientes, documentosGerados } from "@/db/schema";
-import { LinkButton, ConfirmButton, EmptyState, DataTable, type Column } from "@/components/ui";
+import { LinkButton, ConfirmButton, EmptyState, DataTable, Badge, type Column } from "@/components/ui";
 import { excluirObra } from "./actions";
+import { statusObra } from "@/lib/status";
+
+const STATUS_OBRAS = [
+  { key: "em_projeto", label: "Em Projeto" },
+  { key: "em_execucao", label: "Em Execução" },
+  { key: "concluida", label: "Concluídas" },
+] as const;
 
 type LinhaObra = {
   id: string;
   titulo: string | null;
   tipoObra: string | null;
+  status: string;
   clienteId: string;
   clienteNome: string;
   documentoId: string | null;
 };
 
-export default async function ObrasPage() {
+export default async function ObrasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
+  const statusValido = STATUS_OBRAS.some((s) => s.key === status) ? status : undefined;
+
   const lista = await db
     .select({
       id: obras.id,
       titulo: obras.titulo,
       tipoObra: obras.tipoObra,
+      status: obras.status,
       clienteId: obras.clienteId,
       clienteNome: clientes.nome,
     })
     .from(obras)
     .innerJoin(clientes, eq(obras.clienteId, clientes.id))
-    .where(and(isNull(obras.excluidoEm), isNull(clientes.excluidoEm)))
+    .where(
+      and(
+        isNull(obras.excluidoEm),
+        isNull(clientes.excluidoEm),
+        statusValido ? eq(obras.status, statusValido as (typeof STATUS_OBRAS)[number]["key"]) : undefined
+      )
+    )
     .orderBy(desc(obras.criadoEm));
 
   const obraIds = lista.map((o) => o.id);
@@ -50,6 +72,7 @@ export default async function ObrasPage() {
     { header: "Proprietário", cell: (o) => <span className="font-medium text-primary">{o.clienteNome}</span> },
     { header: "Tipo", cell: (o) => o.tipoObra ?? "—" },
     { header: "Título", cell: (o) => o.titulo ?? "(sem título)" },
+    { header: "Fase", cell: (o) => <Badge tone={statusObra(o.status).tone} size="sm">{statusObra(o.status).label}</Badge> },
     {
       header: "",
       align: "right",
@@ -104,6 +127,22 @@ export default async function ObrasPage() {
         Cadastro técnico para o Memorial Descritivo e o Requerimento 2-B-1 da NORMAM-303
         (preenchimento de obras — trapiches, flutuantes, marinas).
       </p>
+
+      <div className="flex gap-2">
+        <LinkButton href="/obras" variant={!statusValido ? "filled" : "outlined"} size="sm">
+          Todas
+        </LinkButton>
+        {STATUS_OBRAS.map((s) => (
+          <LinkButton
+            key={s.key}
+            href={`/obras?status=${s.key}`}
+            variant={statusValido === s.key ? "filled" : "outlined"}
+            size="sm"
+          >
+            {s.label}
+          </LinkButton>
+        ))}
+      </div>
 
       <DataTable
         columns={columns}

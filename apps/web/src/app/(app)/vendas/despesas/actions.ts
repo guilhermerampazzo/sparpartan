@@ -1,10 +1,20 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { and, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { despesas } from "@/db/schema";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
+
+export async function marcarDespesaComoPaga(despesaId: string) {
+  await db
+    .update(despesas)
+    .set({ paga: true, pagaEm: new Date() })
+    .where(eq(despesas.id, despesaId));
+
+  revalidatePath("/vendas/despesas");
+}
 
 export async function criarDespesa(
   _estadoAnterior: EstadoForm,

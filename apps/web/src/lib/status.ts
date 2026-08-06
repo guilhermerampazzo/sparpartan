@@ -44,6 +44,13 @@ import {
   Star,
   Ban,
   Hourglass,
+  DraftingCompass,
+  Hammer,
+  FileCheck2,
+  BadgeCheck,
+  UsersRound,
+  ScrollText,
+  SearchCheck,
 } from "lucide-react";
 import type { StatusInfo } from "@/components/ui/badge";
 
@@ -51,12 +58,48 @@ import type { StatusInfo } from "@/components/ui/badge";
 /* Enums do banco → { label, tone, icon }                              */
 /* ------------------------------------------------------------------ */
 
+export function statusObra(status: string): StatusInfo {
+  const map: Record<string, StatusInfo> = {
+    em_projeto: { label: "Projeto em Andamento", tone: "info", icon: DraftingCompass },
+    em_execucao: { label: "Em Execução", tone: "warning", icon: Hammer },
+    concluida: { label: "Concluída", tone: "success", icon: CheckCircle2 },
+    cancelada: { label: "Cancelada", tone: "danger", icon: XCircle },
+  };
+  return map[status] ?? { label: status, tone: "neutral", icon: Minus };
+}
+
+export function statusDocumentoObra(status: string): StatusInfo {
+  const map: Record<string, StatusInfo> = {
+    pendente: { label: "Pendente", tone: "warning", icon: Clock },
+    emitido: { label: "Emitido", tone: "success", icon: FileCheck2 },
+  };
+  return map[status] ?? { label: status, tone: "neutral", icon: Minus };
+}
+
+export function statusTurma(status: string): StatusInfo {
+  const map: Record<string, StatusInfo> = {
+    aberta: { label: "Aberta", tone: "success", icon: UsersRound },
+    concluida: { label: "Concluída", tone: "info", icon: CheckCircle2 },
+    cancelada: { label: "Cancelada", tone: "danger", icon: XCircle },
+  };
+  return map[status] ?? { label: status, tone: "neutral", icon: Minus };
+}
+
+export function statusCertificado(status: string): StatusInfo {
+  const map: Record<string, StatusInfo> = {
+    para_emitir: { label: "Para Emitir", tone: "warning", icon: ScrollText },
+    emitido: { label: "Emitido", tone: "success", icon: BadgeCheck },
+  };
+  return map[status] ?? { label: status, tone: "neutral", icon: Minus };
+}
+
 export function statusProcesso(status: string): StatusInfo {
   const map: Record<string, StatusInfo> = {
     aberto: { label: "Aberto", tone: "info", icon: FolderOpen },
     documentos_pendentes: { label: "Documentos Pendentes", tone: "warning", icon: FileWarning },
     pronto_para_protocolo: { label: "Pronto para Protocolo", tone: "info", icon: PackageCheck },
     protocolado: { label: "Protocolado", tone: "info", icon: Send },
+    aguardando_retorno_marinha: { label: "Aguardando Retorno da Marinha", tone: "warning", icon: Hourglass },
     concluido: { label: "Concluído", tone: "success", icon: CheckCircle2 },
     cancelado: { label: "Cancelado", tone: "danger", icon: XCircle },
   };
@@ -68,6 +111,7 @@ export const PROCESSO_STEPS: { key: string; label: string }[] = [
   { key: "documentos_pendentes", label: "Documentos Pendentes" },
   { key: "pronto_para_protocolo", label: "Pronto p/ Protocolo" },
   { key: "protocolado", label: "Protocolado" },
+  { key: "aguardando_retorno_marinha", label: "Retorno da Marinha" },
   { key: "concluido", label: "Concluído" },
 ];
 
@@ -130,6 +174,7 @@ export function statusDocumento(status: string): StatusInfo {
   const map: Record<string, StatusInfo> = {
     gerado: { label: "Gerado", tone: "info", icon: FileText },
     protocolado: { label: "Protocolado", tone: "success", icon: Stamp },
+    entregue: { label: "Entregue", tone: "success", icon: CheckCircle2 },
     vencido: { label: "Vencido", tone: "danger", icon: FileX },
   };
   return map[status] ?? { label: status, tone: "neutral", icon: Minus };
@@ -149,6 +194,7 @@ export function tipoEvento(tipo: string): StatusInfo {
   const map: Record<string, StatusInfo> = {
     compromisso: { label: "Compromisso", tone: "info", icon: Calendar },
     prova: { label: "Prova", tone: "warning", icon: GraduationCap },
+    vistoria: { label: "Vistoria", tone: "info", icon: SearchCheck },
     vencimento: { label: "Vencimento", tone: "danger", icon: AlarmClock },
   };
   return map[tipo] ?? { label: tipo, tone: "neutral", icon: Minus };

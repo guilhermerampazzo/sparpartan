@@ -10,6 +10,7 @@ import {
   isNull,
   lt,
   inArray,
+  sql,
 } from "drizzle-orm";
 import {
   Users,
@@ -35,12 +36,14 @@ import {
   pendencias,
   agendaEventos,
   obras,
+  obrasDocumentosTecnicos,
   despesas,
   alunos,
-  matriculas,
-  tentativasProva,
+  turmas,
+  certificados,
   lojaOrcamentos,
   lojaVendas,
+  lojaVendaItens,
   lojaEntregas,
 } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
@@ -119,23 +122,31 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
     processosDocs,
     processosProntos,
     processosProtocolados,
+    retornoMarinha,
     processosConcluidos,
-    obrasCount,
-    obrasSemDocumento,
-    agendamentosFuturos,
+    obrasProjetos,
+    obrasExecucao,
+    laudosPendentes,
+    artsPendentes,
+    vistoriasAgendadas,
+    taxasParaEmissao,
     taxasPendentes,
     pagamentosAtrasados,
     recebimentosPrevistos,
     despesasMes,
+    contasAPagar,
     docsParaGerar,
     docsGerados,
     docsProtocolados,
+    docsEntregues,
     alunosAtivos,
-    matriculasAtivas,
-    provasAgendadas,
-    aguardandoCorrecao,
+    provasConfPendentes,
+    turmasAbertas,
+    certificadosParaEmitir,
     lojaOrcamentosPendentes,
     lojaVendasAndamento,
+    lojaVendasFinalizadas,
+    lojaProdutosReservados,
     lojaEntregasPendentes,
     pendHoje,
     pendAtrasadas,
@@ -151,14 +162,22 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
     db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "documentos_pendentes"), isNull(processos.excluidoEm), respProcesso))),
     db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "pronto_para_protocolo"), isNull(processos.excluidoEm), respProcesso))),
     db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "protocolado"), isNull(processos.excluidoEm), respProcesso))),
+    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "aguardando_retorno_marinha"), isNull(processos.excluidoEm), respProcesso))),
     db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "concluido"), isNull(processos.excluidoEm), respProcesso))),
-    db.select({ n: count() }).from(obras).where(p(and(isNull(obras.excluidoEm), respObra))),
+    db.select({ n: count() }).from(obras).where(p(and(eq(obras.status, "em_projeto"), isNull(obras.excluidoEm), respObra))),
+    db.select({ n: count() }).from(obras).where(p(and(eq(obras.status, "em_execucao"), isNull(obras.excluidoEm), respObra))),
     db
       .select({ n: count() })
-      .from(obras)
-      .leftJoin(documentosGerados, eq(documentosGerados.obraId, obras.id))
-      .where(p(and(isNull(obras.excluidoEm), isNull(documentosGerados.id), respObra))),
-    db.select({ n: count() }).from(agendaEventos).where(and(gte(agendaEventos.dataHora, hoje), ne(agendaEventos.status, "cancelado"))),
+      .from(obrasDocumentosTecnicos)
+      .innerJoin(obras, eq(obrasDocumentosTecnicos.obraId, obras.id))
+      .where(p(and(eq(obrasDocumentosTecnicos.tipo, "laudo"), eq(obrasDocumentosTecnicos.status, "pendente"), isNull(obras.excluidoEm), respObra))),
+    db
+      .select({ n: count() })
+      .from(obrasDocumentosTecnicos)
+      .innerJoin(obras, eq(obrasDocumentosTecnicos.obraId, obras.id))
+      .where(p(and(eq(obrasDocumentosTecnicos.tipo, "art"), eq(obrasDocumentosTecnicos.status, "pendente"), isNull(obras.excluidoEm), respObra))),
+    db.select({ n: count() }).from(agendaEventos).where(and(eq(agendaEventos.tipo, "vistoria"), gte(agendaEventos.dataHora, hoje), ne(agendaEventos.status, "cancelado"))),
+    db.select({ n: count() }).from(taxasPagar).where(p(and(eq(taxasPagar.status, "para_emissao"), respTaxa))),
     db.select({ n: count() }).from(taxasPagar).where(p(and(eq(taxasPagar.status, "pendente"), respTaxa))),
     db
       .select({ n: count() })
@@ -171,15 +190,23 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
       .innerJoin(servicosContratados, eq(pagamentos.servicoContratadoId, servicosContratados.id))
       .where(p(and(eq(pagamentos.status, "pendente"), resp ? eq(servicosContratados.vendedorId, resp) : undefined))),
     db.select({ n: count() }).from(despesas).where(p(and(gte(despesas.data, inicioMes), respDespesa))),
+    db.select({ n: count() }).from(despesas).where(p(and(eq(despesas.paga, false), respDespesa))),
     db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "documentos_pendentes"), isNull(processos.excluidoEm), respProcesso))),
     db.select({ n: count() }).from(documentosGerados).where(eq(documentosGerados.status, "gerado")),
     db.select({ n: count() }).from(documentosGerados).where(eq(documentosGerados.status, "protocolado")),
+    db.select({ n: count() }).from(documentosGerados).where(eq(documentosGerados.status, "entregue")),
     db.select({ n: count() }).from(alunos).where(eq(alunos.ativo, true)),
-    db.select({ n: count() }).from(matriculas).where(eq(matriculas.status, "ativo")),
-    db.select({ n: count() }).from(agendaEventos).where(and(eq(agendaEventos.tipo, "prova"), gte(agendaEventos.dataHora, hoje), ne(agendaEventos.status, "cancelado"))),
-    db.select({ n: count() }).from(tentativasProva).where(eq(tentativasProva.status, "aguardando_correcao")),
+    db.select({ n: count() }).from(agendaEventos).where(and(eq(agendaEventos.tipo, "prova"), eq(agendaEventos.status, "pendente"), gte(agendaEventos.dataHora, hoje))),
+    db.select({ n: count() }).from(turmas).where(eq(turmas.status, "aberta")),
+    db.select({ n: count() }).from(certificados).where(eq(certificados.status, "para_emitir")),
     db.select({ n: count() }).from(lojaOrcamentos).where(eq(lojaOrcamentos.status, "pendente")),
     db.select({ n: count() }).from(lojaVendas).where(eq(lojaVendas.status, "em_andamento")),
+    db.select({ n: count() }).from(lojaVendas).where(eq(lojaVendas.status, "concluida")),
+    db
+      .select({ n: sql<number>`coalesce(sum(${lojaVendaItens.quantidade}), 0)::int` })
+      .from(lojaVendaItens)
+      .innerJoin(lojaVendas, eq(lojaVendaItens.vendaId, lojaVendas.id))
+      .where(eq(lojaVendas.status, "em_andamento")),
     db.select({ n: count() }).from(lojaEntregas).where(eq(lojaEntregas.status, "pendente")),
     db.select({ n: count() }).from(pendencias).where(p(and(eq(pendencias.status, "pendente"), eq(pendencias.data, hojeStr), respPendencia))),
     db.select({ n: count() }).from(pendencias).where(p(and(eq(pendencias.status, "pendente"), lt(pendencias.data, hojeStr), respPendencia))),
@@ -209,6 +236,7 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
         { rotulo: "Aguardando documentos", valor: n(processosDocs), href: "/processos?status=documentos_pendentes", tone: "warning" },
         { rotulo: "Prontos para protocolar", valor: n(processosProntos), href: "/processos?status=pronto_para_protocolo", tone: "warning" },
         { rotulo: "Protocolados", valor: n(processosProtocolados), href: "/processos?status=protocolado", tone: "info" },
+        { rotulo: "Aguardando retorno da Marinha", valor: n(retornoMarinha), href: "/processos?status=aguardando_retorno_marinha", tone: "warning" },
         { rotulo: "Concluídos", valor: n(processosConcluidos), href: "/processos?status=concluido", tone: "success" },
       ],
     },
@@ -216,18 +244,22 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
       titulo: "Engenharia",
       icone: HardHat,
       indicadores: [
-        { rotulo: "Obras cadastradas", valor: n(obrasCount), href: "/obras", tone: "info" },
-        { rotulo: "Obras sem memorial gerado", valor: n(obrasSemDocumento), href: "/obras", tone: "warning" },
-        { rotulo: "Agendamentos futuros", valor: n(agendamentosFuturos), href: "/agenda", tone: "info" },
+        { rotulo: "Projetos em andamento", valor: n(obrasProjetos), href: "/obras?status=em_projeto", tone: "info" },
+        { rotulo: "Obras em execução", valor: n(obrasExecucao), href: "/obras?status=em_execucao", tone: "warning" },
+        { rotulo: "Laudos pendentes", valor: n(laudosPendentes), href: "/obras", tone: "warning" },
+        { rotulo: "ARTs pendentes", valor: n(artsPendentes), href: "/obras", tone: "warning" },
+        { rotulo: "Vistorias agendadas", valor: n(vistoriasAgendadas), href: "/agenda", tone: "info" },
       ],
     },
     {
       titulo: "Financeiro",
       icone: Wallet,
       indicadores: [
+        { rotulo: "Taxas para emissão", valor: n(taxasParaEmissao), href: "/taxas?status=para_emissao", tone: "warning" },
         { rotulo: "Taxas aguardando pagamento", valor: n(taxasPendentes), href: "/taxas?status=pendente", tone: "warning" },
         { rotulo: "Pagamentos em atraso", valor: n(pagamentosAtrasados), href: "/pendentes", tone: "danger" },
         { rotulo: "Recebimentos previstos", valor: n(recebimentosPrevistos), href: "/vendas", tone: "success" },
+        { rotulo: "Contas a pagar", valor: n(contasAPagar), href: "/vendas/despesas", tone: "warning" },
         { rotulo: "Despesas no mês", valor: n(despesasMes), href: "/vendas/despesas", tone: "neutral" },
       ],
     },
@@ -236,27 +268,30 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
       icone: FileText,
       indicadores: [
         { rotulo: "Documentos para gerar", valor: n(docsParaGerar), href: "/processos?status=documentos_pendentes", tone: "warning" },
-        { rotulo: "Gerados (aguardando revisão)", valor: n(docsGerados), href: "/documentos", tone: "info" },
-        { rotulo: "Protocolados", valor: n(docsProtocolados), href: "/documentos", tone: "success" },
+        { rotulo: "Aguardando revisão", valor: n(docsGerados), href: "/documentos", tone: "info" },
+        { rotulo: "Prontos (protocolados)", valor: n(docsProtocolados), href: "/documentos", tone: "success" },
+        { rotulo: "Entregues", valor: n(docsEntregues), href: "/documentos", tone: "success" },
       ],
     },
     {
       titulo: "Escola Náutica",
       icone: GraduationCap,
       indicadores: [
-        { rotulo: "Alunos ativos", valor: n(alunosAtivos), href: "/alunos", tone: "info" },
-        { rotulo: "Matrículas ativas", valor: n(matriculasAtivas), href: "/alunos", tone: "success" },
-        { rotulo: "Provas agendadas", valor: n(provasAgendadas), href: "/agenda", tone: "warning" },
-        { rotulo: "Provas aguardando correção", valor: n(aguardandoCorrecao), href: "/lms/provas", tone: "warning" },
+        { rotulo: "Turmas abertas", valor: n(turmasAbertas), href: "/escola/turmas", tone: "info" },
+        { rotulo: "Alunos inscritos", valor: n(alunosAtivos), href: "/alunos", tone: "info" },
+        { rotulo: "Confirmações pendentes", valor: n(provasConfPendentes), href: "/agenda", tone: "warning" },
+        { rotulo: "Certificados para emitir", valor: n(certificadosParaEmitir), href: "/escola/certificados", tone: "warning" },
       ],
     },
     {
       titulo: "Loja",
       icone: Store,
       indicadores: [
-        { rotulo: "Orçamentos pendentes", valor: n(lojaOrcamentosPendentes), href: "/loja/orcamentos", tone: "warning" },
-        { rotulo: "Vendas em andamento", valor: n(lojaVendasAndamento), href: "/loja/vendas", tone: "info" },
-        { rotulo: "Entregas pendentes", valor: n(lojaEntregasPendentes), href: "/loja/entregas", tone: "warning" },
+        { rotulo: "Orçamentos", valor: n(lojaOrcamentosPendentes), href: "/loja/orcamentos", tone: "warning" },
+        { rotulo: "Pedidos", valor: n(lojaVendasAndamento), href: "/loja/vendas", tone: "info" },
+        { rotulo: "Produtos reservados", valor: n(lojaProdutosReservados), href: "/loja/vendas", tone: "warning" },
+        { rotulo: "Entregas", valor: n(lojaEntregasPendentes), href: "/loja/entregas", tone: "warning" },
+        { rotulo: "Vendas finalizadas", valor: n(lojaVendasFinalizadas), href: "/loja/vendas", tone: "success" },
       ],
     },
     {
@@ -300,10 +335,9 @@ async function ResumoDoDia({
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   const hojeStr = hoje.toISOString().slice(0, 10);
-  const fimHoje = new Date(hoje.getTime() + 86400000);
   const semanaStr = new Date(hoje.getTime() + 7 * 86400000).toISOString().slice(0, 10);
 
-  const [clientesResposta, processosProtocolar, taxasHoje, docsGerar, entregasHoje, eventosHoje, pendenciasCriticas] =
+  const [clientesResposta, processosProtocolar, taxasHoje, docsGerar, entregasHoje, reunioesAgendadas, pendenciasCriticas] =
     await Promise.all([
       db
         .select({ n: count() })
@@ -324,7 +358,7 @@ async function ResumoDoDia({
       db
         .select({ n: count() })
         .from(agendaEventos)
-        .where(and(gte(agendaEventos.dataHora, hoje), lt(agendaEventos.dataHora, fimHoje), ne(agendaEventos.status, "cancelado"))),
+        .where(and(eq(agendaEventos.tipo, "compromisso"), gte(agendaEventos.dataHora, hoje), ne(agendaEventos.status, "cancelado"))),
       db
         .select({ n: count() })
         .from(pendencias)
@@ -337,7 +371,7 @@ async function ResumoDoDia({
     { rotulo: "Taxas vencendo hoje", valor: taxasHoje[0]?.n ?? 0, href: "/taxas?status=pendente" },
     { rotulo: "Documentos para gerar", valor: docsGerar[0]?.n ?? 0, href: "/processos?status=documentos_pendentes" },
     { rotulo: "Entregas programadas", valor: entregasHoje[0]?.n ?? 0, href: "/loja/entregas" },
-    { rotulo: "Eventos de hoje", valor: eventosHoje[0]?.n ?? 0, href: "/agenda" },
+    { rotulo: "Reuniões agendadas", valor: reunioesAgendadas[0]?.n ?? 0, href: "/agenda" },
     { rotulo: "Pendências críticas", valor: pendenciasCriticas[0]?.n ?? 0, href: "/pendencias" },
   ];
 

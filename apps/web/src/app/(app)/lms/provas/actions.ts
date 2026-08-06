@@ -3,8 +3,9 @@
 import { redirect } from "next/navigation";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { provas, questoes, opcoesQuestao, respostasAluno, tentativasProva } from "@/db/schema";
+import { provas, questoes, opcoesQuestao, respostasAluno, tentativasProva, certificados } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 type TipoQuestao = "escolha_unica" | "escolha_multipla" | "verdadeiro_falso" | "dissertativa" | "associacao";
@@ -260,6 +261,29 @@ export async function corrigirTentativa(provaId: string, tentativaId: string, fo
     .where(eq(tentativasProva.id, tentativaId));
 
   await registrarAuditoria("atualizar", "tentativa_prova", tentativaId, `Nota: ${notaObtida}%`);
+
+  // Aprovação gera automaticamente um certificado "para emitir" — a Central
+  // Operacional é alimentada sem trabalho manual.
+  const [provaInfo] = await db.select({ materiaId: provas.materiaId, notaMinima: provas.notaMinima }).from(provas).where(eq(provas.id, provaId)).limit(1);
+  const [tentativaInfo] = await db.select({ alunoId: tentativasProva.alunoId }).from(tentativasProva).where(eq(tentativasProva.id, tentativaId)).limit(1);
+  if (provaInfo && tentativaInfo && notaObtida >= (provaInfo.notaMinima ?? 60)) {
+    const jaExiste = await db
+      .select({ id: certificados.id })
+      .from(certificados)
+      .where(eq(certificados.tentativaId, tentativaId))
+      .limit(1);
+    if (jaExiste.length === 0) {
+      await db.insert(certificados).values({
+        alunoId: tentativaInfo.alunoId,
+        materiaId: provaInfo.materiaId,
+        provaId,
+        tentativaId,
+        origem: "auto",
+        criadoPorId: await idUsuarioEquipe(),
+      });
+      await registrarAuditoria("criar", "certificado", "", `auto — tentativa ${tentativaId}`);
+    }
+  }
 
   redirect(`/lms/provas/${provaId}/corrigir`);
 }

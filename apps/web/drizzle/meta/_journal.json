@@ -225,6 +225,20 @@
       "when": 1786025955238,
       "tag": "0031_naive_prima",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1786039209805,
+      "tag": "0032_clean_silverclaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1786041071211,
+      "tag": "0033_colorful_mandroid",
+      "breakpoints": true
     }
   ]
 }

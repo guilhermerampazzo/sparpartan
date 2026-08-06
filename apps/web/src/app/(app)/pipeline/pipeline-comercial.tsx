@@ -84,17 +84,22 @@ export async function PipelineComercial({ estagioDestacado }: { estagioDestacado
                   {itens.map((o) => {
                     const valorOrcamento = o.orcamentoValor ?? o.valorEstimado;
                     return (
-                      <div key={o.id} className="space-y-2 rounded-lg border border-outline-variant bg-surface p-3">
-                        {o.clienteId ? (
+                      <div
+                        key={o.id}
+                        className={`relative space-y-2 rounded-lg border border-outline-variant bg-surface p-3 transition-colors ${
+                          o.clienteId ? "cursor-pointer hover:border-primary" : ""
+                        }`}
+                      >
+                        {o.clienteId && (
                           <Link
                             href={`/clientes/${o.clienteId}`}
-                            className="block text-body-sm font-semibold text-primary hover:underline"
-                          >
-                            {o.clienteNome ?? o.titulo}
-                          </Link>
-                        ) : (
-                          <span className="block text-body-sm font-semibold text-primary">{o.titulo}</span>
+                            className="absolute inset-0 z-0 rounded-lg"
+                            aria-label={`Abrir o cadastro completo de ${o.clienteNome ?? o.titulo}`}
+                          />
                         )}
+                        <span className="block text-body-sm font-semibold text-primary">
+                          {o.clienteNome ?? o.titulo}
+                        </span>
                         <div className="space-y-1 text-body-sm text-outline">
                           {o.servicoSolicitado && <p className="text-primary">{o.servicoSolicitado}</p>}
                           {valorOrcamento && <p className="font-medium text-primary">{formatMoney(valorOrcamento)}</p>}
@@ -105,7 +110,7 @@ export async function PipelineComercial({ estagioDestacado }: { estagioDestacado
                           {o.proximaAcao && <p>Próxima ação: {o.proximaAcao}</p>}
                           <p className="text-[11px]">Situação: {coluna.label}</p>
                         </div>
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="relative z-10 flex items-center justify-between gap-2">
                           <Link
                             href={`/pipeline/${o.id}`}
                             className="text-[11px] text-outline hover:text-primary hover:underline"
@@ -114,12 +119,14 @@ export async function PipelineComercial({ estagioDestacado }: { estagioDestacado
                           </Link>
                           <span className="text-[11px] text-outline">atualizado {rotuloPrazo(o.atualizadoEm)}</span>
                         </div>
-                        <SeletorEstagio
-                          oportunidadeId={o.id}
-                          estagioAtual={o.estagio}
-                          estagios={colunas}
-                          action={moverEstagioNoQuadro}
-                        />
+                        <div className="relative z-10">
+                          <SeletorEstagio
+                            oportunidadeId={o.id}
+                            estagioAtual={o.estagio}
+                            estagios={colunas}
+                            action={moverEstagioNoQuadro}
+                          />
+                        </div>
                       </div>
                     );
                   })}

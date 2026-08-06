@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
-import { obras, clientes, engenheiros, obraFotos } from "@/db/schema";
+import { obras, clientes, engenheiros, obraFotos, obrasDocumentosTecnicos } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { BackButton, LinkButton, Button } from "@/components/ui";
+import { BackButton, LinkButton, Button, StatusBadge } from "@/components/ui";
 import { CadastradoPor } from "@/components/ui/cadastrado-por";
-import { enviarFotoObra, removerFotoObra } from "../actions";
+import { statusObra, statusDocumentoObra } from "@/lib/status";
+import { enviarFotoObra, removerFotoObra, atualizarStatusObra, registrarDocumentoTecnico, marcarDocumentoTecnicoEmitido } from "../actions";
 
 function Campo({ label, valor }: { label: string; valor: string | number | null }) {
   return (
@@ -37,6 +38,22 @@ export default async function ObraDetalhesPage({
   const fotos = await db.select().from(obraFotos).where(eq(obraFotos.obraId, id));
   const enviarFotoComId = enviarFotoObra.bind(null, id);
   const removerFotoComId = removerFotoObra.bind(null, id);
+  const atualizarStatusComId = atualizarStatusObra.bind(null, id);
+  const registrarTecnicoComId = registrarDocumentoTecnico.bind(null, id);
+
+  const documentosTecnicos = await db
+    .select()
+    .from(obrasDocumentosTecnicos)
+    .where(eq(obrasDocumentosTecnicos.obraId, id))
+    .orderBy(desc(obrasDocumentosTecnicos.criadoEm));
+
+  const marcarEmitidoComId = (docId: string) => marcarDocumentoTecnicoEmitido.bind(null, docId);
+
+  const STATUS_OBRAS = [
+    { key: "em_projeto", label: "Em Projeto" },
+    { key: "em_execucao", label: "Em Execução" },
+    { key: "concluida", label: "Concluída" },
+  ] as const;
 
   return (
     <div className="space-y-gutter">
@@ -133,6 +150,116 @@ export default async function ObraDetalhesPage({
           <Campo label="Coletes" valor={obra.coletes} />
           <Campo label="Boias" valor={obra.boias} />
         </dl>
+      </SectionCard>
+
+      <SectionCard title="Andamento da Obra">
+        <div className="mb-4">
+          <StatusBadge status={statusObra(obra.status)} />
+        </div>
+        {obra.status !== "cancelada" && (
+          <form action={atualizarStatusComId} className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+                Mudar fase
+              </span>
+              <select
+                name="status"
+                defaultValue={obra.status}
+                className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+              >
+                {STATUS_OBRAS.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
+                {obra.status !== "concluida" && <option value="cancelada">Cancelada</option>}
+              </select>
+            </label>
+            <Button type="submit" variant="outlined" size="sm">
+              Salvar Fase
+            </Button>
+          </form>
+        )}
+      </SectionCard>
+
+      <SectionCard title={`Laudos e ARTs (${documentosTecnicos.length})`}>
+        <p className="mb-4 text-body-sm text-outline">
+          Registre laudos técnicos e ARTs (CREA) da obra. Enquanto não forem emitidos, eles
+          aparecem como pendentes na Central Operacional.
+        </p>
+        <form action={registrarTecnicoComId} className="mb-6 grid grid-cols-1 gap-4 rounded-lg border border-outline-variant bg-surface-container-lowest p-4 sm:grid-cols-4">
+          <label className="flex flex-col gap-1">
+            <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">Tipo</span>
+            <select
+              name="tipo"
+              className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+            >
+              <option value="laudo">Laudo</option>
+              <option value="art">ART</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 sm:col-span-2">
+            <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">Descrição</span>
+            <input
+              name="descricao"
+              required
+              placeholder="Ex.: Laudo de vistoria estrutural"
+              className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">Arquivo (opcional)</span>
+            <input
+              name="arquivo"
+              type="file"
+              accept=".pdf,.doc,.docx,image/*"
+              className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+            />
+          </label>
+          <div className="sm:col-span-4">
+            <Button type="submit" variant="outlined" size="sm">
+              + Registrar
+            </Button>
+          </div>
+        </form>
+        {documentosTecnicos.length === 0 ? (
+          <p className="text-body-sm text-outline">Nenhum laudo ou ART registrado.</p>
+        ) : (
+          <ul className="divide-y divide-outline-variant rounded-lg border border-outline-variant">
+            {documentosTecnicos.map((doc) => (
+              <li key={doc.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div>
+                  <p className="text-body-md text-primary">
+                    {doc.tipo === "laudo" ? "Laudo" : "ART"} — {doc.descricao}
+                  </p>
+                  <p className="text-body-sm text-outline">
+                    {new Date(doc.criadoEm).toLocaleDateString("pt-BR")}
+                    {doc.arquivoCaminho && (
+                      <a
+                        href={`/api/obras/${doc.obraId}/tecnicos/${doc.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ml-2 text-primary hover:underline"
+                      >
+                        Abrir arquivo
+                      </a>
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={statusDocumentoObra(doc.status)} size="sm" />
+                  {doc.status === "pendente" && (
+                    <form action={marcarEmitidoComId(doc.id)}>
+                      <Button type="submit" variant="outlined" size="sm">
+                        Marcar Emitido
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </SectionCard>
 
       <SectionCard title={`Fotos da Obra (${fotos.length})`}>
