@@ -1,24 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { Moon, Sun } from "lucide-react";
+import { useTema } from "./theme-provider";
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(
-    () => typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark"
-  );
-
-  function alternar() {
-    const proximo = dark ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", proximo);
-    localStorage.setItem("theme", proximo);
-    setDark(!dark);
-  }
+  const { tema, alternarTema } = useTema();
+  const dark = tema === "dark";
 
   return (
     <button
       type="button"
-      onClick={alternar}
+      onClick={alternarTema}
       aria-label={dark ? "Mudar para tema claro" : "Mudar para tema escuro"}
       className="rounded-pill p-2 text-on-surface-variant hover:bg-surface-container-low"
     >

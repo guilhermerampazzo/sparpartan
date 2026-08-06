@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Manrope, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
+import { ThemeProvider } from "@/components/theme-provider";
 import { SwRegister } from "@/components/sw-register";
+import { obterTemaServidor } from "@/lib/tema";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -32,14 +34,17 @@ export const viewport = {
   themeColor: "#002b5b",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const tema = await obterTemaServidor();
+
   return (
     <html
       lang="pt-BR"
+      data-theme={tema}
       className={`${manrope.variable} ${hankenGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -47,7 +52,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="min-h-full flex flex-col">
-        {children}
+        <ThemeProvider temaInicial={tema}>{children}</ThemeProvider>
         <SwRegister />
       </body>
     </html>
