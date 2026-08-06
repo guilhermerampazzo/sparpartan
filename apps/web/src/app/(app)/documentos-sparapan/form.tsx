@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
 import { SubmitButton, FormError } from "@/components/ui";
 import { criarArquivoEmpresa } from "./actions";
+import { ARQUIVOS_EMPRESA_CATEGORIAS } from "@/lib/arquivos-empresa";
 
 export function NovoArquivoEmpresaForm() {
   const [estado, formAction] = useActionState(criarArquivoEmpresa, null);
@@ -21,18 +22,17 @@ export function NovoArquivoEmpresaForm() {
           defaultValue={v("categoria")}
           options={[
             { value: "", label: "Selecione..." },
-            { value: "seguro", label: "Seguro" },
-            { value: "embarcacao", label: "Dados de Embarcação" },
-            { value: "memorial", label: "Memorial/Fluxograma de Processo" },
-            { value: "empresa", label: "Dados da Empresa" },
+            ...ARQUIVOS_EMPRESA_CATEGORIAS.map((c) => ({ value: c.value, label: c.label })),
           ]}
         />
         <label className="flex flex-col gap-1 sm:col-span-2">
-          <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">Arquivo (PDF)</span>
+          <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+            Arquivo (PDF, JPG ou PNG)
+          </span>
           <input
             name="arquivo"
             type="file"
-            accept=".pdf"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
             required
             className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
           />

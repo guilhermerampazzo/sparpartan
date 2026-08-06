@@ -1,0 +1,1 @@
+ALTER TABLE "alunos" ADD COLUMN "cidade" text;

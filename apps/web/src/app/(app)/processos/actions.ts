@@ -23,6 +23,7 @@ import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 import { validarArquivo } from "@/lib/upload";
 import { hojeMais } from "@/lib/pendencias";
 import { criarPendencias } from "@/lib/pendencias-db";
+import { registrarNoChat } from "@/lib/chat-sistema";
 
 function uploadsDir() {
   return process.env.UPLOADS_DIR ?? "./data/uploads";
@@ -196,6 +197,20 @@ export async function protocolarProcesso(processoId: string, formData: FormData)
   await registrarAuditoria("atualizar", "processo", processoId, `protocolado sob nº ${numeroProtocolo}`);
 
   await notificarClienteProtocolo(processoId, numeroProtocolo);
+
+  const [clienteDoProcesso] = await db
+    .select({ nome: clientes.nome })
+    .from(clientes)
+    .where(eq(clientes.id, processo.clienteId))
+    .limit(1);
+  const [servicoDoProcesso] = await db
+    .select({ nome: servicos.nome })
+    .from(servicos)
+    .where(eq(servicos.id, processo.servicoId))
+    .limit(1);
+  await registrarNoChat(
+    `Processo protocolado — nº ${numeroProtocolo} (${servicoDoProcesso?.nome ?? "serviço"} de ${clienteDoProcesso?.nome ?? "cliente"}).`
+  );
 
   redirect(`/processos/${processoId}`);
 }

@@ -1,5 +1,5 @@
-import { desc, eq, sql } from "drizzle-orm";
-import { Landmark, Download, Trash2, Eye } from "lucide-react";
+import { desc, eq, sql, and, lte, gte, isNotNull } from "drizzle-orm";
+import { Landmark, Download, Trash2, Eye, AlarmClockOff, CalendarClock, CircleCheckBig } from "lucide-react";
 import { db } from "@/db";
 import { taxasPagar, clientes, processos, servicos } from "@/db/schema";
 import { StatCard, Button, LinkButton, Badge, EmptyState, DataTable, ConfirmButton, type Column } from "@/components/ui";
@@ -38,6 +38,24 @@ export default async function TaxasPage({
     .select({ totalPendente: sql<number>`coalesce(sum(${taxasPagar.valor}), 0)::float` })
     .from(taxasPagar)
     .where(eq(taxasPagar.status, "pendente"));
+
+  const hojeStr = new Date().toISOString().slice(0, 10);
+  const inicioMes = hojeStr.slice(0, 8) + "01";
+
+  const [[{ vencemHoje }], [{ atrasadas }], [{ pagasNoMes }]] = await Promise.all([
+    db
+      .select({ vencemHoje: sql<number>`count(*)::int` })
+      .from(taxasPagar)
+      .where(and(eq(taxasPagar.status, "pendente"), eq(taxasPagar.vencimento, hojeStr))),
+    db
+      .select({ atrasadas: sql<number>`count(*)::int` })
+      .from(taxasPagar)
+      .where(and(eq(taxasPagar.status, "pendente"), isNotNull(taxasPagar.vencimento), lte(taxasPagar.vencimento, hojeStr))),
+    db
+      .select({ pagasNoMes: sql<number>`count(*)::int` })
+      .from(taxasPagar)
+      .where(and(eq(taxasPagar.status, "pago"), isNotNull(taxasPagar.pagoEm), gte(sql`${taxasPagar.pagoEm}::date`, inicioMes))),
+  ]);
 
   const lista = await db
     .select({
@@ -135,7 +153,12 @@ export default async function TaxasPage({
         <LinkButton href="/taxas/novo">+ Nova Taxa</LinkButton>
       </div>
 
-      <StatCard label="Total pendente" value={formatMoney(totalPendente)} icon={Landmark} tone="warning" />
+      <div className="grid grid-cols-2 gap-gutter lg:grid-cols-4">
+        <StatCard label="Total pendente" value={formatMoney(totalPendente)} icon={Landmark} tone="warning" href="/taxas?status=pendente" />
+        <StatCard label="Vencem hoje" value={vencemHoje} icon={CalendarClock} tone={vencemHoje > 0 ? "danger" : "success"} href="/taxas?status=pendente" />
+        <StatCard label="Atrasadas" value={atrasadas} icon={AlarmClockOff} tone={atrasadas > 0 ? "danger" : "success"} href="/taxas?status=pendente" />
+        <StatCard label="Pagas no mês" value={pagasNoMes} icon={CircleCheckBig} tone="success" href="/taxas?status=pago" />
+      </div>
 
       <div className="flex gap-2">
         <LinkButton href="/taxas" variant={!statusValido ? "filled" : "outlined"} size="sm">

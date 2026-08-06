@@ -1,6 +1,7 @@
-import { desc, eq, or, ilike, count, and } from "drizzle-orm";
-import { FileText } from "lucide-react";
+import { notFound } from "next/navigation";
 import Link from "next/link";
+import { desc, eq, inArray, or, ilike, count, and } from "drizzle-orm";
+import { FileText, HardHat } from "lucide-react";
 import { db } from "@/db";
 import { modelosDocumento, documentosGerados, clientes } from "@/db/schema";
 import {
@@ -11,30 +12,49 @@ import {
   Pagination,
   paginar,
   Button,
+  BackButton,
 } from "@/components/ui";
 import { CampoSelect } from "@/components/ui/form-field";
 import { statusDocumento } from "@/lib/status";
-import { MODULOS_DOCUMENTO } from "@/lib/documentos-modulos";
+import { moduloPorSlug } from "@/lib/documentos-modulos";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export default async function DocumentosPage({
+export default async function ModuloDocumentosPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ q?: string; page?: string; clienteId?: string }>;
 }) {
+  const { slug } = await params;
+  const modulo = moduloPorSlug(slug);
+  if (!modulo) notFound();
+
   const { q, page, clienteId } = await searchParams;
   const clienteFiltro = clienteId && UUID_RE.test(clienteId) ? clienteId : undefined;
+
+  const modelos = await db
+    .select()
+    .from(modelosDocumento)
+    .where(and(eq(modelosDocumento.ativo, true), inArray(modelosDocumento.categoria, modulo.categorias)))
+    .orderBy(modelosDocumento.nome);
+
+  const modeloIds = modelos.map((m) => m.id);
 
   const listaClientes = await db
     .select({ id: clientes.id, nome: clientes.nome })
     .from(clientes)
     .orderBy(clientes.nome);
 
-  const filtroGerados = and(
-    q ? or(ilike(clientes.nome, `%${q}%`), ilike(modelosDocumento.nome, `%${q}%`)) : undefined,
-    clienteFiltro ? eq(documentosGerados.clienteId, clienteFiltro) : undefined
-  );
+  const filtroGerados =
+    modeloIds.length > 0
+      ? and(
+          inArray(documentosGerados.modeloId, modeloIds),
+          q ? or(ilike(clientes.nome, `%${q}%`), ilike(modelosDocumento.nome, `%${q}%`)) : undefined,
+          clienteFiltro ? eq(documentosGerados.clienteId, clienteFiltro) : undefined
+        )
+      : undefined;
 
   const [{ total }] = await db
     .select({ total: count() })
@@ -45,22 +65,25 @@ export default async function DocumentosPage({
 
   const { limit, offset, paginaAtual, totalPaginas } = paginar(Number(page) || 1, total);
 
-  const gerados = await db
-    .select({
-      id: documentosGerados.id,
-      criadoEm: documentosGerados.criadoEm,
-      status: documentosGerados.status,
-      modeloNome: modelosDocumento.nome,
-      clienteNome: clientes.nome,
-      pdfCaminho: documentosGerados.pdfCaminho,
-    })
-    .from(documentosGerados)
-    .innerJoin(modelosDocumento, eq(documentosGerados.modeloId, modelosDocumento.id))
-    .innerJoin(clientes, eq(documentosGerados.clienteId, clientes.id))
-    .where(filtroGerados)
-    .orderBy(desc(documentosGerados.criadoEm))
-    .limit(limit)
-    .offset(offset);
+  const gerados =
+    modeloIds.length > 0
+      ? await db
+          .select({
+            id: documentosGerados.id,
+            criadoEm: documentosGerados.criadoEm,
+            status: documentosGerados.status,
+            modeloNome: modelosDocumento.nome,
+            clienteNome: clientes.nome,
+            pdfCaminho: documentosGerados.pdfCaminho,
+          })
+          .from(documentosGerados)
+          .innerJoin(modelosDocumento, eq(documentosGerados.modeloId, modelosDocumento.id))
+          .innerJoin(clientes, eq(documentosGerados.clienteId, clientes.id))
+          .where(filtroGerados)
+          .orderBy(desc(documentosGerados.criadoEm))
+          .limit(limit)
+          .offset(offset)
+      : [];
 
   const porCliente = new Map<string, typeof gerados>();
   for (const doc of gerados) {
@@ -69,49 +92,78 @@ export default async function DocumentosPage({
     porCliente.set(doc.clienteNome, lista);
   }
 
+  const Icon = modulo.icon;
+
   return (
     <div className="space-y-gutter">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-headline-lg font-bold text-primary">Documentos</h1>
-        <div className="flex gap-3">
-          <LinkButton href="/documentos/vencimentos" variant="outlined" size="sm">
-            Vencimentos
-          </LinkButton>
-          <LinkButton href="/documentos/gerar">+ Gerar Documento</LinkButton>
+      <BackButton href="/documentos" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-headline-lg font-bold text-primary">{modulo.titulo}</h1>
+          <p className="max-w-2xl text-body-sm text-on-surface-variant">{modulo.descricao}</p>
         </div>
+        <LinkButton href="/documentos/gerar">+ Gerar Documento</LinkButton>
       </div>
 
-      <div>
-        <p className="mb-4 max-w-2xl text-body-md text-on-surface-variant">
-          Escolha o setor para ver somente os modelos daquela finalidade — cada módulo tem seus
-          próprios formulários, evitando erro de preenchimento.
-        </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {MODULOS_DOCUMENTO.map((modulo) => {
-            const Icon = modulo.icon;
-            return (
-              <Link
-                key={modulo.slug}
-                href={`/documentos/modulos/${modulo.slug}`}
-                className="group rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-card transition-shadow hover:shadow-card-hover"
-              >
-                <span className="mb-3 inline-flex rounded-pill bg-primary-container p-2.5 text-on-primary-container">
-                  <Icon size={18} />
-                </span>
-                <p className="font-display text-title-md font-semibold text-primary group-hover:underline">
-                  {modulo.titulo}
-                </p>
-                <p className="mt-1 text-body-sm text-on-surface-variant">{modulo.descricao}</p>
-              </Link>
-            );
-          })}
+      {modulo.slug === "obras-nauticas" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
+          <div>
+            <p className="font-mono-caps text-label-sm uppercase tracking-wide text-outline">
+              Cadastro técnico de obras
+            </p>
+            <p className="mt-1 text-body-sm text-on-surface-variant">
+              Antes de gerar o Memorial Descritivo, cadastre a obra (ponto A–D, materiais, calados) e o
+              responsável técnico.
+            </p>
+          </div>
+          <LinkButton href="/obras" variant="outlined" icon={HardHat}>
+            Cadastro de Obras
+          </LinkButton>
         </div>
+      )}
+
+      <div className="rounded-xl border border-outline-variant bg-surface-container-lowest">
+        <div className="border-b border-outline-variant px-4 py-3">
+          <h2 className="font-display text-title-md font-semibold text-primary">
+            Modelos deste setor ({modelos.length})
+          </h2>
+        </div>
+        {modelos.length === 0 ? (
+          <div className="p-4">
+            <EmptyState
+              icon={FileText}
+              title="Nenhum modelo cadastrado neste módulo"
+              description="Importe o formulário (.docx) em Configurações → Modelos para ele aparecer aqui."
+            />
+          </div>
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {modelos.map((modelo) => (
+              <li key={modelo.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-body-md text-primary">
+                    <Icon size={14} />
+                    <span className="font-medium">{modelo.nome}</span>
+                  </p>
+                  <p className="mt-0.5 text-body-sm text-outline">
+                    {[modelo.norma, modelo.campos.length > 0 && `${modelo.campos.length} campos`, modelo.duasVias && "2 vias"]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+                <LinkButton href={`/documentos/gerar?modeloId=${modelo.id}`} variant="outlined" size="sm">
+                  Gerar
+                </LinkButton>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-title-lg font-semibold text-primary">
-            Documentos Gerados
+            Documentos gerados deste setor
           </h2>
           <div className="flex flex-wrap items-end gap-2">
             <form method="get" className="flex items-end gap-2">
@@ -130,17 +182,24 @@ export default async function DocumentosPage({
                 Filtrar
               </Button>
               {clienteFiltro && (
-                <LinkButton href="/documentos" variant="text" size="sm">
+                <LinkButton href={`/documentos/modulos/${slug}`} variant="text" size="sm">
                   Limpar
                 </LinkButton>
               )}
             </form>
-            <SearchBox placeholder="Buscar por cliente ou modelo..." valorAtual={q} hiddenParams={{ clienteId: clienteFiltro }} />
+            <SearchBox
+              placeholder="Buscar por cliente ou modelo..."
+              valorAtual={q}
+              hiddenParams={{ clienteId: clienteFiltro }}
+            />
           </div>
         </div>
 
         {gerados.length === 0 ? (
-          <EmptyState icon={FileText} title={q || clienteFiltro ? "Nenhum documento encontrado" : "Nenhum documento gerado ainda"} />
+          <EmptyState
+            icon={FileText}
+            title={q || clienteFiltro ? "Nenhum documento encontrado" : "Nenhum documento gerado ainda neste setor"}
+          />
         ) : (
           <div className="space-y-6">
             {[...porCliente.entries()].map(([clienteNome, docs]) => {
@@ -166,7 +225,7 @@ export default async function DocumentosPage({
                           ) : (
                             <span className="size-4 shrink-0" />
                           )}
-                          <a
+                          <Link
                             href={`/documentos/${doc.id}`}
                             className="flex flex-1 items-center justify-between gap-4"
                           >
@@ -177,7 +236,7 @@ export default async function DocumentosPage({
                               </span>
                               <StatusBadge status={statusDocumento(doc.status)} size="sm" />
                             </div>
-                          </a>
+                          </Link>
                         </li>
                       ))}
                     </ul>
@@ -198,7 +257,12 @@ export default async function DocumentosPage({
           </div>
         )}
 
-        <Pagination paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalRegistros={total} baseParams={{ q, clienteId: clienteFiltro }} />
+        <Pagination
+          paginaAtual={paginaAtual}
+          totalPaginas={totalPaginas}
+          totalRegistros={total}
+          baseParams={{ q, clienteId: clienteFiltro }}
+        />
       </div>
     </div>
   );

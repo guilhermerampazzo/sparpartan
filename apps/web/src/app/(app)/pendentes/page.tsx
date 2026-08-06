@@ -102,9 +102,14 @@ export default async function PendentesPage() {
         ) : (
           <ul className="space-y-2">
             {pagamentosAtrasados.map((p) => (
-              <li key={p.id} className="flex items-center justify-between rounded-lg border border-outline-variant px-4 py-3">
-                <span className="text-body-md text-primary">{p.clienteNome} — {formatMoney(p.valor)}</span>
-                <span className="text-body-sm text-outline">venceu em {p.dataVencimento}</span>
+              <li key={p.id} className="flex items-center justify-between gap-4 rounded-lg border border-outline-variant px-4 py-3">
+                <div>
+                  <span className="text-body-md text-primary">{p.clienteNome} — {formatMoney(p.valor)}</span>
+                  <p className="text-body-sm text-outline">venceu em {p.dataVencimento}</p>
+                </div>
+                <Link href="/vendas" className="shrink-0 text-body-sm text-primary hover:underline">
+                  Registrar pagamento →
+                </Link>
               </li>
             ))}
           </ul>

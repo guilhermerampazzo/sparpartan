@@ -1,16 +1,20 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, desc } from "drizzle-orm";
 import { db } from "@/db";
-import { embarcacoes, motores, aquisicoes, salvatagemItens, clientes, embarcacaoFotos } from "@/db/schema";
-import { Trash2 } from "lucide-react";
+import { embarcacoes, motores, aquisicoes, salvatagemItens, clientes, embarcacaoFotos, processos, servicos, documentosGerados, modelosDocumento, orcamentos, arquivos } from "@/db/schema";
+import { Trash2, FileText, FileStack, Receipt, FolderOpen } from "lucide-react";
 import { Campo, SectionCard } from "@/components/ui/form-field";
-import { StatusBadge, Button, Badge, LinkButton, BackButton, ConfirmButton } from "@/components/ui";
+import { StatusBadge, Button, Badge, LinkButton, BackButton, ConfirmButton, EmptyState } from "@/components/ui";
 import { CadastradoPor } from "@/components/ui/cadastrado-por";
-import { urgenciaVencimento, infoUrgencia } from "@/lib/status";
+import { urgenciaVencimento, infoUrgencia, statusDocumento, statusOrcamento, statusProcesso } from "@/lib/status";
 import { adicionarItemSalvatagem } from "./actions";
 import { excluirEmbarcacao, enviarFotoEmbarcacao, removerFotoEmbarcacao } from "../actions";
+
+function formatMoney(v: string | number | null) {
+  return Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
 export default async function EmbarcacaoDetalhesPage({
   params,
@@ -48,6 +52,44 @@ export default async function EmbarcacaoDetalhesPage({
     .select()
     .from(embarcacaoFotos)
     .where(eq(embarcacaoFotos.embarcacaoId, id));
+
+  const processosDaEmbarcacao = await db
+    .select({
+      id: processos.id,
+      status: processos.status,
+      servicoNome: servicos.nome,
+      numeroProtocolo: processos.numeroProtocolo,
+      criadoEm: processos.criadoEm,
+    })
+    .from(processos)
+    .innerJoin(servicos, eq(processos.servicoId, servicos.id))
+    .where(and(eq(processos.embarcacaoId, id), isNull(processos.excluidoEm)))
+    .orderBy(desc(processos.criadoEm));
+
+  const documentosDaEmbarcacao = await db
+    .select({
+      id: documentosGerados.id,
+      criadoEm: documentosGerados.criadoEm,
+      modeloNome: modelosDocumento.nome,
+      status: documentosGerados.status,
+      vencimento: documentosGerados.vencimento,
+    })
+    .from(documentosGerados)
+    .innerJoin(modelosDocumento, eq(documentosGerados.modeloId, modelosDocumento.id))
+    .where(eq(documentosGerados.embarcacaoId, id))
+    .orderBy(desc(documentosGerados.criadoEm));
+
+  const orcamentosDaEmbarcacao = await db
+    .select()
+    .from(orcamentos)
+    .where(and(eq(orcamentos.embarcacaoId, id), isNull(orcamentos.excluidoEm)))
+    .orderBy(desc(orcamentos.criadoEm));
+
+  const arquivosDaEmbarcacao = await db
+    .select()
+    .from(arquivos)
+    .where(eq(arquivos.embarcacaoId, id))
+    .orderBy(desc(arquivos.criadoEm));
 
   const adicionarItemComId = adicionarItemSalvatagem.bind(null, id);
   const excluirComId = excluirEmbarcacao.bind(null, id);
@@ -222,6 +264,117 @@ export default async function EmbarcacaoDetalhesPage({
             <Button type="submit">Adicionar Item</Button>
           </div>
         </form>
+      </SectionCard>
+
+      <SectionCard title={`Processos e Serviços (${processosDaEmbarcacao.length})`}>
+        {processosDaEmbarcacao.length === 0 ? (
+          <EmptyState icon={FileStack} title="Nenhum processo vinculado a esta embarcação ainda" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {processosDaEmbarcacao.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 py-2">
+                <Link
+                  href={`/processos/${p.id}`}
+                  className="min-w-0 flex-1 truncate text-body-md text-primary hover:underline"
+                >
+                  {p.servicoNome}
+                  {p.numeroProtocolo ? ` — protocolo ${p.numeroProtocolo}` : ""}
+                </Link>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-body-sm text-outline">
+                    {new Date(p.criadoEm).toLocaleDateString("pt-BR")}
+                  </span>
+                  <StatusBadge status={statusProcesso(p.status)} size="sm" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3">
+          <LinkButton href={`/processos/novo?clienteId=${embarcacao.clienteId}`} variant="outlined" size="sm">
+            + Novo Processo
+          </LinkButton>
+        </div>
+      </SectionCard>
+
+      <SectionCard title={`Documentos Gerados (${documentosDaEmbarcacao.length})`}>
+        {documentosDaEmbarcacao.length === 0 ? (
+          <EmptyState icon={FileText} title="Nenhum documento gerado para esta embarcação ainda" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {documentosDaEmbarcacao.map((d) => (
+              <li key={d.id} className="flex items-center justify-between gap-3 py-2">
+                <Link
+                  href={`/documentos/${d.id}`}
+                  className="min-w-0 flex-1 truncate text-body-md text-primary hover:underline"
+                >
+                  {d.modeloNome}
+                </Link>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-body-sm text-outline">
+                    {new Date(d.criadoEm).toLocaleDateString("pt-BR")}
+                  </span>
+                  <StatusBadge status={statusDocumento(d.status)} size="sm" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      <SectionCard title={`Orçamentos e Financeiro (${orcamentosDaEmbarcacao.length})`}>
+        {orcamentosDaEmbarcacao.length === 0 ? (
+          <EmptyState icon={Receipt} title="Nenhum orçamento vinculado a esta embarcação ainda" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {orcamentosDaEmbarcacao.map((o) => (
+              <li key={o.id} className="flex items-center justify-between gap-3 py-2">
+                <Link
+                  href={`/orcamentos/${o.id}`}
+                  className="min-w-0 flex-1 truncate text-body-md text-primary hover:underline"
+                >
+                  {o.numero} — {formatMoney(o.valor)}
+                </Link>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-body-sm text-outline">
+                    {o.criadoEm.toLocaleDateString("pt-BR")}
+                  </span>
+                  <StatusBadge status={statusOrcamento(o.status)} size="sm" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      <SectionCard title={`Arquivos vinculados (${arquivosDaEmbarcacao.length})`}>
+        {arquivosDaEmbarcacao.length === 0 ? (
+          <EmptyState icon={FolderOpen} title="Nenhum arquivo vinculado a esta embarcação ainda" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {arquivosDaEmbarcacao.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 py-2">
+                <span className="min-w-0 flex-1 truncate text-body-md text-primary">
+                  <span className="font-mono-caps text-label-sm uppercase text-outline">{a.tipo}</span>{" "}
+                  — {a.nomeOriginal}
+                </span>
+                <div className="flex shrink-0 gap-3">
+                  <a
+                    href={`/api/arquivos/${a.id}?inline=1`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-body-sm text-primary hover:underline"
+                  >
+                    Abrir
+                  </a>
+                  <a href={`/api/arquivos/${a.id}`} className="text-body-sm text-primary hover:underline">
+                    Baixar
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </SectionCard>
 
       <SectionCard title={`Fotos da Embarcação (${fotosDaEmbarcacao.length})`}>

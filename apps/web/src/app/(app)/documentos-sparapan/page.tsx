@@ -1,17 +1,12 @@
 import { desc } from "drizzle-orm";
-import { BookMarked, Download } from "lucide-react";
+import { BookMarked, Download, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { arquivosEmpresa } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { EmptyState } from "@/components/ui";
+import { ConfirmButton, EmptyState } from "@/components/ui";
 import { NovoArquivoEmpresaForm } from "./form";
-
-const CATEGORIA_LABEL: Record<string, string> = {
-  seguro: "Seguro",
-  embarcacao: "Dados de Embarcação",
-  memorial: "Memorial/Fluxograma",
-  empresa: "Dados da Empresa",
-};
+import { excluirArquivoEmpresa } from "./actions";
+import { rotuloCategoriaArquivoEmpresa } from "@/lib/arquivos-empresa";
 
 export default async function DocumentosSparapanPage() {
   const lista = await db.select().from(arquivosEmpresa).orderBy(desc(arquivosEmpresa.criadoEm));
@@ -27,8 +22,8 @@ export default async function DocumentosSparapanPage() {
     <div className="space-y-gutter">
       <h1 className="font-display text-headline-lg font-bold text-primary">Documentos Sparapan</h1>
       <p className="max-w-2xl text-body-sm text-outline">
-        Repositório institucional: dados de embarcações, seguros, dados da empresa e memoriais/
-        fluxogramas de como funciona cada processo, passo a passo — para consulta rápida da equipe.
+        Repositório interno da empresa: notas fiscais, contratos assinados, documentos de
+        colaboradores, terceirizações, seguros, dados de embarcações e memoriais de processo.
       </p>
 
       <NovoArquivoEmpresaForm />
@@ -37,20 +32,31 @@ export default async function DocumentosSparapanPage() {
         <EmptyState icon={BookMarked} title="Nenhum documento cadastrado ainda" />
       ) : (
         [...porCategoria.entries()].map(([categoria, itens]) => (
-          <SectionCard key={categoria} title={CATEGORIA_LABEL[categoria] ?? categoria}>
+          <SectionCard key={categoria} title={rotuloCategoriaArquivoEmpresa(categoria)}>
             <ul className="space-y-2">
               {itens.map((item) => (
                 <li key={item.id} className="flex items-center justify-between rounded-lg border border-outline-variant px-4 py-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-body-md text-primary">{item.titulo}</p>
                     {item.descricao && <p className="text-body-sm text-outline">{item.descricao}</p>}
                   </div>
-                  <a
-                    href={`/api/documentos-sparapan/${item.id}`}
-                    className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
-                  >
-                    <Download size={12} /> Baixar
-                  </a>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <a
+                      href={`/api/documentos-sparapan/${item.id}`}
+                      className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
+                    >
+                      <Download size={12} /> Baixar
+                    </a>
+                    <form action={excluirArquivoEmpresa.bind(null, item.id)}>
+                      <ConfirmButton
+                        mensagem={`Excluir "${item.titulo}"? O arquivo também será removido.`}
+                        variant="text"
+                        icon={<Trash2 size={12} />}
+                      >
+                        Excluir
+                      </ConfirmButton>
+                    </form>
+                  </div>
                 </li>
               ))}
             </ul>

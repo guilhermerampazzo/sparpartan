@@ -35,6 +35,7 @@ export async function criarAluno(
   const nome = String(formData.get("nome") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const telefone = String(formData.get("telefone") ?? "").trim();
+  const cidade = String(formData.get("cidade") ?? "").trim();
   const valores = valoresDoFormData(formData);
 
   const erro = new Validador()
@@ -56,6 +57,7 @@ export async function criarAluno(
       email,
       senhaHash,
       telefone: telefone || null,
+      cidade: cidade || null,
     })
     .returning({ id: alunos.id });
 
@@ -84,11 +86,12 @@ export async function criarAluno(
 
 export async function atualizarAluno(alunoId: string, formData: FormData) {
   const telefone = String(formData.get("telefone") ?? "").trim();
+  const cidade = String(formData.get("cidade") ?? "").trim();
   const ativo = formData.get("ativo") === "on";
 
   await db
     .update(alunos)
-    .set({ telefone: telefone || null, ativo })
+    .set({ telefone: telefone || null, cidade: cidade || null, ativo })
     .where(eq(alunos.id, alunoId));
 
   await registrarAuditoria("atualizar", "aluno", alunoId);

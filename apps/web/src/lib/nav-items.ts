@@ -22,6 +22,8 @@ import {
   MessageSquare,
   Kanban,
   Store,
+  Ship,
+  Anchor,
 } from "lucide-react";
 
 export type NavItem = {
@@ -42,10 +44,20 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/pendencias", label: "Central de Pendências", icon: AlarmClock },
   { href: "/chat", label: "Chat da Equipe", icon: MessageSquare },
   { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/obras", label: "Obras", icon: HardHat },
   { href: "/processos", label: "Processos", icon: FileStack },
   { href: "/pendentes", label: "Pendentes", icon: Clock },
-  { href: "/documentos", label: "Documentos", icon: FileText },
+  {
+    href: "/documentos",
+    label: "Documentos",
+    icon: FileText,
+    children: [
+      { href: "/documentos/modulos/escola-nautica", label: "Escola Náutica", icon: GraduationCap },
+      { href: "/documentos/modulos/esporte-recreio", label: "Esporte e Recreio", icon: Ship },
+      { href: "/documentos/modulos/comerciais", label: "Comerciais", icon: Anchor },
+      { href: "/documentos/modulos/obras-nauticas", label: "Obras Náuticas", icon: HardHat },
+      { href: "/obras", label: "Cadastro de Obras", icon: HardHat },
+    ],
+  },
   { href: "/servicos", label: "Serviços", icon: Wrench },
   { href: "/arquivos", label: "Arquivos", icon: Folder },
   { href: "/documentos-sparapan", label: "Documentos Sparapan", icon: BookMarked },

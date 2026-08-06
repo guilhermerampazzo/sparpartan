@@ -1,4 +1,4 @@
-import { asc, eq, gte, and, inArray, isNotNull } from "drizzle-orm";
+import { asc, eq, gte, and, inArray, isNotNull, ne } from "drizzle-orm";
 import { ChevronLeft, ChevronRight, CalendarClock, Landmark, Eye, Trash2, FileDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
@@ -71,6 +71,24 @@ export default async function AgendaPage({
   const { inicio, fim, celulas } = gradeDoMes(mesRef);
   const itens = await buscarItensCalendario(inicio, fim, fontesAtivas, mostrarValores);
 
+  const inicioHoje = new Date();
+  inicioHoje.setHours(0, 0, 0, 0);
+
+  const proximosEventos = await db
+    .select({
+      id: agendaEventos.id,
+      titulo: agendaEventos.titulo,
+      dataHora: agendaEventos.dataHora,
+      tipo: agendaEventos.tipo,
+      status: agendaEventos.status,
+      clienteNome: clientes.nome,
+    })
+    .from(agendaEventos)
+    .leftJoin(clientes, eq(agendaEventos.clienteId, clientes.id))
+    .where(and(gte(agendaEventos.dataHora, inicioHoje), ne(agendaEventos.status, "cancelado")))
+    .orderBy(asc(agendaEventos.dataHora))
+    .limit(10);
+
   const mesAnterior = new Date(mesRef.getFullYear(), mesRef.getMonth() - 1, 1);
   const mesSeguinte = new Date(mesRef.getFullYear(), mesRef.getMonth() + 1, 1);
   const mesAnteriorStr = `${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth() + 1).padStart(2, "0")}`;
@@ -88,46 +106,129 @@ export default async function AgendaPage({
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border border-outline-variant bg-surface-container-lowest p-3">
-        <Link
-          href={montarUrl(mesAnteriorStr, fontesAtivas)}
-          className="flex items-center gap-1 rounded-lg border border-outline-variant px-3 py-1.5 text-body-sm hover:bg-surface-container-low"
-        >
-          <ChevronLeft size={14} /> Anterior
-        </Link>
-        <span className="font-display text-title-lg font-semibold text-primary">
-          {NOMES_MES[mesRef.getMonth()]} {mesRef.getFullYear()}
-        </span>
-        <Link
-          href={montarUrl(mesSeguinteStr, fontesAtivas)}
-          className="flex items-center gap-1 rounded-lg border border-outline-variant px-3 py-1.5 text-body-sm hover:bg-surface-container-low"
-        >
-          Próximo <ChevronRight size={14} />
-        </Link>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {TODAS_FONTES.map((tipo) => {
-          const ativa = fontesAtivas.includes(tipo);
-          const novasFontes = ativa ? fontesAtivas.filter((f) => f !== tipo) : [...fontesAtivas, tipo];
-          const info = fonteCalendario(tipo);
-          return (
-            <Link key={tipo} href={montarUrl(mesStr, novasFontes)}>
-              <Badge tone={ativa ? info.tone : "neutral"} icon={info.icon} size="sm">
-                {info.label}
-              </Badge>
+      <div className="grid grid-cols-1 items-start gap-gutter lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <div className="space-y-gutter">
+          <div className="flex items-center justify-between rounded-xl border border-outline-variant bg-surface-container-lowest p-3">
+            <Link
+              href={montarUrl(mesAnteriorStr, fontesAtivas)}
+              className="flex items-center gap-1 rounded-lg border border-outline-variant px-3 py-1.5 text-body-sm hover:bg-surface-container-low"
+            >
+              <ChevronLeft size={14} /> Anterior
             </Link>
-          );
-        })}
-      </div>
+            <span className="font-display text-title-lg font-semibold text-primary">
+              {NOMES_MES[mesRef.getMonth()]} {mesRef.getFullYear()}
+            </span>
+            <Link
+              href={montarUrl(mesSeguinteStr, fontesAtivas)}
+              className="flex items-center gap-1 rounded-lg border border-outline-variant px-3 py-1.5 text-body-sm hover:bg-surface-container-low"
+            >
+              Próximo <ChevronRight size={14} />
+            </Link>
+          </div>
 
-      <CalendarMonth celulas={celulas} itens={itens} />
+          <div className="flex flex-wrap gap-2">
+            {TODAS_FONTES.map((tipo) => {
+              const ativa = fontesAtivas.includes(tipo);
+              const novasFontes = ativa ? fontesAtivas.filter((f) => f !== tipo) : [...fontesAtivas, tipo];
+              const info = fonteCalendario(tipo);
+              return (
+                <Link key={tipo} href={montarUrl(mesStr, novasFontes)}>
+                  <Badge tone={ativa ? info.tone : "neutral"} icon={info.icon} size="sm">
+                    {info.label}
+                  </Badge>
+                </Link>
+              );
+            })}
+          </div>
+
+          <CalendarMonth celulas={celulas} itens={itens} />
+        </div>
+
+        <ProximosCompromissos eventos={proximosEventos} />
+      </div>
 
       <ProcessosAgendados />
 
       <ListaLevarMarinha />
     </div>
   );
+}
+
+async function ProximosCompromissos({
+  eventos,
+}: {
+  eventos: {
+    id: string;
+    titulo: string;
+    dataHora: Date;
+    tipo: string;
+    status: string;
+    clienteNome: string | null;
+  }[];
+}) {
+  return (
+    <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-display text-title-md font-semibold text-primary">Próximos Compromissos</h2>
+        <LinkButton href={montarUrlAtual("lista")} variant="text" size="sm">
+          Ver tudo
+        </LinkButton>
+      </div>
+      {eventos.length === 0 ? (
+        <EmptyState icon={CalendarClock} title="Nada agendado pela frente" />
+      ) : (
+        <ul className="space-y-3">
+          {eventos.map((ev) => {
+            const confirmarComId = confirmarEvento.bind(null, ev.id);
+            const concluirComId = concluirEvento.bind(null, ev.id);
+            return (
+              <li key={ev.id} className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-body-md font-medium text-primary">{ev.titulo}</p>
+                    <Badge tone={tipoEvento(ev.tipo).tone} size="sm">
+                      {tipoEvento(ev.tipo).label}
+                    </Badge>
+                  </div>
+                  <p className="text-body-sm text-outline">
+                    {new Date(ev.dataHora).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    {ev.clienteNome && ` — ${ev.clienteNome}`}
+                  </p>
+                  <div className="mt-1.5 flex gap-2">
+                    {ev.status === "pendente" && (
+                      <form action={confirmarComId}>
+                        <Button type="submit" variant="outlined" size="sm">
+                          Confirmar
+                        </Button>
+                      </form>
+                    )}
+                    {ev.status !== "concluido" && ev.status !== "cancelado" && (
+                      <form action={concluirComId}>
+                        <Button type="submit" size="sm">
+                          Concluir
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function montarUrlAtual(vista: string) {
+  const params = new URLSearchParams();
+  params.set("vista", vista);
+  return `?${params.toString()}`;
 }
 
 async function ProcessosAgendados() {

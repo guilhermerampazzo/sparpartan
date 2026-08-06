@@ -21,6 +21,7 @@ export default function NovoAlunoPage() {
         <Campo label="Nome" name="nome" required defaultValue={v("nome")} />
         <Campo label="E-mail" name="email" type="email" required defaultValue={v("email")} />
         <Campo label="Telefone" name="telefone" defaultValue={v("telefone")} />
+        <Campo label="Cidade" name="cidade" defaultValue={v("cidade")} />
 
         <p className="text-body-sm text-outline">
           Uma senha inicial será gerada automaticamente e enviada por e-mail ao aluno.

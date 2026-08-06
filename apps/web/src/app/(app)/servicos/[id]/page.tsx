@@ -43,6 +43,40 @@ export default async function ServicoPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      <SectionCard title="Financeiro">
+        <div className="grid grid-cols-1 gap-4 text-body-md sm:grid-cols-3">
+          <div>
+            <dt className="font-mono-caps text-label-sm uppercase text-outline">Valor de venda</dt>
+            <dd className="text-primary">
+              {servico.valor ? Number(servico.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-mono-caps text-label-sm uppercase text-outline">Custo</dt>
+            <dd className="text-primary">
+              {servico.custo ? Number(servico.custo).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-mono-caps text-label-sm uppercase text-outline">Margem</dt>
+            <dd className="text-primary">
+              {servico.valor && servico.custo ? (
+                <span className={Number(servico.valor) - Number(servico.custo) < 0 ? "text-danger" : "text-success"}>
+                  {(Number(servico.valor) - Number(servico.custo)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </span>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+        </div>
+        <div className="mt-4">
+          <LinkButton href="/vendas/financeiro" variant="outlined" size="sm">
+            Ver no Financeiro
+          </LinkButton>
+        </div>
+      </SectionCard>
+
       <SectionCard title="Documentos que o cliente precisa entregar">
         <p className="mb-4 text-body-sm text-outline">
           Esta lista é usada no link público de cobrança de documentos: o cliente vê exatamente o

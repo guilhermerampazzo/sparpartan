@@ -1,9 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import { db } from "@/db";
 import { arquivosEmpresa } from "@/db/schema";
 import { salvarArquivoLocal } from "@/lib/storage";
+import { uploadsDir } from "@/lib/storage";
 import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
@@ -19,7 +23,7 @@ export async function criarArquivoEmpresa(
   const erro = new Validador()
     .exigir(!!titulo, "Informe o título.")
     .exigir(!!categoria, "Selecione a categoria.")
-    .exigir(!!arquivo && arquivo.size > 0, "Selecione um arquivo PDF.").erro;
+    .exigir(!!arquivo && arquivo.size > 0, "Selecione um arquivo (PDF, JPG ou PNG).").erro;
   if (erro) return { erro, valores };
 
   let arquivoCaminho: string;
@@ -42,4 +46,19 @@ export async function criarArquivoEmpresa(
   await registrarAuditoria("criar", "arquivo_empresa", registro.id, titulo);
   revalidatePath("/documentos-sparapan");
   return null;
+}
+
+export async function excluirArquivoEmpresa(id: string) {
+  const [item] = await db.select().from(arquivosEmpresa).where(eq(arquivosEmpresa.id, id)).limit(1);
+  if (!item) return;
+
+  try {
+    await unlink(path.join(uploadsDir(), item.arquivoCaminho));
+  } catch {
+    // Arquivo já ausente no disco não impede a exclusão do registro.
+  }
+
+  await db.delete(arquivosEmpresa).where(eq(arquivosEmpresa.id, id));
+  await registrarAuditoria("excluir", "arquivo_empresa", id, item.titulo);
+  revalidatePath("/documentos-sparapan");
 }

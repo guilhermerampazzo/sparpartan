@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { eq, inArray, and, desc, isNull } from "drizzle-orm";
-import { FileText, Mail, CircleDollarSign, CalendarClock, Ship, Download, Trash2, Eye, Landmark, FileStack, Plus } from "lucide-react";
+import { eq, inArray, and, desc, isNull, asc, ilike } from "drizzle-orm";
+import { FileText, Mail, CircleDollarSign, CalendarClock, Ship, Download, Trash2, Eye, Landmark, FileStack, Plus, Receipt, ClipboardList, ShoppingBag, GraduationCap } from "lucide-react";
 import { db } from "@/db";
 import {
   clientes,
@@ -19,12 +19,18 @@ import {
   processos,
   servicos,
   despesas,
+  orcamentos,
+  pendencias,
+  lojaVendas,
+  alunos,
+  matriculas,
+  materias,
 } from "@/db/schema";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
 import { Badge, StatusBadge, Button, LinkButton, EmptyState, BackButton, ConfirmButton, CampoMoeda } from "@/components/ui";
 import { CadastradoPor } from "@/components/ui/cadastrado-por";
 import { OcrArquivo } from "@/components/ocr/ocr-arquivo";
-import { urgenciaVencimento, infoUrgencia, diasAte, vencimentoProtocolo } from "@/lib/status";
+import { urgenciaVencimento, infoUrgencia, diasAte, vencimentoProtocolo, statusDocumento, statusOrcamento, tipoEvento, statusEvento } from "@/lib/status";
 import {
   adicionarHabilitacao,
   enviarArquivo,
@@ -36,6 +42,7 @@ import {
 } from "./actions";
 import { excluirCliente } from "../actions";
 import { marcarTaxaComoPaga, excluirTaxa } from "../../taxas/actions";
+import { infoStatusVenda } from "@/lib/loja";
 import { AtendimentoCard } from "./atendimento-card";
 
 type EventoTimeline = {
@@ -108,10 +115,13 @@ export default async function ClienteDetalhesPage({
       id: documentosGerados.id,
       criadoEm: documentosGerados.criadoEm,
       modeloNome: modelosDocumento.nome,
+      status: documentosGerados.status,
+      vencimento: documentosGerados.vencimento,
     })
     .from(documentosGerados)
     .innerJoin(modelosDocumento, eq(documentosGerados.modeloId, modelosDocumento.id))
-    .where(eq(documentosGerados.clienteId, id));
+    .where(eq(documentosGerados.clienteId, id))
+    .orderBy(desc(documentosGerados.criadoEm));
 
   const emailsDoCliente = await db
     .select()
@@ -119,9 +129,17 @@ export default async function ClienteDetalhesPage({
     .where(eq(enviosEmail.clienteId, id));
 
   const vendasDoCliente = await db
-    .select({ id: servicosContratados.id })
+    .select({
+      id: servicosContratados.id,
+      servicoNome: servicos.nome,
+      valor: servicosContratados.valor,
+      dataContratacao: servicosContratados.dataContratacao,
+      orcamentoId: servicosContratados.orcamentoId,
+    })
     .from(servicosContratados)
-    .where(eq(servicosContratados.clienteId, id));
+    .innerJoin(servicos, eq(servicosContratados.servicoId, servicos.id))
+    .where(eq(servicosContratados.clienteId, id))
+    .orderBy(desc(servicosContratados.dataContratacao));
 
   const pagamentosDoCliente =
     vendasDoCliente.length > 0
@@ -136,6 +154,15 @@ export default async function ClienteDetalhesPage({
           )
       : [];
 
+  const saldoPorVenda = new Map<string, number>();
+  for (const pag of pagamentosDoCliente) {
+    if (pag.status === "pago") continue;
+    saldoPorVenda.set(
+      pag.servicoContratadoId,
+      (saldoPorVenda.get(pag.servicoContratadoId) ?? 0) + Number(pag.valor)
+    );
+  }
+
   const eventosDoCliente = await db
     .select()
     .from(agendaEventos)
@@ -145,6 +172,43 @@ export default async function ClienteDetalhesPage({
     .select()
     .from(taxasPagar)
     .where(eq(taxasPagar.clienteId, id));
+
+  const orcamentosDoCliente = await db
+    .select()
+    .from(orcamentos)
+    .where(and(eq(orcamentos.clienteId, id), isNull(orcamentos.excluidoEm)))
+    .orderBy(desc(orcamentos.criadoEm));
+
+  const pendenciasDoCliente = await db
+    .select()
+    .from(pendencias)
+    .where(and(eq(pendencias.clienteId, id), eq(pendencias.status, "pendente")))
+    .orderBy(asc(pendencias.data));
+
+  const vendasLojaDoCliente = await db
+    .select()
+    .from(lojaVendas)
+    .where(eq(lojaVendas.clienteId, id))
+    .orderBy(desc(lojaVendas.criadoEm));
+
+  // A escola tem cadastro próprio (alunos), sem FK para clientes — a ponte é o
+  // e-mail. Quando bater, mostramos os cursos/matrículas deste cliente.
+  const [alunoDoCliente] = cliente.email
+    ? await db.select().from(alunos).where(ilike(alunos.email, cliente.email)).limit(1)
+    : [];
+  const matriculasDoAluno = alunoDoCliente
+    ? await db
+        .select({
+          materiaTitulo: materias.titulo,
+          status: matriculas.status,
+          liberadoEm: matriculas.liberadoEm,
+          expiraEm: matriculas.expiraEm,
+        })
+        .from(matriculas)
+        .innerJoin(materias, eq(matriculas.materiaId, materias.id))
+        .where(eq(matriculas.alunoId, alunoDoCliente.id))
+        .orderBy(desc(matriculas.liberadoEm))
+    : [];
 
   const atendimentos = await db
     .select({
@@ -200,6 +264,21 @@ export default async function ClienteDetalhesPage({
       data: ev.dataHora,
       label: `Evento: ${ev.titulo}`,
       tipo: "evento" as const,
+    })),
+    ...atendimentos.map((p) => ({
+      data: p.criadoEm,
+      label: `Atendimento iniciado: ${p.servicoNome}`,
+      tipo: "evento" as const,
+    })),
+    ...arquivosDoCliente.map((a) => ({
+      data: a.criadoEm,
+      label: `Arquivo enviado: ${a.nomeOriginal}`,
+      tipo: "documento" as const,
+    })),
+    ...orcamentosDoCliente.map((o) => ({
+      data: o.criadoEm,
+      label: `Orçamento ${o.numero} criado (${o.status})`,
+      tipo: "documento" as const,
     })),
     ...taxasDoCliente
       .filter((t) => t.status === "pago" && t.pagoEm)
@@ -284,6 +363,57 @@ export default async function ClienteDetalhesPage({
             </Button>
           </form>
         </div>
+      </SectionCard>
+
+      <SectionCard title={`Documentos Gerados (${documentosDoCliente.length})`}>
+        {documentosDoCliente.length === 0 ? (
+          <EmptyState icon={FileText} title="Nenhum documento gerado ainda" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {documentosDoCliente.map((d) => (
+              <li key={d.id} className="flex items-center justify-between gap-3 py-2">
+                <Link
+                  href={`/documentos/${d.id}`}
+                  className="min-w-0 flex-1 truncate text-body-md text-primary hover:underline"
+                >
+                  {d.modeloNome}
+                </Link>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-body-sm text-outline">
+                    {new Date(d.criadoEm).toLocaleDateString("pt-BR")}
+                    {d.vencimento ? ` · vence ${new Date(`${d.vencimento}T00:00:00`).toLocaleDateString("pt-BR")}` : ""}
+                  </span>
+                  <StatusBadge status={statusDocumento(d.status)} size="sm" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      <SectionCard title={`Orçamentos (${orcamentosDoCliente.length})`}>
+        {orcamentosDoCliente.length === 0 ? (
+          <EmptyState icon={Receipt} title="Nenhum orçamento para este cliente ainda" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {orcamentosDoCliente.map((o) => (
+              <li key={o.id} className="flex items-center justify-between gap-3 py-2">
+                <Link
+                  href={`/orcamentos/${o.id}`}
+                  className="min-w-0 flex-1 truncate text-body-md text-primary hover:underline"
+                >
+                  {o.numero} — {formatMoney(o.valor)}
+                </Link>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-body-sm text-outline">
+                    {o.criadoEm.toLocaleDateString("pt-BR")}
+                  </span>
+                  <StatusBadge status={statusOrcamento(o.status)} size="sm" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </SectionCard>
 
       <SectionCard title="Timeline">
@@ -474,6 +604,34 @@ export default async function ClienteDetalhesPage({
         )}
       </SectionCard>
 
+      <SectionCard title={`Vendas e Serviços Contratados (${vendasDoCliente.length})`}>
+        {vendasDoCliente.length === 0 ? (
+          <EmptyState icon={CircleDollarSign} title="Nenhuma venda registrada ainda" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {vendasDoCliente.map((v) => {
+              const saldo = saldoPorVenda.get(v.id) ?? 0;
+              return (
+                <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="text-body-md text-primary">{v.servicoNome}</span>
+                  <div className="flex items-center gap-3 text-body-sm">
+                    <span className="text-outline">
+                      {new Date(`${v.dataContratacao}T00:00:00`).toLocaleDateString("pt-BR")}
+                    </span>
+                    <span className="font-medium">{formatMoney(v.valor)}</span>
+                    {saldo > 0 ? (
+                      <Badge tone="warning" size="sm">a receber {formatMoney(saldo)}</Badge>
+                    ) : (
+                      <Badge tone="success" size="sm">pago</Badge>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </SectionCard>
+
       <SectionCard title="Financeiro do Cliente">
         <p className="mb-4 text-body-sm text-outline">
           Entradas (pagamentos recebidos) e saídas (taxas pagas + gastos extras) deste cliente —
@@ -582,6 +740,118 @@ export default async function ClienteDetalhesPage({
             </form>
           </div>
         </div>
+      </SectionCard>
+
+      <SectionCard title={`Pendências (${pendenciasDoCliente.length} abertas)`}>
+        {pendenciasDoCliente.length === 0 ? (
+          <EmptyState icon={ClipboardList} title="Nenhuma pendência aberta para este cliente" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {pendenciasDoCliente.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-body-md text-primary">{p.descricao}</p>
+                  <p className="text-body-sm text-outline">
+                    {p.categoria} · prioridade {p.prioridade}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-body-sm text-outline">
+                    {new Date(`${p.data}T00:00:00`).toLocaleDateString("pt-BR")}
+                  </span>
+                  <Link
+                    href="/pendencias"
+                    className="text-body-sm text-primary hover:underline"
+                  >
+                    Resolver
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Agenda">
+        {eventosDoCliente.length === 0 ? (
+          <EmptyState icon={CalendarClock} title="Nenhum evento agendado para este cliente" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {eventosDoCliente.map((ev) => (
+              <li key={ev.id} className="flex items-center justify-between gap-3 py-2">
+                <span className="min-w-0 flex-1 truncate text-body-md text-primary">{ev.titulo}</span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-body-sm text-outline">
+                    {new Date(ev.dataHora).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <Badge tone={tipoEvento(ev.tipo).tone} size="sm">{tipoEvento(ev.tipo).label}</Badge>
+                  <StatusBadge status={statusEvento(ev.status)} size="sm" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3">
+          <LinkButton href={`/agenda/novo?clienteId=${cliente.id}`} variant="outlined" size="sm">
+            + Novo Evento
+          </LinkButton>
+        </div>
+      </SectionCard>
+
+      <SectionCard title={`Compras na Loja (${vendasLojaDoCliente.length})`}>
+        {vendasLojaDoCliente.length === 0 ? (
+          <EmptyState icon={ShoppingBag} title="Nenhuma compra na loja ainda" />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {vendasLojaDoCliente.map((v) => (
+              <li key={v.id} className="flex items-center justify-between gap-3 py-2">
+                <Link
+                  href={`/loja/vendas/${v.id}`}
+                  className="min-w-0 flex-1 truncate text-body-md text-primary hover:underline"
+                >
+                  Venda de {formatMoney(v.valorTotal)}
+                </Link>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-body-sm text-outline">
+                    {v.criadoEm.toLocaleDateString("pt-BR")}
+                  </span>
+                  <Badge tone={infoStatusVenda(v.status).tone} size="sm">
+                    {infoStatusVenda(v.status).label}
+                  </Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Cursos na Escola Náutica">
+        {!alunoDoCliente || matriculasDoAluno.length === 0 ? (
+          <EmptyState
+            icon={GraduationCap}
+            title="Nenhum curso vinculado"
+            description={cliente.email ? "Se o aluno usar o mesmo e-mail do cliente, os cursos aparecem aqui automaticamente." : "Cadastre um e-mail para o cliente para vincular a conta de aluno."}
+          />
+        ) : (
+          <ul className="divide-y divide-outline-variant">
+            {matriculasDoAluno.map((m, i) => (
+              <li key={i} className="flex items-center justify-between gap-3 py-2">
+                <span className="text-body-md text-primary">{m.materiaTitulo}</span>
+                <div className="flex items-center gap-3 text-body-sm">
+                  <span className="text-outline">
+                    liberado em {m.liberadoEm.toLocaleDateString("pt-BR")}
+                  </span>
+                  <Badge
+                    tone={m.status === "ativo" ? "success" : m.status === "expirado" ? "warning" : "danger"}
+                    size="sm"
+                  >
+                    {m.status}
+                  </Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </SectionCard>
 
       <SectionCard title="Habilitação Amadora">

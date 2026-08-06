@@ -727,6 +727,7 @@ export const alunos = pgTable("alunos", {
   email: text("email").notNull().unique(),
   senhaHash: text("senha_hash").notNull(),
   telefone: text("telefone"),
+  cidade: text("cidade"),
   ativo: boolean("ativo").notNull().default(true),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
@@ -938,14 +939,15 @@ export const arquivosEmpresa = pgTable("arquivos_empresa", {
 
 export const pipelineEstagio = pgEnum("pipeline_estagio", [
   "novo_lead",
-  "atendimento",
-  "proposta_enviada",
+  "primeiro_contato",
+  "aguardando_documentacao",
+  "orcamento_enviado",
   "negociacao",
-  "fechado",
+  "aguardando_pagamento",
+  "servico_contratado",
   "em_execucao",
-  "aguardando_cliente",
-  "concluido",
   "pos_venda",
+  "concluido",
   "perdido",
 ]);
 
@@ -958,6 +960,13 @@ export const pipelineOportunidades = pgTable("pipeline_oportunidades", {
   estagio: pipelineEstagio("estagio").notNull().default("novo_lead"),
   motivoPerda: text("motivo_perda"),
   valorEstimado: numeric("valor_estimado"),
+  /** Serviço/necessidade solicitada pelo lead (ex.: inscrição de embarcação, arrais...). */
+  servicoSolicitado: text("servico_solicitado"),
+  /** Orçamento vinculado à negociação — "Valor do orçamento" no cartão e link direto. */
+  orcamentoId: uuid("orcamento_id").references(() => orcamentos.id, { onDelete: "set null" }),
+  responsavelId: uuid("responsavel_id").references(() => usuarios.id, { onDelete: "set null" }),
+  ultimoContatoEm: timestamp("ultimo_contato_em"),
+  proximaAcao: text("proxima_acao"),
   observacoes: text("observacoes"),
   criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),

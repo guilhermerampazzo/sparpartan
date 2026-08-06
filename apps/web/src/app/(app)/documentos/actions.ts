@@ -6,9 +6,10 @@ import path from "node:path";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { modelosDocumento, documentosGerados, processos, obraFotos } from "@/db/schema";
+import { modelosDocumento, documentosGerados, processos, obraFotos, clientes } from "@/db/schema";
 import { renderDocx, type ImagemDocx } from "@/lib/docx/document";
 import { reclassificarProcesso } from "@/lib/processos";
+import { registrarNoChat } from "@/lib/chat-sistema";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 function uploadsDir() {
@@ -137,6 +138,15 @@ export async function gerarDocumento(
     await reclassificarProcesso(processoId);
     redirect(`/processos/${processoId}`);
   }
+
+  const [clienteDoDocumento] = await db
+    .select({ nome: clientes.nome })
+    .from(clientes)
+    .where(eq(clientes.id, clienteId))
+    .limit(1);
+  await registrarNoChat(
+    `Documento "${modelo.nome}" gerado para ${clienteDoDocumento?.nome ?? "cliente"}.`
+  );
 
   redirect(`/documentos/${documento.id}`);
 }
