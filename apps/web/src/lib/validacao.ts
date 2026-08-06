@@ -8,7 +8,12 @@
  * Necessário porque `<form action>` no React 19 reseta inputs não controlados
  * após a submissão — sem isso, a mensagem de erro aparece mas os campos somem.
  */
-export type EstadoForm<T = Record<string, string>> = { erro?: string; valores?: T } | null;
+export type EstadoForm<T = Record<string, string>> = {
+  erro?: string;
+  valores?: T;
+  /** Mensagem de sucesso/resumo pós-ação (ex.: campanha de e-mail enviada). */
+  resumo?: string;
+} | null;
 
 export function valoresDoFormData(formData: FormData): Record<string, string> {
   const valores: Record<string, string> = {};

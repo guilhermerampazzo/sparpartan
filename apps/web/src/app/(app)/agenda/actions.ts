@@ -36,7 +36,7 @@ export async function criarEvento(
   const processoId = uuidOuNull(formData.get("processoId"));
   const tipo = String(formData.get("tipo") ?? "compromisso") as "compromisso" | "prova" | "vencimento";
   const data = dataHoraLocal(dataHora);
-  if (!data) return { erro: "Data e hora invÃ¡lidas.", valores };
+  if (!data) return { erro: "Data e hora inválidas.", valores };
 
   const [evento] = await db
     .insert(agendaEventos)

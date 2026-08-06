@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { ilike, or, eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { usuarioEquipe } from "@/lib/sessao";
 import { db } from "@/db";
 import { clientes, embarcacoes, processos, servicos } from "@/db/schema";
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  if (!(await usuarioEquipe())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   const q = new URL(req.url).searchParams.get("q")?.trim();

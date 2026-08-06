@@ -24,6 +24,7 @@ async function fontesVencendo(dias: number): Promise<{ tipo: string; itens: Item
     JOIN modelos_documento m ON m.id = d.modelo_id
     JOIN clientes c ON c.id = d.cliente_id
     WHERE d.vencimento = (current_date + ${dias}::int)
+      AND c.excluido_em IS NULL
   `;
 
   const dpem = await sql<ItemVencendo[]>`
@@ -33,6 +34,7 @@ async function fontesVencendo(dias: number): Promise<{ tipo: string; itens: Item
     JOIN clientes c ON c.id = e.cliente_id
     WHERE e.validade_dpem = (current_date + ${dias}::int)
       AND e.ativo = true
+      AND c.excluido_em IS NULL
   `;
 
   const salvatagem = await sql<ItemVencendo[]>`
@@ -42,6 +44,7 @@ async function fontesVencendo(dias: number): Promise<{ tipo: string; itens: Item
     JOIN embarcacoes e ON e.id = s.embarcacao_id
     JOIN clientes c ON c.id = e.cliente_id
     WHERE s.validade = (current_date + ${dias}::int)
+      AND c.excluido_em IS NULL
   `;
 
   const habilitacoes = await sql<ItemVencendo[]>`
@@ -50,6 +53,7 @@ async function fontesVencendo(dias: number): Promise<{ tipo: string; itens: Item
     FROM habilitacoes h
     JOIN clientes c ON c.id = h.cliente_id
     WHERE h.validade = (current_date + ${dias}::int)
+      AND c.excluido_em IS NULL
   `;
 
   return [
@@ -94,16 +98,28 @@ export async function verificarVencimentos() {
         }
 
         // Oferta de renovação: só na janela de 30 dias, para não spammar o cliente 3x.
+        // Com trava de idempotência — um restart do worker ou retry do BullMQ no
+        // mesmo dia não reenvia o e-mail (o envio já fica registrado em envios_email).
         if (dias === 30 && item.clienteEmail) {
-          await enviarERegistrar({
-            clienteId: item.clienteId,
-            to: item.clienteEmail,
-            subject: `${item.descricao} vence em 30 dias — Sparapan`,
-            html: `<p>Olá ${item.clienteNome},</p>
-               <p>Passando para avisar que <strong>${item.descricao}</strong> vence em <strong>${vencimentoFormatado}</strong>.</p>
-               <p>Podemos cuidar da renovação para você — é só responder este e-mail.</p>
-               <p>Sparapan Solução Naval</p>`,
-          });
+          const [jaEnviado] = await sql`
+            SELECT id FROM envios_email
+            WHERE cliente_id = ${item.clienteId}
+              AND criado_em::date = current_date
+              AND assunto ILIKE '%vence em 30 dias%'
+              AND status = 'enviado'
+          `;
+
+          if (!jaEnviado) {
+            await enviarERegistrar({
+              clienteId: item.clienteId,
+              to: item.clienteEmail,
+              subject: `${item.descricao} vence em 30 dias — Sparapan`,
+              html: `<p>Olá ${item.clienteNome},</p>
+                 <p>Passando para avisar que <strong>${item.descricao}</strong> vence em <strong>${vencimentoFormatado}</strong>.</p>
+                 <p>Podemos cuidar da renovação para você — é só responder este e-mail.</p>
+                 <p>Sparapan Solução Naval</p>`,
+            });
+          }
         }
       }
     }

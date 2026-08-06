@@ -51,25 +51,45 @@ export async function criarOrcamentoLoja(
 
   if (erro) return { erro, valores };
 
-  const numero = await proximoNumeroOrcamentoLoja();
   const valorTotal = somarTotal(itens);
 
-  const [orcamento] = await db
-    .insert(lojaOrcamentos)
-    .values({
-      numero,
-      clienteId,
-      valorTotal,
-      observacoes: String(formData.get("observacoes") ?? "") || null,
-    })
-    .returning({ id: lojaOrcamentos.id });
-
-  for (const item of itens) {
-    await db.insert(lojaOrcamentoItens).values({ orcamentoId: orcamento.id, ...item });
+  // proximoNumeroOrcamentoLoja faz count+1 sem lock — dois orçamentos criados no
+  // mesmo instante podem colidir no UNIQUE de numero. Tenta de novo com número recalculado.
+  const MAX_TENTATIVAS = 5;
+  let orcamentoId: string | undefined;
+  let numero = "";
+  for (let tentativa = 0; tentativa < MAX_TENTATIVAS; tentativa++) {
+    numero = await proximoNumeroOrcamentoLoja();
+    try {
+      const [orcamento] = await db
+        .insert(lojaOrcamentos)
+        .values({
+          numero,
+          clienteId,
+          valorTotal,
+          observacoes: String(formData.get("observacoes") ?? "") || null,
+        })
+        .returning({ id: lojaOrcamentos.id });
+      orcamentoId = orcamento.id;
+      break;
+    } catch (e) {
+      const mensagem = e instanceof Error ? e.message : String(e);
+      if (!mensagem.includes("loja_orcamentos_numero_unique") || tentativa === MAX_TENTATIVAS - 1) {
+        throw e;
+      }
+    }
   }
 
-  await registrarAuditoria("criar", "loja_orcamento", orcamento.id, numero);
-  redirect(`/loja/orcamentos/${orcamento.id}`);
+  if (!orcamentoId) {
+    throw new Error("Não foi possível criar o orçamento da loja.");
+  }
+
+  for (const item of itens) {
+    await db.insert(lojaOrcamentoItens).values({ orcamentoId, ...item });
+  }
+
+  await registrarAuditoria("criar", "loja_orcamento", orcamentoId, numero);
+  redirect(`/loja/orcamentos/${orcamentoId}`);
 }
 
 export async function recusarOrcamentoLoja(orcamentoId: string) {

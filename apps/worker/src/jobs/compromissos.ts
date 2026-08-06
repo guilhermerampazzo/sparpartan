@@ -7,11 +7,13 @@ export async function confirmarCompromissos() {
   let criados = 0;
 
   const eventos = await sql<{ id: string; clienteId: string; titulo: string; tipo: string }[]>`
-    SELECT id, cliente_id as "clienteId", titulo, tipo
-    FROM agenda_eventos
-    WHERE status = 'pendente'
-      AND tipo != 'prova'
-      AND data_hora::date = (current_date + 1)
+    SELECT e.id, e.cliente_id as "clienteId", e.titulo, e.tipo
+    FROM agenda_eventos e
+    LEFT JOIN clientes c ON c.id = e.cliente_id
+    WHERE e.status = 'pendente'
+      AND e.tipo != 'prova'
+      AND e.data_hora::date = (current_date + 1)
+      AND (c.excluido_em IS NULL OR c.id IS NULL)
   `;
 
   for (const evento of eventos) {
@@ -50,10 +52,11 @@ export async function confirmarProvas() {
       SELECT e.id, e.cliente_id as "clienteId", c.nome as "clienteNome", c.email as "clienteEmail",
              e.titulo, e.data_hora as "dataHora"
       FROM agenda_eventos e
-      JOIN clientes c ON c.id = e.cliente_id
+      LEFT JOIN clientes c ON c.id = e.cliente_id
       WHERE e.status != 'cancelado'
         AND e.tipo = 'prova'
         AND e.data_hora::date = (current_date + ${dias}::int)
+        AND (c.excluido_em IS NULL OR c.id IS NULL)
     `;
 
     for (const prova of provas) {
@@ -81,12 +84,24 @@ export async function confirmarProvas() {
       }
 
       if (prova.clienteEmail) {
-        await enviarERegistrar({
-          clienteId: prova.clienteId,
-          to: prova.clienteEmail,
-          subject: `Sua prova é em ${dias} dia${dias > 1 ? "s" : ""} — Sparapan`,
-          html: `<p>Olá ${prova.clienteNome},</p><p>Confirmando: sua prova <strong>${prova.titulo}</strong> está marcada para <strong>${dataFormatada}</strong>.</p><p>Sparapan Solução Naval</p>`,
-        });
+        // Trava de idempotência: um retry do BullMQ no mesmo dia não reenvia o
+        // e-mail de prova (o envio já fica registrado em envios_email).
+        const [jaEnviado] = await sql`
+          SELECT id FROM envios_email
+          WHERE cliente_id = ${prova.clienteId}
+            AND criado_em::date = current_date
+            AND assunto ILIKE '%Sua prova é em%'
+            AND status = 'enviado'
+        `;
+
+        if (!jaEnviado) {
+          await enviarERegistrar({
+            clienteId: prova.clienteId,
+            to: prova.clienteEmail,
+            subject: `Sua prova é em ${dias} dia${dias > 1 ? "s" : ""} — Sparapan`,
+            html: `<p>Olá ${prova.clienteNome},</p><p>Confirmando: sua prova <strong>${prova.titulo}</strong> está marcada para <strong>${dataFormatada}</strong>.</p><p>Sparapan Solução Naval</p>`,
+          });
+        }
       }
     }
   }

@@ -29,9 +29,40 @@ export default auth((req) => {
     | { role?: string; tipo?: string; modulosPermitidos?: string[] | null }
     | undefined;
 
-  if (usuario?.tipo === "equipe" && usuario.role !== "admin") {
-    const liberado = moduloLiberado(req.nextUrl.pathname, usuario.modulosPermitidos ?? null);
-    if (!liberado) {
+  // Sessão do portal do cliente: só tem acesso às próprias rotas — /portal e
+  // downloads de documentos/comprovantes (que checam posse na rota). Qualquer
+  // outra rota (app da equipe, APIs internas) volta para o portal.
+  if (usuario?.tipo === "cliente") {
+    const caminho = req.nextUrl.pathname;
+    const permitidoCliente =
+      caminho.startsWith("/portal") ||
+      caminho.startsWith("/api/documentos") ||
+      /^\/api\/processos\/[^/]+\/comprovante/.test(caminho);
+    if (!permitidoCliente) {
+      return NextResponse.redirect(new URL("/portal", req.nextUrl.origin));
+    }
+    return NextResponse.next();
+  }
+
+  if (usuario?.tipo === "equipe") {
+    if (usuario.role !== "admin") {
+      const liberado = moduloLiberado(req.nextUrl.pathname, usuario.modulosPermitidos ?? null);
+      if (!liberado) {
+        const url = req.nextUrl.clone();
+        url.pathname = "/";
+        url.searchParams.set("erro", "acesso-negado");
+        return NextResponse.redirect(url);
+      }
+    }
+
+    // Role "leitura" é somente-leitura: bloqueia qualquer Server Action
+    // (POST com header Next-Action). O logout usa /api/auth/signout (form
+    // comum, sem Next-Action) e continua funcionando.
+    if (
+      usuario.role === "leitura" &&
+      req.method === "POST" &&
+      req.headers.has("next-action")
+    ) {
       const url = req.nextUrl.clone();
       url.pathname = "/";
       url.searchParams.set("erro", "acesso-negado");

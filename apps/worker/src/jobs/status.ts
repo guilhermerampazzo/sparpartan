@@ -31,10 +31,12 @@ export async function varrerStatus() {
   `;
 
   // Compromissos passados que ninguém fechou ficavam "pendente" para sempre e
-  // continuavam elegíveis a lembrete.
+  // continuavam elegíveis a lembrete. `data_hora < current_date` (hoje, 00:00)
+  // fecha qualquer evento com data anterior ao dia corrente — um evento de ontem
+  // à tarde, por exemplo, não passava no antigo `current_date - 1`.
   const eventos = await sql`
     UPDATE agenda_eventos SET status = 'concluido'
-    WHERE status = 'pendente' AND data_hora < (current_date - 1)
+    WHERE status = 'pendente' AND data_hora < current_date
     RETURNING id
   `;
 

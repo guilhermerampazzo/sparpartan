@@ -52,24 +52,28 @@ worker.on("error", (err: Error) => console.error("[worker] erro de conexão Redi
 worker.on("failed", (job, err) => console.error(`[worker] job ${job?.id} falhou:`, err));
 
 async function registrarJobsAgendados() {
+  // Horários em America/Sao_Paulo (BRT). O container roda em UTC por padrão —
+  // sem o `tz`, as "07:00" dos comentários virariam 07:00 UTC (04:00 BRT).
+  const fuso = "America/Sao_Paulo";
+
   // Roda todo dia às 07:00 — varre vencimentos em 30/15/7 dias e cria lembretes.
   await lembretesQueue.upsertJobScheduler(
     "verificar-vencimentos-diario",
-    { pattern: "0 7 * * *" },
+    { pattern: "0 7 * * *", tz: fuso },
     { name: "verificar-vencimentos" }
   );
 
   // Roda todo dia às 08:00 — confirma compromissos comuns do dia seguinte.
   await lembretesQueue.upsertJobScheduler(
     "confirmar-compromissos-diario",
-    { pattern: "0 8 * * *" },
+    { pattern: "0 8 * * *", tz: fuso },
     { name: "confirmar-compromissos" }
   );
 
   // Roda todo dia às 08:30 — avisa o cliente por e-mail 3 e 1 dia antes da prova.
   await lembretesQueue.upsertJobScheduler(
     "confirmar-provas-diario",
-    { pattern: "30 8 * * *" },
+    { pattern: "30 8 * * *", tz: fuso },
     { name: "confirmar-provas" }
   );
 
@@ -77,29 +81,47 @@ async function registrarJobsAgendados() {
   // marca documentos vencidos e pagamentos atrasados.
   await lembretesQueue.upsertJobScheduler(
     "varrer-status-diario",
-    { pattern: "0 6 * * *" },
+    { pattern: "0 6 * * *", tz: fuso },
     { name: "varrer-status" }
   );
 
   // Roda todo dia às 09:00 — envia ao admin o resumo das pendências do dia.
   await lembretesQueue.upsertJobScheduler(
     "digest-diario",
-    { pattern: "0 9 * * *" },
+    { pattern: "0 9 * * *", tz: fuso },
     { name: "digest-diario" }
   );
 
   // Roda todo dia às 10:00 — parabeniza aniversariantes do dia.
   await lembretesQueue.upsertJobScheduler(
     "enviar-aniversarios-diario",
-    { pattern: "0 10 * * *" },
+    { pattern: "0 10 * * *", tz: fuso },
     { name: "enviar-aniversarios" }
   );
 
   console.log(
-    "[worker] jobs agendados (status 06:00, vencimentos 07:00, compromissos 08:00, provas 08:30, digest 09:00, aniversários 10:00)"
+    "[worker] jobs agendados (status 06:00, vencimentos 07:00, compromissos 08:00, provas 08:30, digest 09:00, aniversários 10:00 — America/Sao_Paulo)"
   );
 }
 
-registrarJobsAgendados().catch((err) => console.error("[worker] falha ao agendar jobs", err));
+/**
+ * O upsert de schedulers depende do Redis; se ele estiver inacessível no boot,
+ * sem retry o worker subiria sem NENHUM job cron até ser reiniciado. Com o retry
+ * (backoff crescente), o registro se recupera assim que o Redis responde.
+ */
+async function registrarJobsAgendadosComRetry() {
+  for (let tentativa = 1; tentativa <= 10; tentativa++) {
+    try {
+      await registrarJobsAgendados();
+      return;
+    } catch (err) {
+      console.error(`[worker] falha ao agendar jobs (tentativa ${tentativa}/10)`, err);
+      await new Promise((resolve) => setTimeout(resolve, 5000 * tentativa));
+    }
+  }
+  console.error("[worker] desistiu de registrar jobs agendados após 10 tentativas");
+}
+
+registrarJobsAgendadosComRetry();
 
 console.log("[worker] Sparapan worker iniciado");

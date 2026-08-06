@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { usuarioEquipe } from "@/lib/sessao";
 import { salvarArquivoLocal } from "@/lib/storage";
 
 /**
@@ -8,9 +8,8 @@ import { salvarArquivoLocal } from "@/lib/storage";
  * por `GET /api/lms/arquivos/[...path]`.
  */
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  if (!(await usuarioEquipe())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   const formData = await req.formData();

@@ -129,14 +129,25 @@ async function inserirImagens(
 
   const relsPath = "word/_rels/document.xml.rels";
   const relsXml = await zip.file(relsPath)?.async("string");
+  const novas = imagens
+    .map(
+      (img, i) =>
+        `<Relationship Id="rIdFoto${i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/obra-foto-${i}.${img.extensao}"/>`
+    )
+    .join("");
   if (relsXml) {
-    const novas = imagens
-      .map(
-        (img, i) =>
-          `<Relationship Id="rIdFoto${i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/obra-foto-${i}.${img.extensao}"/>`
-      )
-      .join("");
     zip.file(relsPath, relsXml.replace("</Relationships>", novas + "</Relationships>"));
+  } else {
+    // Sem o `.rels` as imagens entram no pacote mas não são referenciadas — o
+    // .docx sai corrompido. Cria o arquivo do zero com as imagens. Raro: modelos
+    // reais sempre têm `.rels`, mas um template montado "na mão" pode não ter.
+    zip.file(
+      relsPath,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+        novas +
+        `</Relationships>`
+    );
   }
 
   return finalXml;

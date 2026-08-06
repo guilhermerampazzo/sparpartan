@@ -71,6 +71,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!cliente || !cliente.portalSenhaHash) return null;
 
+        // Cliente inativo ou soft-deleted não acessa o portal.
+        if (!cliente.ativo || cliente.excluidoEm) return null;
+
         const senhaValida = await bcrypt.compare(senha, cliente.portalSenhaHash);
         if (!senhaValida) return null;
 

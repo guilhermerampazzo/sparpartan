@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { usuarioEquipe } from "@/lib/sessao";
 import { buscarProcessosAgendados } from "@/lib/agenda-processos";
 import { tipoEvento, statusEvento } from "@/lib/status";
 import { EMPRESA } from "@/lib/empresa";
@@ -9,9 +9,8 @@ function escapaHtml(s: string): string {
 }
 
 export async function GET() {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  if (!(await usuarioEquipe())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   const eventos = await buscarProcessosAgendados();

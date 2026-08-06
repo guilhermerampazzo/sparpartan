@@ -74,6 +74,9 @@ const MIME_POR_EXTENSAO: Record<string, string> = {
   ".heic": "image/heic",
   ".doc": "application/msword",
   ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
 };
 
 /** Usado para servir arquivos com preview inline no navegador (`Content-Type` correto). */

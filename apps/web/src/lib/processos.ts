@@ -10,6 +10,9 @@ import {
 
 export type Pendencia = { tipo: "modelo" | "requisito"; nome: string };
 
+/** Conexão (global `db`) ou transação do Drizzle — as funções abaixo aceitam ambas. */
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db;
+
 export const STATUS_PROCESSO_VALIDOS = [
   "aberto",
   "documentos_pendentes",
@@ -24,11 +27,11 @@ export const STATUS_PROCESSO_VALIDOS = [
  * - `modelosDocumento.obrigatorio` — documentos que o escritório gera;
  * - `requisitosDocumento` — documentos que o cliente precisa entregar (antes ignorados).
  */
-export async function pendenciasDoProcesso(processoId: string): Promise<Pendencia[]> {
-  const [processo] = await db.select().from(processos).where(eq(processos.id, processoId)).limit(1);
+export async function pendenciasDoProcesso(processoId: string, con: Tx = db): Promise<Pendencia[]> {
+  const [processo] = await con.select().from(processos).where(eq(processos.id, processoId)).limit(1);
   if (!processo) return [];
 
-  const modelosObrigatorios = await db
+  const modelosObrigatorios = await con
     .select()
     .from(modelosDocumento)
     .where(
@@ -39,12 +42,12 @@ export async function pendenciasDoProcesso(processoId: string): Promise<Pendenci
       )
     );
 
-  const documentosDoProcesso = await db
+  const documentosDoProcesso = await con
     .select()
     .from(documentosGerados)
     .where(eq(documentosGerados.processoId, processoId));
 
-  const requisitos = await db
+  const requisitos = await con
     .select()
     .from(requisitosDocumento)
     .where(
@@ -55,7 +58,7 @@ export async function pendenciasDoProcesso(processoId: string): Promise<Pendenci
       )
     );
 
-  const enviados = await db.select().from(arquivos).where(eq(arquivos.processoId, processoId));
+  const enviados = await con.select().from(arquivos).where(eq(arquivos.processoId, processoId));
 
   const pendencias: Pendencia[] = [];
 
@@ -79,19 +82,19 @@ export async function pendenciasDoProcesso(processoId: string): Promise<Pendenci
  * havia pendência ao tentar protocolar e levar um erro — e o status
  * `documentos_pendentes` nunca era escrito por ninguém.
  */
-export async function reclassificarProcesso(processoId: string) {
-  const [processo] = await db.select().from(processos).where(eq(processos.id, processoId)).limit(1);
+export async function reclassificarProcesso(processoId: string, con: Tx = db) {
+  const [processo] = await con.select().from(processos).where(eq(processos.id, processoId)).limit(1);
   if (!processo) return;
 
   // Não mexe em processo já finalizado ou protocolado.
   if (["protocolado", "concluido", "cancelado"].includes(processo.status)) return;
 
-  const pendencias = await pendenciasDoProcesso(processoId);
+  const pendencias = await pendenciasDoProcesso(processoId, con);
   const novoStatus = pendencias.length > 0 ? "documentos_pendentes" : "pronto_para_protocolo";
 
   if (processo.status === novoStatus) return;
 
-  await db
+  await con
     .update(processos)
     .set({ status: novoStatus, atualizadoEm: new Date() })
     .where(eq(processos.id, processoId));

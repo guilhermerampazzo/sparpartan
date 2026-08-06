@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, count, desc, eq, gte, isNull, lt, lte, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, isNull, lt, lte, ne, sql } from "drizzle-orm";
 import {
   Users,
   Ship,
@@ -21,7 +21,6 @@ import {
   documentosGerados,
   modelosDocumento,
   agendaEventos,
-  lembretes,
   orcamentos,
   pagamentos,
   servicosContratados,
@@ -33,8 +32,11 @@ import { tipoEvento, infoUrgencia, urgenciaVencimento, rotuloPrazo, ordenarPorUr
 import { AvisoAcessoNegado } from "@/components/layout/aviso-acesso-negado";
 import { pendencias } from "@/db/schema";
 import { diasAtePendencia } from "@/lib/pendencias";
+import { auth } from "@/lib/auth";
 
 export default async function HomePage() {
+  const session = await auth();
+  const nomeUsuario = (session?.user as { name?: string | null } | undefined)?.name?.trim() || "de volta";
   const hoje = new Date();
   const inicioHoje = new Date(hoje);
   inicioHoje.setHours(0, 0, 0, 0);
@@ -52,7 +54,7 @@ export default async function HomePage() {
     [{ n: pagamentosAtrasados }],
     documentosVencendo,
     eventosHoje,
-    lembretesAbertos,
+    pendenciasPendentes,
     sazonalidade,
   ] = await Promise.all([
     db.select({ n: count() }).from(clientes).where(isNull(clientes.excluidoEm)),
@@ -95,14 +97,16 @@ export default async function HomePage() {
       .orderBy(asc(agendaEventos.dataHora)),
     db
       .select({
-        id: lembretes.id,
-        mensagem: lembretes.mensagem,
+        id: pendencias.id,
+        descricao: pendencias.descricao,
+        data: pendencias.data,
+        prioridade: pendencias.prioridade,
         clienteNome: clientes.nome,
       })
-      .from(lembretes)
-      .leftJoin(clientes, eq(lembretes.clienteId, clientes.id))
-      .where(eq(lembretes.resolvido, false))
-      .orderBy(desc(lembretes.dataLembrete))
+      .from(pendencias)
+      .leftJoin(clientes, eq(pendencias.clienteId, clientes.id))
+      .where(and(eq(pendencias.status, "pendente"), isNull(pendencias.arquivadaEm)))
+      .orderBy(asc(pendencias.data))
       .limit(6),
     db
       .select({
@@ -187,15 +191,13 @@ export default async function HomePage() {
       href: "/documentos/vencimentos",
     });
   }
-  if (lembretesAbertos.length > 0) {
+  if (pendenciasPendentes.length > 0) {
     alertas.push({
       tone: "warning",
-      title: `${lembretesAbertos.length} lembrete(s) sem resolver`,
+      title: `${pendenciasPendentes.length} pendência(s) aguardando ação`,
       href: "/pendencias",
     });
   }
-
-  const nomeUsuario = "de volta";
 
   return (
     <div className="space-y-gutter">
@@ -345,14 +347,19 @@ export default async function HomePage() {
             )}
           </div>
 
-          {lembretesAbertos.length > 0 && (
+          {pendenciasPendentes.length > 0 && (
             <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
               <h2 className="mb-4 font-display text-title-lg font-semibold text-primary">Central de Pendências</h2>
               <ul className="space-y-2">
-                {lembretesAbertos.map((l) => (
-                  <li key={l.id} className="text-body-sm">
-                    <p className="text-primary">{l.mensagem}</p>
-                    {l.clienteNome && <p className="text-outline">{l.clienteNome}</p>}
+                {pendenciasPendentes.map((p) => (
+                  <li key={p.id} className="flex items-start justify-between gap-3 text-body-sm">
+                    <p className="min-w-0 flex-1 text-primary">
+                      {p.descricao}
+                      {p.clienteNome && <span className="block text-outline">{p.clienteNome}</span>}
+                    </p>
+                    <span className="shrink-0 font-mono-caps text-label-sm uppercase text-outline">
+                      {p.data ? new Date(`${p.data}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : ""}
+                    </span>
                   </li>
                 ))}
               </ul>

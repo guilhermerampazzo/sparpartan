@@ -7,6 +7,7 @@ services:
     ports:
       - "${APP_PORT:-8080}:3000"
     environment:
+      TZ: America/Sao_Paulo
       DATABASE_URL: postgres://${POSTGRES_USER:-sparapan}:${POSTGRES_PASSWORD:-sparapan}@postgres:5432/${POSTGRES_DB:-sparapan}
       REDIS_URL: redis://redis:6379
       AUTH_SECRET: ${AUTH_SECRET}
@@ -22,7 +23,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      MAIL_FROM: ${MAIL_FROM:-naosresponda@sparapan.com.br}
+      MAIL_FROM: ${MAIL_FROM:-naoresponda@sparapan.com.br}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       UPLOADS_DIR: /app/data/uploads
@@ -45,6 +46,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+      TZ: America/Sao_Paulo
       DATABASE_URL: postgres://${POSTGRES_USER:-sparapan}:${POSTGRES_PASSWORD:-sparapan}@postgres:5432/${POSTGRES_DB:-sparapan}
       REDIS_URL: redis://redis:6379
       MAIL_PROVIDER: ${MAIL_PROVIDER:-smtp}
@@ -52,7 +54,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      MAIL_FROM: ${MAIL_FROM:-naosresponda@sparapan.com.br}
+      MAIL_FROM: ${MAIL_FROM:-naoresponda@sparapan.com.br}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
@@ -72,6 +74,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
+      TZ: America/Sao_Paulo
       POSTGRES_USER: ${POSTGRES_USER:-sparapan}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sparapan}
       POSTGRES_DB: ${POSTGRES_DB:-sparapan}

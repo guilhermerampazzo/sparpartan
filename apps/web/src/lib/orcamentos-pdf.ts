@@ -10,6 +10,16 @@ function uploadsDir() {
   return process.env.UPLOADS_DIR ?? "./data/uploads";
 }
 
+/** Escapa dados vindos do banco antes de interpolá-los no HTML do PDF. */
+function escapaHtml(valor: string | null | undefined): string {
+  return (valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * `gerarPdfOrcamento` (a action) termina em `redirect()`, que aborta o fluxo
  * lançando uma exceção — não dá para chamá-la de dentro de outra action (ex.: para
@@ -63,10 +73,10 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
             style: "currency",
             currency: "BRL",
           });
-          return `<tr><td>${item.quantidade}</td><td>Item ${item.ordem}</td><td>${item.descricao}</td><td>${preco}</td><td>${totalLinha}</td></tr>`;
+          return `<tr><td>${item.quantidade}</td><td>Item ${item.ordem}</td><td>${escapaHtml(item.descricao)}</td><td>${preco}</td><td>${totalLinha}</td></tr>`;
         })
         .join("")
-    : `<tr><td>1</td><td>Item 1</td><td>${descricaoItem}</td><td>${valorFormatado}</td><td>${valorFormatado}</td></tr>`;
+    : `<tr><td>1</td><td>Item 1</td><td>${escapaHtml(descricaoItem)}</td><td>${valorFormatado}</td><td>${valorFormatado}</td></tr>`;
 
   const dataEmissao = orcamento.criadoEm.toLocaleDateString("pt-BR");
   const validoAteFormatado = orcamento.validoAte
@@ -83,6 +93,7 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
 
   const html = `<!doctype html>
 <html><head><meta charset="utf-8"><style>
+  @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
   body { font-family: Arial, Helvetica, sans-serif; padding: 48px 44px; color: #001736; font-size: 12px; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
@@ -116,7 +127,7 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
   </div>
   <div class="numero-box">
     <div class="label">ORÇAMENTO Nº</div>
-    <div class="numero">${orcamento.numero}</div>
+    <div class="numero">${escapaHtml(orcamento.numero)}</div>
     <div>${dataEmissao}</div>
   </div>
 </div>
@@ -124,12 +135,12 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
 <div class="section">
   <div class="section-title">DADOS DO CONTRATANTE</div>
   <div class="section-body">
-    <p><strong>Nome:</strong> ${cliente?.nome ?? "—"}</p>
-    <p><strong>CPF/CNPJ:</strong> ${cliente?.cpfCnpj ?? "—"}</p>
-    <p><strong>Endereço:</strong> ${enderecoPartes || "—"}</p>
-    <p><strong>CEP:</strong> ${cliente?.cep ?? "—"}</p>
-    <p><strong>Telefone:</strong> ${cliente?.telefone ?? cliente?.celular ?? "—"}</p>
-    <p><strong>E-mail:</strong> ${cliente?.email ?? "—"}</p>
+    <p><strong>Nome:</strong> ${escapaHtml(cliente?.nome) || "—"}</p>
+    <p><strong>CPF/CNPJ:</strong> ${escapaHtml(cliente?.cpfCnpj) || "—"}</p>
+    <p><strong>Endereço:</strong> ${escapaHtml(enderecoPartes) || "—"}</p>
+    <p><strong>CEP:</strong> ${escapaHtml(cliente?.cep) || "—"}</p>
+    <p><strong>Telefone:</strong> ${escapaHtml(cliente?.telefone ?? cliente?.celular) || "—"}</p>
+    <p><strong>E-mail:</strong> ${escapaHtml(cliente?.email) || "—"}</p>
   </div>
 </div>
 
@@ -149,8 +160,8 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
 ${
   (orcamento.formaPagamento || orcamento.condicaoPagamento) &&
   `<div class="section"><div class="section-title">CONDIÇÕES DE PAGAMENTO</div><div class="section-body">
-    ${orcamento.formaPagamento ? `<p><strong>Forma de pagamento:</strong> ${orcamento.formaPagamento}</p>` : ""}
-    ${orcamento.condicaoPagamento ? `<p><strong>Condição:</strong> ${orcamento.condicaoPagamento}</p>` : ""}
+    ${orcamento.formaPagamento ? `<p><strong>Forma de pagamento:</strong> ${escapaHtml(orcamento.formaPagamento)}</p>` : ""}
+    ${orcamento.condicaoPagamento ? `<p><strong>Condição:</strong> ${escapaHtml(orcamento.condicaoPagamento)}</p>` : ""}
   </div></div>`
 }
 
@@ -162,18 +173,18 @@ ${
 
 ${
   orcamento.observacoes
-    ? `<div class="section"><div class="section-title">OBSERVAÇÕES E CONDIÇÕES</div><div class="section-body"><p style="white-space:pre-wrap">${orcamento.observacoes}</p></div></div>`
+    ? `<div class="section"><div class="section-title">OBSERVAÇÕES E CONDIÇÕES</div><div class="section-body"><p style="white-space:pre-wrap">${escapaHtml(orcamento.observacoes)}</p></div></div>`
     : ""
 }
 
 ${
   contaBancaria
     ? `<div class="section"><div class="section-title">DADOS PARA PAGAMENTO</div><div class="section-body">
-        <p><strong>Conta:</strong> ${contaBancaria.apelido}</p>
-        ${contaBancaria.banco ? `<p><strong>Banco:</strong> ${contaBancaria.banco}</p>` : ""}
-        ${contaBancaria.agencia ? `<p><strong>Agência:</strong> ${contaBancaria.agencia}</p>` : ""}
-        ${contaBancaria.conta ? `<p><strong>Conta:</strong> ${contaBancaria.conta}</p>` : ""}
-        ${contaBancaria.pix ? `<p><strong>PIX:</strong> ${contaBancaria.pix}</p>` : ""}
+        <p><strong>Conta:</strong> ${escapaHtml(contaBancaria.apelido)}</p>
+        ${contaBancaria.banco ? `<p><strong>Banco:</strong> ${escapaHtml(contaBancaria.banco)}</p>` : ""}
+        ${contaBancaria.agencia ? `<p><strong>Agência:</strong> ${escapaHtml(contaBancaria.agencia)}</p>` : ""}
+        ${contaBancaria.conta ? `<p><strong>Conta:</strong> ${escapaHtml(contaBancaria.conta)}</p>` : ""}
+        ${contaBancaria.pix ? `<p><strong>PIX:</strong> ${escapaHtml(contaBancaria.pix)}</p>` : ""}
       </div></div>`
     : ""
 }
@@ -184,7 +195,7 @@ ${
   <div class="assinatura-box">
     <div class="linha"></div>
     <p>Assinatura do Contratante</p>
-    <p><strong>${cliente?.nome ?? ""}</strong></p>
+    <p><strong>${escapaHtml(cliente?.nome) ?? ""}</strong></p>
   </div>
   <div class="assinatura-box">
     <div class="linha"></div>

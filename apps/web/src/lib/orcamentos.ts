@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { orcamentos, servicosContratados, processos, pagamentos, clientes, servicos, enviosEmail } from "@/db/schema";
 import { enviarEmail } from "@/lib/mail/adapter";
 import { reclassificarProcesso } from "@/lib/processos";
+import { registrarNoChat } from "@/lib/chat-sistema";
 
 export type ResultadoAprovacao =
   | { ok: true; processoId?: string }
@@ -40,49 +41,61 @@ export async function aprovarOrcamentoCore(orcamentoId: string): Promise<Resulta
     return { ok: false, motivo: "sem_servico_cadastrado" };
   }
 
-  const [processo] = await db
-    .insert(processos)
-    .values({
-      clienteId: orcamento.clienteId,
-      servicoId: orcamento.servicoId,
-      embarcacaoId: orcamento.embarcacaoId,
-      criadoPorId: orcamento.criadoPorId,
-    })
-    .returning({ id: processos.id });
+  // Captura fora da closure da transação: o narrowing de `orcamento.servicoId`
+  // feito pelo guard acima não sobrevive ao entrar num callback, e o type do
+  // insert de processos exige servicoId não-nulo.
+  const { clienteId, servicoId, embarcacaoId, vendedorId, criadoPorId, valor } = orcamento;
 
-  const [venda] = await db
-    .insert(servicosContratados)
-    .values({
-      orcamentoId,
-      clienteId: orcamento.clienteId,
-      servicoId: orcamento.servicoId,
-      processoId: processo.id,
-      vendedorId: orcamento.vendedorId,
-      valor: orcamento.valor,
-      dataContratacao: new Date().toISOString().slice(0, 10),
-      criadoPorId: orcamento.criadoPorId,
-    })
-    .returning({ id: servicosContratados.id });
+  // As escritas ficam numa transação: se qualquer uma falhar no meio, nada é
+  // persistido e aprovar de novo não gera processo/venda duplicados.
+  const { processoId } = await db.transaction(async (tx) => {
+    const [processo] = await tx
+      .insert(processos)
+      .values({
+        clienteId,
+        servicoId,
+        embarcacaoId,
+        criadoPorId,
+      })
+      .returning({ id: processos.id });
 
-  const vencimento = new Date();
-  vencimento.setDate(vencimento.getDate() + PRAZO_PAGAMENTO_DIAS);
+    const [venda] = await tx
+      .insert(servicosContratados)
+      .values({
+        orcamentoId,
+        clienteId,
+        servicoId,
+        processoId: processo.id,
+        vendedorId,
+        valor,
+        dataContratacao: new Date().toISOString().slice(0, 10),
+        criadoPorId,
+      })
+      .returning({ id: servicosContratados.id });
 
-  await db.insert(pagamentos).values({
-    servicoContratadoId: venda.id,
-    valor: orcamento.valor,
-    dataVencimento: vencimento.toISOString().slice(0, 10),
-    status: "pendente",
+    const vencimento = new Date();
+    vencimento.setDate(vencimento.getDate() + PRAZO_PAGAMENTO_DIAS);
+
+    await tx.insert(pagamentos).values({
+      servicoContratadoId: venda.id,
+      valor,
+      dataVencimento: vencimento.toISOString().slice(0, 10),
+      status: "pendente",
+    });
+
+    await tx.update(orcamentos).set({ status: "aprovado" }).where(eq(orcamentos.id, orcamentoId));
+
+    await reclassificarProcesso(processo.id, tx);
+
+    return { processoId: processo.id };
   });
-
-  await db.update(orcamentos).set({ status: "aprovado" }).where(eq(orcamentos.id, orcamentoId));
-
-  await reclassificarProcesso(processo.id);
 
   const [cliente] = await db.select().from(clientes).where(eq(clientes.id, orcamento.clienteId)).limit(1);
   const [servico] = await db.select().from(servicos).where(eq(servicos.id, orcamento.servicoId)).limit(1);
 
   // Contratar um curso da escola promove a classificação do cliente para
   // aluno/ambos automaticamente — mantém o campo honesto sem manutenção manual.
+  // (Fora da transação de propósito: falha aqui não deve desfazer a aprovação.)
   if (servico?.categoria === "escola" && cliente && cliente.classificacao === "cliente") {
     await db.update(clientes).set({ classificacao: "ambos" }).where(eq(clientes.id, cliente.id));
   }
@@ -119,7 +132,11 @@ export async function aprovarOrcamentoCore(orcamentoId: string): Promise<Resulta
     });
   }
 
-  return { ok: true, processoId: processo.id };
+  await registrarNoChat(
+    `Orçamento ${orcamento.numero} aprovado — ${servico?.nome ?? "serviço"} de ${cliente?.nome ?? "cliente"}. Processo aberto.`
+  );
+
+  return { ok: true, processoId };
 }
 
 export async function recusarOrcamentoCore(orcamentoId: string): Promise<ResultadoAprovacao> {

@@ -2,15 +2,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { usuarioEquipe } from "@/lib/sessao";
 import { db } from "@/db";
 import { embarcacaoFotos } from "@/db/schema";
 import { mimeTypePorExtensao } from "@/lib/upload";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  if (!(await usuarioEquipe())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   const { id } = await params;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isNull, desc } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { usuarioEquipe } from "@/lib/sessao";
 import { db } from "@/db";
 import { clientes } from "@/db/schema";
 
@@ -12,9 +12,8 @@ function csvEscape(value: string): string {
 }
 
 export async function GET() {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  if (!(await usuarioEquipe())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   const lista = await db

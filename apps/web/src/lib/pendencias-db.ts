@@ -19,33 +19,34 @@ export type NovaPendenciaInput = {
   criadoPorId?: string | null;
 };
 
+function paraValores(input: NovaPendenciaInput) {
+  return {
+    descricao: input.descricao,
+    categoria: input.categoria ?? "processos",
+    prioridade: input.prioridade ?? "media",
+    data: input.data,
+    horario: input.horario ?? null,
+    clienteId: input.clienteId ?? null,
+    embarcacaoId: input.embarcacaoId ?? null,
+    processoId: input.processoId ?? null,
+    responsavel: input.responsavel ?? null,
+    responsavelId: input.responsavelId ?? null,
+    observacoes: input.observacoes ?? null,
+    origem: input.origem ?? "manual",
+    privada: input.privada ?? false,
+    criadoPorId: input.criadoPorId ?? null,
+  };
+}
+
 /** Cria uma pendência e devolve o id. Usado pelo form manual e pelas integrações automáticas. */
 export async function criarPendencia(input: NovaPendenciaInput): Promise<string> {
-  const [pendencia] = await db
-    .insert(pendencias)
-    .values({
-      descricao: input.descricao,
-      categoria: input.categoria ?? "processos",
-      prioridade: input.prioridade ?? "media",
-      data: input.data,
-      horario: input.horario ?? null,
-      clienteId: input.clienteId ?? null,
-      embarcacaoId: input.embarcacaoId ?? null,
-      processoId: input.processoId ?? null,
-      responsavel: input.responsavel ?? null,
-      responsavelId: input.responsavelId ?? null,
-      observacoes: input.observacoes ?? null,
-      origem: input.origem ?? "manual",
-      privada: input.privada ?? false,
-      criadoPorId: input.criadoPorId ?? null,
-    })
-    .returning({ id: pendencias.id });
+  const [pendencia] = await db.insert(pendencias).values(paraValores(input)).returning({ id: pendencias.id });
   return pendencia.id;
 }
 
-/** Cria várias pendências de uma vez (lote automático). */
+/** Cria várias pendências de uma vez (lote automático) — um único INSERT. */
 export async function criarPendencias(lista: NovaPendenciaInput[]): Promise<string[]> {
-  const ids: string[] = [];
-  for (const item of lista) ids.push(await criarPendencia(item));
-  return ids;
+  if (lista.length === 0) return [];
+  const inseridas = await db.insert(pendencias).values(lista.map(paraValores)).returning({ id: pendencias.id });
+  return inseridas.map((p) => p.id);
 }
