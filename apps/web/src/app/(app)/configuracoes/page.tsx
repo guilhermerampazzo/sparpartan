@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClipboardList, Trash2, Download, ScanText, FileStack, Landmark, UserCog } from "lucide-react";
+import { ClipboardList, Trash2, Download, ScanText, FileStack, Landmark, UserCog, Image as ImageIcon } from "lucide-react";
 import { auth } from "@/lib/auth";
 
 export default async function ConfiguracoesPage() {
@@ -48,6 +48,12 @@ export default async function ConfiguracoesPage() {
       icon: Landmark,
       title: "Contas Bancárias",
       description: "Contas usadas para receber pagamentos, disponíveis nos orçamentos.",
+    },
+    {
+      href: "/configuracoes/logo",
+      icon: ImageIcon,
+      title: "Logo do Sistema",
+      description: "Envie uma imagem para substituir o logo em todo o sistema.",
     },
   ].filter(Boolean) as { href: string; icon: typeof ClipboardList; title: string; description: string }[];
 

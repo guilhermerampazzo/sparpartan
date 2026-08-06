@@ -1,10 +1,10 @@
-import Image from "next/image";
 import { auth } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { SessionTimeout } from "@/components/layout/session-timeout";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/logo";
 
 export default async function AppLayout({
   children,
@@ -25,8 +25,7 @@ export default async function AppLayout({
       />
       <header className="fixed left-0 right-0 top-0 z-10 flex h-16 items-center justify-between border-b border-outline-variant bg-surface-bright px-4 lg:left-64">
         <div className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="Sparapan" width={28} height={28} className="lg:hidden" />
-          <p className="font-display text-lg font-bold text-primary">Sparapan Solução Naval</p>
+          <Logo size={30} className="lg:hidden" />
         </div>
         <ThemeToggle />
       </header>

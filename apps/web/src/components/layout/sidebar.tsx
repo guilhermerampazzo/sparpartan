@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav-items";
 import { itemNavLiberado } from "@/lib/permissoes";
+import { Logo } from "@/components/logo";
 import { ChatPopover } from "./chat-popover";
 import { NavBadge, useContadoresNotificacao } from "./nav-notificacoes";
 
@@ -42,16 +42,8 @@ export function Sidebar({
 
   return (
     <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-nav lg:flex">
-      <div className="flex items-center gap-3 px-6 py-6">
-        <Image src="/logo.svg" alt="Sparapan" width={64} height={64} className="h-16 w-16 object-contain" />
-        <div>
-          <p className="font-display text-base font-bold leading-tight text-nav-text">
-            Sparapan
-          </p>
-          <p className="font-mono-caps text-[10px] uppercase tracking-wide text-nav-text/70">
-            Nautical Management
-          </p>
-        </div>
+      <div className="flex justify-center px-6 py-6">
+        <Logo size={72} className="object-contain" />
       </div>
 
       <nav className="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3">
