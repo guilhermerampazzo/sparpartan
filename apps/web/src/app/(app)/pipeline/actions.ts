@@ -13,21 +13,32 @@ async function usuarioAtualId(): Promise<string | null> {
   return usuarioSessao?.tipo === "equipe" ? (usuarioSessao.id ?? null) : null;
 }
 
+function camposDoForm(formData: FormData) {
+  return {
+    titulo: String(formData.get("titulo") ?? "").trim(),
+    clienteId: String(formData.get("clienteId") ?? "") || null,
+    telefoneContato: String(formData.get("telefoneContato") ?? "").trim() || null,
+    origem: String(formData.get("origem") ?? "").trim() || null,
+    servicoSolicitado: String(formData.get("servicoSolicitado") ?? "").trim() || null,
+    valorEstimado: String(formData.get("valorEstimado") ?? "") || null,
+    orcamentoId: String(formData.get("orcamentoId") ?? "") || null,
+    responsavelId: String(formData.get("responsavelId") ?? "") || null,
+    ultimoContato: String(formData.get("ultimoContato") ?? "").trim(),
+    proximaAcao: String(formData.get("proximaAcao") ?? "").trim() || null,
+    observacoes: String(formData.get("observacoes") ?? "").trim() || null,
+  };
+}
+
 export async function criarOportunidade(
   _estadoAnterior: EstadoForm,
   formData: FormData
 ): Promise<EstadoForm> {
-  const titulo = String(formData.get("titulo") ?? "").trim();
-  const clienteId = String(formData.get("clienteId") ?? "") || null;
-  const telefoneContato = String(formData.get("telefoneContato") ?? "").trim() || null;
-  const origem = String(formData.get("origem") ?? "").trim() || null;
-  const valorEstimado = String(formData.get("valorEstimado") ?? "") || null;
-  const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+  const campos = camposDoForm(formData);
   const valores = valoresDoFormData(formData);
 
   const erro = new Validador()
-    .exigir(!!titulo, "Informe o título da oportunidade.")
-    .exigir(!!clienteId || !!telefoneContato, "Vincule um cliente ou informe um telefone de contato.")
+    .exigir(!!campos.titulo, "Informe o título da oportunidade.")
+    .exigir(!!campos.clienteId || !!campos.telefoneContato, "Vincule um cliente ou informe um telefone de contato.")
     .erro;
 
   if (erro) return { erro, valores };
@@ -37,12 +48,17 @@ export async function criarOportunidade(
   const [oportunidade] = await db
     .insert(pipelineOportunidades)
     .values({
-      titulo,
-      clienteId,
-      telefoneContato,
-      origem,
-      valorEstimado,
-      observacoes,
+      titulo: campos.titulo,
+      clienteId: campos.clienteId,
+      telefoneContato: campos.telefoneContato,
+      origem: campos.origem,
+      servicoSolicitado: campos.servicoSolicitado,
+      valorEstimado: campos.valorEstimado,
+      orcamentoId: campos.orcamentoId,
+      responsavelId: campos.responsavelId || criadoPorId,
+      ultimoContatoEm: campos.ultimoContato ? new Date(`${campos.ultimoContato}T00:00:00`) : null,
+      proximaAcao: campos.proximaAcao,
+      observacoes: campos.observacoes,
       criadoPorId,
     })
     .returning({ id: pipelineOportunidades.id });
@@ -62,17 +78,12 @@ export async function atualizarOportunidade(
   _estadoAnterior: EstadoForm,
   formData: FormData
 ): Promise<EstadoForm> {
-  const titulo = String(formData.get("titulo") ?? "").trim();
-  const clienteId = String(formData.get("clienteId") ?? "") || null;
-  const telefoneContato = String(formData.get("telefoneContato") ?? "").trim() || null;
-  const origem = String(formData.get("origem") ?? "").trim() || null;
-  const valorEstimado = String(formData.get("valorEstimado") ?? "") || null;
-  const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+  const campos = camposDoForm(formData);
   const valores = valoresDoFormData(formData);
 
   const erro = new Validador()
-    .exigir(!!titulo, "Informe o título da oportunidade.")
-    .exigir(!!clienteId || !!telefoneContato, "Vincule um cliente ou informe um telefone de contato.")
+    .exigir(!!campos.titulo, "Informe o título da oportunidade.")
+    .exigir(!!campos.clienteId || !!campos.telefoneContato, "Vincule um cliente ou informe um telefone de contato.")
     .erro;
 
   if (erro) return { erro, valores };
@@ -80,12 +91,17 @@ export async function atualizarOportunidade(
   await db
     .update(pipelineOportunidades)
     .set({
-      titulo,
-      clienteId,
-      telefoneContato,
-      origem,
-      valorEstimado,
-      observacoes,
+      titulo: campos.titulo,
+      clienteId: campos.clienteId,
+      telefoneContato: campos.telefoneContato,
+      origem: campos.origem,
+      servicoSolicitado: campos.servicoSolicitado,
+      valorEstimado: campos.valorEstimado,
+      orcamentoId: campos.orcamentoId,
+      responsavelId: campos.responsavelId || null,
+      ultimoContatoEm: campos.ultimoContato ? new Date(`${campos.ultimoContato}T00:00:00`) : null,
+      proximaAcao: campos.proximaAcao,
+      observacoes: campos.observacoes,
       atualizadoEm: new Date(),
     })
     .where(eq(pipelineOportunidades.id, oportunidadeId));
@@ -95,14 +111,15 @@ export async function atualizarOportunidade(
 
 const ESTAGIOS = [
   "novo_lead",
-  "atendimento",
-  "proposta_enviada",
+  "primeiro_contato",
+  "aguardando_documentacao",
+  "orcamento_enviado",
   "negociacao",
-  "fechado",
+  "aguardando_pagamento",
+  "servico_contratado",
   "em_execucao",
-  "aguardando_cliente",
-  "concluido",
   "pos_venda",
+  "concluido",
   "perdido",
 ] as const;
 type PipelineEstagio = (typeof ESTAGIOS)[number];

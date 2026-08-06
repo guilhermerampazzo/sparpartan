@@ -211,6 +211,20 @@
       "when": 1785952129158,
       "tag": "0029_pendencias",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1786023251233,
+      "tag": "0030_ancient_proemial_gods",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1786025955238,
+      "tag": "0031_naive_prima",
+      "breakpoints": true
     }
   ]
 }

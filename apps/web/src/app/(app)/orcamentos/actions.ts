@@ -9,6 +9,8 @@ import { orcamentos, orcamentoItens, clientes, servicos, contasBancarias, envios
 import { aprovarOrcamentoCore, recusarOrcamentoCore } from "@/lib/orcamentos";
 import { gerarPdfCore, lerPdfOrcamento } from "@/lib/orcamentos-pdf";
 import { criarSolicitacao } from "@/lib/solicitacoes";
+import { registrarNoChat } from "@/lib/chat-sistema";
+import { criarPendencia } from "@/lib/pendencias-db";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 import { enviarEmail } from "@/lib/mail/adapter";
 import { auth } from "@/lib/auth";
@@ -103,8 +105,9 @@ export async function criarOrcamento(
   // instante podem colidir no UNIQUE de numero. Tenta de novo com número recalculado.
   const MAX_TENTATIVAS = 5;
   let orcamentoId: string | undefined;
+  let numero = "";
   for (let tentativa = 0; tentativa < MAX_TENTATIVAS; tentativa++) {
-    const numero = await gerarNumeroOrcamento();
+    numero = await gerarNumeroOrcamento();
     try {
       const [orcamento] = await db
         .insert(orcamentos)
@@ -147,6 +150,28 @@ export async function criarOrcamento(
         }))
       );
   }
+
+  const [clienteDoOrcamento] = await db
+    .select({ nome: clientes.nome })
+    .from(clientes)
+    .where(eq(clientes.id, clienteId))
+    .limit(1);
+  await registrarNoChat(
+    `Orçamento ${numero} criado para ${clienteDoOrcamento?.nome ?? "cliente"} — aguardando análise.`
+  );
+
+  // A Central de Pendências é alimentada automaticamente pelos módulos: um
+  // orçamento criado gera a tarefa de decisão sem ninguém cadastrar na mão.
+  await criarPendencia({
+    descricao: `Orçamento ${numero} aguardando aprovação`,
+    categoria: "financeiro",
+    prioridade: "media",
+    data: new Date().toISOString().slice(0, 10),
+    clienteId,
+    responsavelId: vendedorId,
+    origem: "auto",
+    criadoPorId: vendedorId,
+  });
 
   redirect(`/orcamentos/${orcamentoId}`);
 }

@@ -1,4 +1,4 @@
-import { desc, eq, isNull } from "drizzle-orm";
+import { desc, eq, isNull, and } from "drizzle-orm";
 import { Receipt, Trash2, Landmark } from "lucide-react";
 import { db } from "@/db";
 import { orcamentos, clientes, servicos } from "@/db/schema";
@@ -26,9 +26,19 @@ type LinhaOrcamento = {
   clienteNome: string;
   servicoNome: string | null;
   descricao: string | null;
+  criadoEm: Date;
+  validoAte: string | null;
 };
 
-export default async function OrcamentosPage() {
+export default async function OrcamentosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
+  const STATUS_VALIDOS = new Set(["pendente", "aprovado", "recusado", "expirado"]);
+  const statusFiltro = status && STATUS_VALIDOS.has(status) ? status : undefined;
+
   const lista = await db
     .select({
       id: orcamentos.id,
@@ -38,18 +48,34 @@ export default async function OrcamentosPage() {
       clienteNome: clientes.nome,
       servicoNome: servicos.nome,
       descricao: orcamentos.descricao,
+      criadoEm: orcamentos.criadoEm,
+      validoAte: orcamentos.validoAte,
     })
     .from(orcamentos)
     .innerJoin(clientes, eq(orcamentos.clienteId, clientes.id))
     .leftJoin(servicos, eq(orcamentos.servicoId, servicos.id))
-    .where(isNull(orcamentos.excluidoEm))
+    .where(
+      and(
+        isNull(orcamentos.excluidoEm),
+        statusFiltro ? eq(orcamentos.status, statusFiltro as (typeof orcamentos.status.enumValues)[number]) : undefined
+      )
+    )
     .orderBy(desc(orcamentos.criadoEm));
 
   const columns: Column<LinhaOrcamento>[] = [
     { header: "Número", cell: (o) => <span className="font-medium text-primary">{o.numero}</span> },
+    { header: "Data", cell: (o) => <span className="whitespace-nowrap">{o.criadoEm.toLocaleDateString("pt-BR")}</span> },
     { header: "Cliente", cell: (o) => o.clienteNome },
     { header: "Serviço", cell: (o) => o.servicoNome ?? o.descricao ?? "—" },
     { header: "Valor", cell: (o) => formatMoney(o.valor) },
+    {
+      header: "Validade",
+      cell: (o) => (
+        <span className="whitespace-nowrap">
+          {o.validoAte ? new Date(`${o.validoAte}T00:00:00`).toLocaleDateString("pt-BR") : "—"}
+        </span>
+      ),
+    },
     { header: "Status", cell: (o) => <StatusBadge status={statusOrcamento(o.status)} /> },
     {
       header: "",
@@ -95,7 +121,14 @@ export default async function OrcamentosPage() {
   return (
     <div className="space-y-gutter">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-headline-lg font-bold text-primary">Orçamentos</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-headline-lg font-bold text-primary">Orçamentos</h1>
+          {statusFiltro && (
+            <LinkButton href="/orcamentos" variant="outlined" size="sm">
+              Filtro: {statusFiltro} (limpar)
+            </LinkButton>
+          )}
+        </div>
         <div className="flex gap-3">
           <LinkButton href="/configuracoes/contas-bancarias" variant="outlined" icon={Landmark}>
             Gerenciar Contas Bancárias

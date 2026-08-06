@@ -8,11 +8,15 @@ import type { EstadoForm } from "@/lib/validacao";
 
 export function NovaOportunidadeForm({
   listaClientes,
+  listaUsuarios = [],
+  listaOrcamentos = [],
   oportunidadeInicial,
   action = criarOportunidade,
   submitLabel = "Criar Oportunidade",
 }: {
   listaClientes: { id: string; nome: string }[];
+  listaUsuarios?: { id: string; nome: string }[];
+  listaOrcamentos?: { id: string; numero: string; valor: string | null; clienteNome: string }[];
   oportunidadeInicial?: Record<string, unknown>;
   action?: (estado: EstadoForm, formData: FormData) => Promise<EstadoForm>;
   submitLabel?: string;
@@ -46,7 +50,39 @@ export function NovaOportunidadeForm({
             defaultValue={v("telefoneContato")}
           />
           <Campo label="Origem do lead" name="origem" defaultValue={v("origem")} />
+          <Campo
+            label="Serviço solicitado"
+            name="servicoSolicitado"
+            defaultValue={v("servicoSolicitado")}
+          />
           <CampoMoeda label="Valor estimado" name="valorEstimado" defaultValue={v("valorEstimado")} />
+          <CampoSelect
+            label="Responsável pelo atendimento"
+            name="responsavelId"
+            defaultValue={v("responsavelId")}
+            options={[
+              { value: "", label: "— Eu (usuário atual) —" },
+              ...listaUsuarios.map((u) => ({ value: u.id, label: u.nome })),
+            ]}
+          />
+          <Campo label="Último contato" name="ultimoContato" type="date" defaultValue={v("ultimoContato")} />
+          <Campo
+            label="Próxima ação"
+            name="proximaAcao"
+            defaultValue={v("proximaAcao")}
+          />
+          <CampoSelect
+            label="Orçamento vinculado (opcional)"
+            name="orcamentoId"
+            defaultValue={v("orcamentoId")}
+            options={[
+              { value: "", label: "— Nenhum —" },
+              ...listaOrcamentos.map((o) => ({
+                value: o.id,
+                label: `${o.numero} — ${o.clienteNome}${o.valor ? ` (${Number(o.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})` : ""}`,
+              })),
+            ]}
+          />
         </div>
         <label className="mt-4 flex flex-col gap-1">
           <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
@@ -65,4 +101,3 @@ export function NovaOportunidadeForm({
     </form>
   );
 }
-

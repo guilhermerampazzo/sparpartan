@@ -34,9 +34,11 @@ const ABAS = [
 export default async function ProcessosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; aba?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; aba?: string; status?: string }>;
 }) {
-  const { q, page, aba: abaParam } = await searchParams;
+  const { q, page, aba: abaParam, status: statusParam } = await searchParams;
+  const STATUS_VALIDOS = new Set(["aberto", "documentos_pendentes", "pronto_para_protocolo", "protocolado", "concluido", "cancelado"]);
+  const statusDireto = statusParam && STATUS_VALIDOS.has(statusParam) ? statusParam : undefined;
   const aba = ABAS.find((a) => a.key === abaParam) ?? ABAS[0];
 
   const condicoes = [isNull(processos.excluidoEm)];
@@ -49,7 +51,11 @@ export default async function ProcessosPage({
       )!
     );
   }
-  if (aba.status) condicoes.push(inArray(processos.status, aba.status as (typeof processos.status.enumValues)[number][]));
+  if (statusDireto) {
+    condicoes.push(eq(processos.status, statusDireto as (typeof processos.status.enumValues)[number]));
+  } else if (aba.status) {
+    condicoes.push(inArray(processos.status, aba.status as (typeof processos.status.enumValues)[number][]));
+  }
   const filtro = and(...condicoes);
 
   const [{ total }] = await db
@@ -134,7 +140,12 @@ export default async function ProcessosPage({
         }
       />
 
-      <Pagination paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalRegistros={total} baseParams={{ q, aba: aba.key === "geral" ? undefined : aba.key }} />
+      <Pagination
+        paginaAtual={paginaAtual}
+        totalPaginas={totalPaginas}
+        totalRegistros={total}
+        baseParams={{ q, aba: aba.key === "geral" ? undefined : aba.key, status: statusDireto }}
+      />
     </div>
   );
 }

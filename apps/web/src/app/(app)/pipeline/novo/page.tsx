@@ -1,5 +1,6 @@
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { clientes } from "@/db/schema";
+import { clientes, usuarios, orcamentos } from "@/db/schema";
 import { NovaOportunidadeForm } from "./form";
 
 export default async function NovaOportunidadePage() {
@@ -8,10 +9,33 @@ export default async function NovaOportunidadePage() {
     .from(clientes)
     .orderBy(clientes.nome);
 
+  const listaUsuarios = await db
+    .select({ id: usuarios.id, nome: usuarios.nome })
+    .from(usuarios)
+    .where(eq(usuarios.ativo, true))
+    .orderBy(usuarios.nome);
+
+  const listaOrcamentos = await db
+    .select({
+      id: orcamentos.id,
+      numero: orcamentos.numero,
+      valor: orcamentos.valor,
+      clienteNome: clientes.nome,
+    })
+    .from(orcamentos)
+    .innerJoin(clientes, eq(orcamentos.clienteId, clientes.id))
+    .where(eq(orcamentos.status, "pendente"))
+    .orderBy(desc(orcamentos.criadoEm))
+    .limit(30);
+
   return (
     <div className="space-y-gutter">
       <h1 className="font-display text-headline-lg font-bold text-primary">Nova Oportunidade</h1>
-      <NovaOportunidadeForm listaClientes={listaClientes} />
+      <NovaOportunidadeForm
+        listaClientes={listaClientes}
+        listaUsuarios={listaUsuarios}
+        listaOrcamentos={listaOrcamentos}
+      />
     </div>
   );
 }

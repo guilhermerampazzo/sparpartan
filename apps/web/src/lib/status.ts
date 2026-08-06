@@ -43,6 +43,7 @@ import {
   ClipboardList,
   Star,
   Ban,
+  Hourglass,
 } from "lucide-react";
 import type { StatusInfo } from "@/components/ui/badge";
 
@@ -77,14 +78,15 @@ export function etapaProcesso(status: string): number {
 export function statusPipeline(estagio: string): StatusInfo {
   const map: Record<string, StatusInfo> = {
     novo_lead: { label: "Novo Lead", tone: "success", icon: UserPlus },
-    atendimento: { label: "Atendimento", tone: "info", icon: Headset },
-    proposta_enviada: { label: "Proposta Enviada", tone: "warning", icon: Send },
+    primeiro_contato: { label: "Primeiro Contato", tone: "info", icon: Headset },
+    aguardando_documentacao: { label: "Aguardando Documentação", tone: "warning", icon: ClipboardList },
+    orcamento_enviado: { label: "Orçamento Enviado", tone: "warning", icon: Send },
     negociacao: { label: "Negociação", tone: "warning", icon: Handshake },
-    fechado: { label: "Fechado", tone: "success", icon: CheckCircle2 },
+    aguardando_pagamento: { label: "Aguardando Pagamento", tone: "warning", icon: Hourglass },
+    servico_contratado: { label: "Serviço Contratado", tone: "success", icon: CheckCircle2 },
     em_execucao: { label: "Em Execução", tone: "info", icon: Wrench },
-    aguardando_cliente: { label: "Aguardando Cliente", tone: "warning", icon: ClipboardList },
-    concluido: { label: "Concluído", tone: "success", icon: Check },
     pos_venda: { label: "Pós-venda", tone: "info", icon: Star },
+    concluido: { label: "Concluído", tone: "success", icon: Check },
     perdido: { label: "Perdido", tone: "danger", icon: Ban },
   };
   return map[estagio] ?? { label: estagio, tone: "neutral", icon: Minus };
@@ -92,14 +94,15 @@ export function statusPipeline(estagio: string): StatusInfo {
 
 export const PIPELINE_ESTAGIOS: { key: string; label: string; emoji: string }[] = [
   { key: "novo_lead", label: "Novo Lead", emoji: "🟢" },
-  { key: "atendimento", label: "Atendimento", emoji: "🔵" },
-  { key: "proposta_enviada", label: "Proposta Enviada", emoji: "🟡" },
+  { key: "primeiro_contato", label: "Primeiro Contato", emoji: "🔵" },
+  { key: "aguardando_documentacao", label: "Aguardando Documentação", emoji: "📋" },
+  { key: "orcamento_enviado", label: "Orçamento Enviado", emoji: "📄" },
   { key: "negociacao", label: "Negociação", emoji: "🟠" },
-  { key: "fechado", label: "Fechado", emoji: "🟢" },
+  { key: "aguardando_pagamento", label: "Aguardando Pagamento", emoji: "💰" },
+  { key: "servico_contratado", label: "Serviço Contratado", emoji: "🤝" },
   { key: "em_execucao", label: "Em Execução", emoji: "⚙️" },
-  { key: "aguardando_cliente", label: "Aguardando Cliente", emoji: "📋" },
-  { key: "concluido", label: "Concluído", emoji: "✅" },
   { key: "pos_venda", label: "Pós-venda", emoji: "⭐" },
+  { key: "concluido", label: "Concluído", emoji: "✅" },
 ];
 
 export const PIPELINE_ESTAGIO_PERDIDO = { key: "perdido", label: "Perdido", emoji: "🔴" };
