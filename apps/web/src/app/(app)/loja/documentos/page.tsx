@@ -3,7 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { FileText, Paperclip } from "lucide-react";
 import { db } from "@/db";
 import { lojaVendaDocumentos, lojaVendas, clientes } from "@/db/schema";
-import { EmptyState, DataTable, type Column } from "@/components/ui";
+import { EmptyState, DataTable, type Column, BackButton } from "@/components/ui";
 
 type LinhaDocumento = {
   id: string;
@@ -56,6 +56,7 @@ export default async function DocumentosLojaPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/loja" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Documentos da Loja</h1>
       <p className="text-body-sm text-outline">
         Contratos, pedidos, garantias, notas fiscais, recibos e termos de entrega das vendas da loja.

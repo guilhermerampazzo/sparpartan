@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Campo, SubmitButton, FormError } from "@/components/ui";
+import { Campo, SubmitButton, FormError, BackButton } from "@/components/ui";
 import { criarAluno } from "../actions";
 
 export default function NovoAlunoPage() {
@@ -10,6 +10,7 @@ export default function NovoAlunoPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/alunos" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Novo Aluno</h1>
 
       <form

@@ -2,7 +2,7 @@ import { Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { lojaFabricantes, lojaFornecedores, lojaTransportadoras } from "@/db/schema";
 import { SectionCard, Campo } from "@/components/ui/form-field";
-import { Button, ConfirmButton } from "@/components/ui";
+import { Button, ConfirmButton, BackButton } from "@/components/ui";
 import { criarItemAdministracaoLoja, excluirItemAdministracaoLoja } from "./actions";
 
 export default async function AdministracaoLojaPage() {
@@ -20,6 +20,7 @@ export default async function AdministracaoLojaPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/loja" />
       <div>
         <h1 className="font-display text-headline-lg font-bold text-primary">Administração da Loja</h1>
         <p className="text-body-sm text-outline">Cadastros de apoio usados no catálogo e nas vendas da loja.</p>

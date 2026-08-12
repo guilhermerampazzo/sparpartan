@@ -11,8 +11,19 @@ const PUBLIC_PATHS = [
   "/aluno",
 ];
 
+/**
+ * Casa o caminho com um prefixo público por SEGMENTO: `/c` libera `/c/<token>`
+ * mas não `/clientes`/`/configuracoes`/`/chat` (que começam com a mesma letra).
+ * Sem isso, `startsWith("/c")` deixava as rotas internas acessíveis sem login.
+ */
+function caminhoPublico(pathname: string): boolean {
+  return PUBLIC_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
+
 export default auth((req) => {
-  const isPublic = PUBLIC_PATHS.some((path) => req.nextUrl.pathname.startsWith(path));
+  const isPublic = caminhoPublico(req.nextUrl.pathname);
   const isApiAuth =
     req.nextUrl.pathname.startsWith("/api/auth") ||
     req.nextUrl.pathname.startsWith("/api/auth-aluno");

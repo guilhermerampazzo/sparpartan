@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ClipboardList, Trash2, Download, ScanText, FileStack, Landmark, UserCog, Image as ImageIcon } from "lucide-react";
 import { auth } from "@/lib/auth";
 
+import { BackButton } from "@/components/ui";
+
 export default async function ConfiguracoesPage() {
   const session = await auth();
   const role = (session?.user as { role?: string })?.role;
@@ -59,6 +61,7 @@ export default async function ConfiguracoesPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Configurações</h1>
 
       <div className="grid grid-cols-1 gap-gutter sm:grid-cols-2">

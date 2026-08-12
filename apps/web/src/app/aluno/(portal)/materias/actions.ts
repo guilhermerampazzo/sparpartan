@@ -7,12 +7,14 @@ import { db } from "@/db";
 import { materias, pedidosPagamento } from "@/db/schema";
 import { authAluno } from "@/lib/auth-aluno";
 import { verificarMatriculaAtiva } from "@/lib/acesso-aluno";
+import { registrarAuditoria } from "@/lib/audit";
 
 export async function iniciarCheckout(materiaId: string) {
   const session = await authAluno();
   const alunoId = session?.user?.id as string | undefined;
   const alunoEmail = session?.user?.email as string | undefined;
   if (!alunoId) redirect("/aluno/login");
+  const alunoNome = session?.user?.name ?? "aluno";
 
   const [materia] = await db.select().from(materias).where(eq(materias.id, materiaId)).limit(1);
   if (!materia || !materia.precoCentavos) redirect(`/aluno/materias/${materiaId}`);
@@ -71,6 +73,14 @@ export async function iniciarCheckout(materiaId: string) {
     .update(pedidosPagamento)
     .set({ mercadopagoPreferenceId: resultado.id })
     .where(eq(pedidosPagamento.id, pedido.id));
+
+  await registrarAuditoria(
+    "criar",
+    "pedido_pagamento",
+    pedido.id,
+    `checkout de "${materia.titulo}" — R$ ${(materia.precoCentavos / 100).toLocaleString("pt-BR")}`,
+    alunoNome
+  );
 
   const urlCheckout = resultado.init_point;
   if (!urlCheckout) throw new Error("Mercado Pago não retornou a URL de checkout.");

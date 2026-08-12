@@ -13,6 +13,7 @@ import {
   ConfirmButton,
   paginar,
   type Column,
+  BackButton,
 } from "@/components/ui";
 import { urgenciaVencimento, infoUrgencia } from "@/lib/status";
 import { excluirEmbarcacao } from "./actions";
@@ -118,6 +119,7 @@ export default async function EmbarcacoesPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-headline-lg font-bold text-primary">Embarcações</h1>
         <div className="flex gap-2">

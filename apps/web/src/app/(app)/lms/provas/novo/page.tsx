@@ -5,6 +5,8 @@ import { capitulos } from "@/db/schema";
 import { criarProva } from "../actions";
 import { ProvaForm } from "../prova-form";
 
+import { BackButton } from "@/components/ui";
+
 export default async function NovaProvaPage({
   searchParams,
 }: {
@@ -20,6 +22,7 @@ export default async function NovaProvaPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/materias" />
       <h1 className="font-display text-headline-lg font-bold text-primary">
         Nova Prova — {capitulo.titulo}
       </h1>

@@ -5,6 +5,8 @@ import { pipelineOportunidades, clientes, usuarios, orcamentos } from "@/db/sche
 import { NovaOportunidadeForm } from "../../novo/form";
 import { atualizarOportunidade } from "../../actions";
 
+import { BackButton } from "@/components/ui";
+
 export default async function EditarOportunidadePage({
   params,
 }: {
@@ -63,6 +65,7 @@ export default async function EditarOportunidadePage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/pipeline" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Editar Oportunidade</h1>
       <NovaOportunidadeForm
         listaClientes={listaClientes}

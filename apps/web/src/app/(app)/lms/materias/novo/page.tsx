@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Campo, SubmitButton, FormError, SeletorIconeLms, CampoMoeda } from "@/components/ui";
+import { Campo, SubmitButton, FormError, SeletorIconeLms, CampoMoeda, BackButton } from "@/components/ui";
 import { criarMateria } from "../actions";
 
 export default function NovaMateriaPage() {
@@ -10,6 +10,7 @@ export default function NovaMateriaPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/materias" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Nova Matéria</h1>
 
       <form

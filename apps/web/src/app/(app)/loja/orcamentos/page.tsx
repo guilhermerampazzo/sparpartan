@@ -2,7 +2,17 @@ import { and, desc, eq, ilike, count } from "drizzle-orm";
 import { Receipt } from "lucide-react";
 import { db } from "@/db";
 import { lojaOrcamentos, clientes } from "@/db/schema";
-import { Badge, LinkButton, EmptyState, DataTable, SearchBox, Pagination, paginar, type Column } from "@/components/ui";
+import {
+  Badge,
+  LinkButton,
+  EmptyState,
+  DataTable,
+  SearchBox,
+  Pagination,
+  paginar,
+  type Column,
+  BackButton,
+} from "@/components/ui";
 import { infoStatusOrcamento, formatarMoeda } from "@/lib/loja";
 
 type LinhaOrcamento = {
@@ -65,6 +75,7 @@ export default async function OrcamentosLojaPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/loja" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-headline-lg font-bold text-primary">Orçamentos da Loja</h1>
         <LinkButton href="/loja/orcamentos/novo">+ Novo Orçamento</LinkButton>

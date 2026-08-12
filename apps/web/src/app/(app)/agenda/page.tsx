@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { auth } from "@/lib/auth";
 import { agendaEventos, agendaInteressados, clientes, processos, servicos, taxasPagar } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Badge, LinkButton, Button, EmptyState, CalendarMonth, ConfirmButton, DataTable } from "@/components/ui";
+import { Badge, LinkButton, Button, EmptyState, CalendarMonth, ConfirmButton, DataTable, BackButton } from "@/components/ui";
 import { statusEvento, tipoEvento, fonteCalendario, type FonteCalendarioTipo } from "@/lib/status";
 import { gradeDoMes, buscarItensCalendario, FONTES_PADRAO, TODAS_FONTES } from "@/lib/calendario";
 import { buscarProcessosAgendados } from "@/lib/agenda-processos";
@@ -96,6 +96,7 @@ export default async function AgendaPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Agenda</h1>
         <div className="flex gap-3">

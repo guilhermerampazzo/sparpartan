@@ -11,6 +11,7 @@ import { gerarPdfCore, lerPdfOrcamento } from "@/lib/orcamentos-pdf";
 import { criarSolicitacao } from "@/lib/solicitacoes";
 import { registrarNoChat } from "@/lib/chat-sistema";
 import { criarPendencia } from "@/lib/pendencias-db";
+import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 import { enviarEmail } from "@/lib/mail/adapter";
 import { auth } from "@/lib/auth";
@@ -173,6 +174,7 @@ export async function criarOrcamento(
     criadoPorId: vendedorId,
   });
 
+  await registrarAuditoria("criar", "orcamento", orcamentoId!, numero);
   redirect(`/orcamentos/${orcamentoId}`);
 }
 
@@ -204,7 +206,7 @@ export async function atualizarOrcamento(
   if (erro) return { erro, valores };
 
   const [orcamentoAtual] = await db
-    .select({ status: orcamentos.status, pdfCaminho: orcamentos.pdfCaminho })
+    .select({ status: orcamentos.status, pdfCaminho: orcamentos.pdfCaminho, numero: orcamentos.numero })
     .from(orcamentos)
     .where(eq(orcamentos.id, orcamentoId))
     .limit(1);
@@ -253,12 +255,13 @@ export async function atualizarOrcamento(
       );
   }
 
+  await registrarAuditoria("atualizar", "orcamento", orcamentoId, orcamentoAtual.numero);
   redirect(`/orcamentos/${orcamentoId}`);
 }
 
 export async function excluirOrcamento(orcamentoId: string) {
   const [orcamento] = await db
-    .select({ pdfCaminho: orcamentos.pdfCaminho })
+    .select({ pdfCaminho: orcamentos.pdfCaminho, numero: orcamentos.numero })
     .from(orcamentos)
     .where(eq(orcamentos.id, orcamentoId))
     .limit(1);
@@ -269,6 +272,7 @@ export async function excluirOrcamento(orcamentoId: string) {
     .update(orcamentos)
     .set({ excluidoEm: new Date() })
     .where(eq(orcamentos.id, orcamentoId));
+  await registrarAuditoria("excluir", "orcamento", orcamentoId, orcamento?.numero ?? undefined);
   redirect("/orcamentos");
 }
 
@@ -292,6 +296,7 @@ export async function removerPdfOrcamento(orcamentoId: string) {
 export async function gerarPdfOrcamento(orcamentoId: string) {
   try {
     await gerarPdfCore(orcamentoId);
+    await registrarAuditoria("atualizar", "orcamento", orcamentoId, "PDF gerado");
   } catch (e) {
     const mensagem = e instanceof Error ? e.message : "Falha ao gerar PDF do orçamento.";
     redirect(`/orcamentos/${orcamentoId}?erro=${encodeURIComponent(mensagem)}`);
@@ -355,18 +360,21 @@ export async function enviarOrcamentoPorEmail(orcamentoId: string) {
 
   if (status === "falhou") throw new Error(`Falha ao enviar e-mail: ${erro}`);
 
+  await registrarAuditoria("atualizar", "orcamento", orcamentoId, `e-mail enviado para ${cliente.email}`);
   redirect(`/orcamentos/${orcamentoId}`);
 }
 
 export async function aprovarOrcamento(orcamentoId: string) {
   const resultado = await aprovarOrcamentoCore(orcamentoId);
   if (!resultado.ok) throw new Error(`Não foi possível aprovar (${resultado.motivo})`);
+  await registrarAuditoria("alterar_status", "orcamento", orcamentoId, "aprovado");
   redirect(`/orcamentos/${orcamentoId}`);
 }
 
 export async function recusarOrcamento(orcamentoId: string) {
   const resultado = await recusarOrcamentoCore(orcamentoId);
   if (!resultado.ok) throw new Error(`Não foi possível recusar (${resultado.motivo})`);
+  await registrarAuditoria("alterar_status", "orcamento", orcamentoId, "recusado");
   redirect(`/orcamentos/${orcamentoId}`);
 }
 
@@ -379,6 +387,7 @@ export async function gerarLinkAprovacao(orcamentoId: string) {
     orcamentoId,
     clienteId: orcamento.clienteId,
   });
+  await registrarAuditoria("criar", "solicitacao_aprovacao", orcamentoId, `link gerado: ${token}`);
   redirect(`/orcamentos/${orcamentoId}?link=${token}`);
 }
 
@@ -409,5 +418,6 @@ export async function criarContaBancariaRapida(
     })
     .returning({ id: contasBancarias.id, apelido: contasBancarias.apelido });
 
+  await registrarAuditoria("criar", "conta_bancaria", conta.id, apelido);
   return { conta };
 }

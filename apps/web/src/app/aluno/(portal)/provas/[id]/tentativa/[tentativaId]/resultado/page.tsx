@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { provas, questoes, tentativasProva, respostasAluno } from "@/db/schema";
 import { authAluno } from "@/lib/auth-aluno";
 
+import { BackButton } from "@/components/ui";
+
 export default async function ResultadoTentativaPage({
   params,
 }: {
@@ -34,7 +36,8 @@ export default async function ResultadoTentativaPage({
   const aprovado = tentativa.notaObtida !== null && tentativa.notaObtida >= prova.notaMinima;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+      <div className="mx-auto max-w-2xl space-y-6">
+      <BackButton href="/aluno" />
       <div>
         <Link href={`/aluno/provas/${id}`} className="text-body-sm text-outline hover:underline">
           ← {prova.titulo}

@@ -12,7 +12,7 @@ import {
   documentosGerados,
 } from "@/db/schema";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Stepper, ChecklistItem, ProgressBar, AlertCard, Button, ConfirmButton } from "@/components/ui";
+import { Stepper, ChecklistItem, ProgressBar, AlertCard, Button, ConfirmButton, BackButton } from "@/components/ui";
 import { CadastradoPor } from "@/components/ui/cadastrado-por";
 import { PROCESSO_STEPS, urgenciaVencimento, infoUrgencia, vencimentoProtocolo, rotuloPrazo } from "@/lib/status";
 import {
@@ -90,6 +90,7 @@ export default async function ProcessoDetalhesPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/processos" />
       <div>
         <h1 className="font-display text-headline-lg font-bold text-primary">
           {servico?.nome} — {cliente?.nome}

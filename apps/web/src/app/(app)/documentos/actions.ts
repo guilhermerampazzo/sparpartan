@@ -10,6 +10,7 @@ import { modelosDocumento, documentosGerados, processos, obraFotos, clientes } f
 import { renderDocx, type ImagemDocx } from "@/lib/docx/document";
 import { reclassificarProcesso } from "@/lib/processos";
 import { registrarNoChat } from "@/lib/chat-sistema";
+import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 function uploadsDir() {
@@ -136,6 +137,7 @@ export async function gerarDocumento(
 
   if (processoId) {
     await reclassificarProcesso(processoId);
+    await registrarAuditoria("criar", "documento_gerado", documento.id, `${modelo.nome} — processo ${processoId}`);
     redirect(`/processos/${processoId}`);
   }
 
@@ -147,6 +149,7 @@ export async function gerarDocumento(
   await registrarNoChat(
     `Documento "${modelo.nome}" gerado para ${clienteDoDocumento?.nome ?? "cliente"}.`
   );
+  await registrarAuditoria("criar", "documento_gerado", documento.id, modelo.nome);
 
   redirect(`/documentos/${documento.id}`);
 }
@@ -202,6 +205,7 @@ export async function regenerarPdf(documentoId: string) {
     .update(documentosGerados)
     .set({ pdfCaminho })
     .where(eq(documentosGerados.id, documentoId));
+  await registrarAuditoria("atualizar", "documento_gerado", documentoId, "PDF regenerado");
 
   redirect(`/documentos/${documentoId}`);
 }

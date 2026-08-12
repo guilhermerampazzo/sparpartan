@@ -31,6 +31,7 @@ export async function atualizarFinanceiroVenda(vendaId: string, formData: FormDa
   const custoTotal = String(formData.get("custoTotal") ?? "").trim() || null;
   const comissao = String(formData.get("comissao") ?? "").trim() || null;
   await db.update(lojaVendas).set({ custoTotal, comissao }).where(eq(lojaVendas.id, vendaId));
+  await registrarAuditoria("atualizar", "loja_venda", vendaId, `custo/comissão: ${custoTotal ?? "—"} / ${comissao ?? "—"}`);
   revalidatePath(`/loja/vendas/${vendaId}`);
 }
 
@@ -51,7 +52,11 @@ export async function adicionarPagamentoVenda(vendaId: string, formData: FormDat
 export async function adicionarChecklistVenda(vendaId: string, formData: FormData) {
   const descricao = String(formData.get("descricao") ?? "").trim();
   if (!descricao) throw new Error("Informe a descrição do item.");
-  await db.insert(lojaVendaChecklistItens).values({ vendaId, descricao });
+  const [item] = await db
+    .insert(lojaVendaChecklistItens)
+    .values({ vendaId, descricao })
+    .returning({ id: lojaVendaChecklistItens.id });
+  await registrarAuditoria("criar", "loja_checklist_item", item.id, `venda ${vendaId} — ${descricao}`);
   revalidatePath(`/loja/vendas/${vendaId}`);
 }
 
@@ -60,6 +65,7 @@ export async function alternarChecklistVenda(vendaId: string, itemId: string, co
     .update(lojaVendaChecklistItens)
     .set({ concluido })
     .where(eq(lojaVendaChecklistItens.id, itemId));
+  await registrarAuditoria("atualizar", "loja_checklist_item", itemId, concluido ? "concluído" : "reaberto");
   revalidatePath(`/loja/vendas/${vendaId}`);
 }
 
@@ -82,6 +88,7 @@ export async function enviarDocumentoVenda(vendaId: string, formData: FormData) 
     nomeOriginal: arquivo.name,
     caminho: path.join("loja", "vendas", vendaId, nomeArquivo),
   });
+  await registrarAuditoria("atualizar", "loja_venda", vendaId, `documento anexado: ${arquivo.name}`);
   revalidatePath(`/loja/vendas/${vendaId}`);
 }
 
@@ -97,8 +104,13 @@ export async function criarOuAtualizarEntregaVenda(vendaId: string, formData: Fo
       .update(lojaEntregas)
       .set({ cidade, responsavel, dataPrevista, status })
       .where(eq(lojaEntregas.id, existente.id));
+    await registrarAuditoria("atualizar", "loja_entrega", existente.id, `venda ${vendaId} — ${status}`);
   } else {
-    await db.insert(lojaEntregas).values({ vendaId, cidade, responsavel, dataPrevista, status });
+    const [entrega] = await db
+      .insert(lojaEntregas)
+      .values({ vendaId, cidade, responsavel, dataPrevista, status })
+      .returning({ id: lojaEntregas.id });
+    await registrarAuditoria("criar", "loja_entrega", entrega.id, `venda ${vendaId} — ${status}`);
   }
   revalidatePath(`/loja/vendas/${vendaId}`);
   revalidatePath("/loja/entregas");

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { AlertOctagon } from "lucide-react";
-import { Button, LinkButton } from "@/components/ui";
+import { Button, BackButton } from "@/components/ui";
 
 export default function Erro({
   error,
@@ -35,9 +35,7 @@ export default function Erro({
       </div>
       <div className="flex gap-3">
         <Button onClick={reset}>Tentar novamente</Button>
-        <LinkButton href="/" variant="outlined">
-          Voltar para a Home
-        </LinkButton>
+        <BackButton href="/" label="Voltar para a Home" />
       </div>
     </div>
   );

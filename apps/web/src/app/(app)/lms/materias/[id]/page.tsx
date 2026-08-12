@@ -4,7 +4,7 @@ import { ArrowUp, ArrowDown, Trash2, BookMarked, Pencil } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
 import { materias, capitulos } from "@/db/schema";
-import { SectionCard, Button, ConfirmButton, EmptyState, Badge } from "@/components/ui";
+import { SectionCard, Button, ConfirmButton, EmptyState, Badge, BackButton } from "@/components/ui";
 import { atualizarMateria } from "../actions";
 import { alternarStatusCapitulo, criarCapitulo, excluirCapitulo, reordenarCapitulo } from "../../capitulos/actions";
 import { MateriaForm } from "../materia-form";
@@ -27,6 +27,7 @@ export default async function MateriaDetalhePage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/materias" />
       <h1 className="font-display text-headline-lg font-bold text-primary">{materia.titulo}</h1>
 
       <SectionCard title="Dados da matéria">

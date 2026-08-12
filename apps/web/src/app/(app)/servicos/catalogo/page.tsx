@@ -2,7 +2,7 @@ import { desc } from "drizzle-orm";
 import { Package } from "lucide-react";
 import { db } from "@/db";
 import { catalogoItens } from "@/db/schema";
-import { LinkButton, Badge, EmptyState, DataTable, type Column } from "@/components/ui";
+import { LinkButton, Badge, EmptyState, DataTable, type Column, BackButton } from "@/components/ui";
 import { NovoItemCatalogoForm } from "./form";
 
 function formatMoney(v: string | null) {
@@ -36,9 +36,7 @@ export default async function CatalogoPage() {
     <div className="space-y-gutter">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Catálogo</h1>
-        <LinkButton href="/servicos" variant="text" size="sm">
-          ← Voltar para Serviços
-        </LinkButton>
+        <BackButton href="/servicos" />
       </div>
 
       <NovoItemCatalogoForm />

@@ -3,6 +3,8 @@ import { clientes, lojaProdutos } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NovoOrcamentoLojaForm } from "./form";
 
+import { BackButton } from "@/components/ui";
+
 export default async function NovoOrcamentoLojaPage({
   searchParams,
 }: {
@@ -21,6 +23,7 @@ export default async function NovoOrcamentoLojaPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/loja/orcamentos" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Novo Orçamento</h1>
       <NovoOrcamentoLojaForm listaClientes={listaClientes} listaProdutos={listaProdutos} produtoInicial={produtoInicial} />
     </div>

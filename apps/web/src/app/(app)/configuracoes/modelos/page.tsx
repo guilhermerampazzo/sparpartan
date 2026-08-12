@@ -2,7 +2,7 @@ import { desc } from "drizzle-orm";
 import { FileStack, Pencil } from "lucide-react";
 import { db } from "@/db";
 import { modelosDocumento } from "@/db/schema";
-import { Badge, LinkButton, EmptyState, DataTable, type Column } from "@/components/ui";
+import { Badge, LinkButton, EmptyState, DataTable, type Column, BackButton } from "@/components/ui";
 
 type LinhaModelo = {
   id: string;
@@ -39,6 +39,7 @@ export default async function ModelosPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/configuracoes" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Modelos de Documento</h1>
         <LinkButton href="/configuracoes/modelos/novo">+ Importar Modelo</LinkButton>

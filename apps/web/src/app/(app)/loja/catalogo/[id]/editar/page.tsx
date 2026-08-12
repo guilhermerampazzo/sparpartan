@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { lojaProdutos } from "@/db/schema";
 import { ProdutoLojaForm } from "../../produto-form";
 
+import { BackButton } from "@/components/ui";
+
 export default async function EditarProdutoLojaPage({
   params,
 }: {
@@ -15,6 +17,7 @@ export default async function EditarProdutoLojaPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/loja/catalogo/[id]" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Editar Produto</h1>
       <ProdutoLojaForm produto={produto} />
     </div>

@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { authAluno } from "@/lib/auth-aluno";
 import { verificarMatriculaAtiva } from "@/lib/acesso-aluno";
+import { registrarAuditoria } from "@/lib/audit";
 
 async function materiaIdDaProva(provaId: string): Promise<string | null> {
   const [prova] = await db.select().from(provas).where(eq(provas.id, provaId)).limit(1);
@@ -29,6 +30,7 @@ export async function iniciarTentativa(provaId: string) {
   const session = await authAluno();
   const alunoId = session?.user?.id as string | undefined;
   if (!alunoId) redirect("/aluno/login");
+  const alunoNome = session?.user?.name ?? "aluno";
 
   const materiaId = await materiaIdDaProva(provaId);
   if (!materiaId) redirect("/aluno");
@@ -57,6 +59,7 @@ export async function iniciarTentativa(provaId: string) {
     .values({ alunoId, provaId, status: "em_andamento" })
     .returning({ id: tentativasProva.id });
 
+  await registrarAuditoria("criar", "tentativa_prova", tentativa.id, `prova ${provaId} iniciada`, alunoNome);
   redirect(`/aluno/provas/${provaId}/tentativa/${tentativa.id}`);
 }
 
@@ -64,6 +67,7 @@ export async function responderTentativa(provaId: string, tentativaId: string, f
   const session = await authAluno();
   const alunoId = session?.user?.id as string | undefined;
   if (!alunoId) redirect("/aluno/login");
+  const alunoNome = session?.user?.name ?? "aluno";
 
   const [tentativa] = await db
     .select()
@@ -145,6 +149,13 @@ export async function responderTentativa(provaId: string, tentativaId: string, f
       .update(tentativasProva)
       .set({ status: "aguardando_correcao", finalizadaEm: new Date() })
       .where(eq(tentativasProva.id, tentativaId));
+    await registrarAuditoria(
+      "alterar_status",
+      "tentativa_prova",
+      tentativaId,
+      "aguardando correção (dissertativas)",
+      alunoNome
+    );
   } else {
     const totalObtido = await db
       .select({ pontosObtidos: respostasAluno.pontosObtidos })
@@ -158,6 +169,13 @@ export async function responderTentativa(provaId: string, tentativaId: string, f
       .update(tentativasProva)
       .set({ status: "corrigida", finalizadaEm: new Date(), notaObtida })
       .where(eq(tentativasProva.id, tentativaId));
+    await registrarAuditoria(
+      "alterar_status",
+      "tentativa_prova",
+      tentativaId,
+      `corrigida automaticamente — nota ${notaObtida}`,
+      alunoNome
+    );
   }
 
   redirect(`/aluno/provas/${provaId}/tentativa/${tentativaId}/resultado`);

@@ -6,11 +6,13 @@ import { db } from "@/db";
 import { aulas, capitulos, progressoAula } from "@/db/schema";
 import { authAluno } from "@/lib/auth-aluno";
 import { verificarMatriculaAtiva } from "@/lib/acesso-aluno";
+import { registrarAuditoria } from "@/lib/audit";
 
 export async function marcarAulaConcluida(aulaId: string) {
   const session = await authAluno();
   const alunoId = session?.user?.id as string | undefined;
   if (!alunoId) return;
+  const alunoNome = session?.user?.name ?? "aluno";
 
   const [aula] = await db.select().from(aulas).where(eq(aulas.id, aulaId)).limit(1);
   if (!aula) return;
@@ -44,4 +46,12 @@ export async function marcarAulaConcluida(aulaId: string) {
   revalidatePath(`/aluno/aulas/${aulaId}`);
   revalidatePath(`/aluno/materias/${capitulo.materiaId}`);
   revalidatePath("/aluno");
+
+  await registrarAuditoria(
+    "atualizar",
+    "progresso_aula",
+    aulaId,
+    `aula "${aula.titulo}" concluída`,
+    alunoNome
+  );
 }

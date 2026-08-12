@@ -2,7 +2,7 @@ import { sql, eq, and, gte } from "drizzle-orm";
 import { Cake, CheckCircle2 } from "lucide-react";
 import { db } from "@/db";
 import { clientes, enviosEmail } from "@/db/schema";
-import { LinkButton, EmptyState, DataTable, Badge, Button, type Column } from "@/components/ui";
+import { LinkButton, EmptyState, DataTable, Badge, Button, type Column, BackButton } from "@/components/ui";
 import { enviarParabens } from "./actions";
 
 type LinhaAniversariante = {
@@ -117,9 +117,7 @@ export default async function AniversariantesPage() {
         <h1 className="font-display text-headline-lg font-bold text-primary">
           Aniversariantes do Mês
         </h1>
-        <LinkButton href="/clientes" variant="text" size="sm">
-          ← Voltar para Clientes
-        </LinkButton>
+        <BackButton href="/clientes" />
       </div>
 
       <DataTable

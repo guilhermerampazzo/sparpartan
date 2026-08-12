@@ -5,7 +5,8 @@ import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { assinaturas } from "@/db/schema";
+import { assinaturas, clientes } from "@/db/schema";
+import { registrarAuditoria } from "@/lib/audit";
 
 export async function assinarDocumento(token: string) {
   const [assinatura] = await db
@@ -33,6 +34,15 @@ export async function assinarDocumento(token: string) {
     .update(assinaturas)
     .set({ status: "assinado", assinadoEm, hash, ip })
     .where(eq(assinaturas.id, assinatura.id));
+
+  const [cliente] = await db.select().from(clientes).where(eq(clientes.id, assinatura.clienteId)).limit(1);
+  await registrarAuditoria(
+    "alterar_status",
+    "assinatura",
+    assinatura.id,
+    `documento ${assinatura.documentoId} assinado (IP ${ip})`,
+    cliente?.nome ?? "cliente"
+  );
 
   revalidatePath(`/assinar/${token}`);
 }

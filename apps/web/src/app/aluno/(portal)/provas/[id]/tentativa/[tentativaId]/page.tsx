@@ -5,6 +5,8 @@ import { provas, questoes, opcoesQuestao, tentativasProva } from "@/db/schema";
 import { authAluno } from "@/lib/auth-aluno";
 import { responderTentativa } from "../../../actions";
 
+import { BackButton } from "@/components/ui";
+
 export default async function TentativaProvaPage({
   params,
 }: {
@@ -39,7 +41,7 @@ export default async function TentativaProvaPage({
   const responderComId = responderTentativa.bind(null, id, tentativaId);
 
   return (
-    <form action={responderComId} className="mx-auto max-w-2xl space-y-6">
+      <form action={responderComId} className="mx-auto max-w-2xl space-y-6">
       <h2 className="font-display text-headline-md font-bold text-primary">{prova.titulo}</h2>
 
       {listaQuestoes.map((questao, indice) => {
@@ -52,6 +54,7 @@ export default async function TentativaProvaPage({
 
             {(questao.tipo === "escolha_unica" || questao.tipo === "verdadeiro_falso") && (
               <div className="space-y-2">
+      <BackButton href="/aluno" />
                 {opcoes.map((opcao) => (
                   <label key={opcao.id} className="flex items-center gap-2 text-sm text-on-surface">
                     <input type="radio" name={`resposta[${questao.id}]`} value={opcao.id} required className="h-4 w-4" />

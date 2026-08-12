@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { clientes, processos, servicos } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Button } from "@/components/ui";
+import { Button, BackButton } from "@/components/ui";
 import { NovoEventoForm } from "./form";
 
 export default async function NovoEventoPage({
@@ -27,6 +27,7 @@ export default async function NovoEventoPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/agenda" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Novo Evento</h1>
 
       <SectionCard title="1. Cliente (para vincular a um processo)">

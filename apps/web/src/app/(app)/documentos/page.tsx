@@ -3,15 +3,7 @@ import { FileText } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
 import { modelosDocumento, documentosGerados, clientes } from "@/db/schema";
-import {
-  StatusBadge,
-  LinkButton,
-  EmptyState,
-  SearchBox,
-  Pagination,
-  paginar,
-  Button,
-} from "@/components/ui";
+import { StatusBadge, LinkButton, EmptyState, SearchBox, Pagination, paginar, Button, BackButton } from "@/components/ui";
 import { CampoSelect } from "@/components/ui/form-field";
 import { statusDocumento } from "@/lib/status";
 import { MODULOS_DOCUMENTO } from "@/lib/documentos-modulos";
@@ -71,6 +63,7 @@ export default async function DocumentosPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Documentos</h1>
         <div className="flex gap-3">

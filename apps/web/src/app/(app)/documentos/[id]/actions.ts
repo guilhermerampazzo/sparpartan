@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { assinaturas, documentosGerados, clientes } from "@/db/schema";
 import { enviarEmail } from "@/lib/mail/adapter";
+import { registrarAuditoria } from "@/lib/audit";
 
 export async function marcarDocumentoComoEntregue(documentoId: string) {
   const [documento] = await db
@@ -22,6 +23,7 @@ export async function marcarDocumentoComoEntregue(documentoId: string) {
     .set({ status: "entregue" })
     .where(eq(documentosGerados.id, documentoId));
 
+  await registrarAuditoria("alterar_status", "documento_gerado", documentoId, "entregue");
   revalidatePath(`/documentos/${documentoId}`);
   revalidatePath("/documentos");
   if (documento.processoId) revalidatePath(`/processos/${documento.processoId}`);
@@ -51,6 +53,8 @@ export async function solicitarAssinatura(documentoId: string) {
     token,
     expiraEm,
   });
+
+  await registrarAuditoria("criar", "assinatura", documentoId, `solicitada para ${cliente.nome} — expira em ${expiraEm.toISOString().slice(0, 10)}`);
 
   if (cliente.email) {
     const baseUrl = process.env.AUTH_URL || "http://localhost:8080";

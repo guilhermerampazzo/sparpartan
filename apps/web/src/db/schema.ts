@@ -72,7 +72,14 @@ export const documentoObraTipo = pgEnum("documento_obra_tipo", ["laudo", "art"])
 export const documentoObraStatus = pgEnum("documento_obra_status", ["pendente", "emitido"]);
 export const turmaStatus = pgEnum("turma_status", ["aberta", "concluida", "cancelada"]);
 export const certificadoStatus = pgEnum("certificado_status", ["para_emitir", "emitido"]);
-export const auditAcao = pgEnum("audit_acao", ["criar", "atualizar", "excluir", "login"]);
+export const auditAcao = pgEnum("audit_acao", [
+  "criar",
+  "atualizar",
+  "excluir",
+  "arquivar",
+  "alterar_status",
+  "login",
+]);
 export const assinaturaStatus = pgEnum("assinatura_status", ["pendente", "assinado", "expirado"]);
 export const solicitacaoTipo = pgEnum("solicitacao_tipo", [
   "cadastro_cliente",

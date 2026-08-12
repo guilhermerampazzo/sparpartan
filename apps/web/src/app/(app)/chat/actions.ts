@@ -8,6 +8,7 @@ import { mensagens, usuarios } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { salvarArquivoLocal } from "@/lib/storage";
 import { validarArquivo } from "@/lib/upload";
+import { registrarAuditoria } from "@/lib/audit";
 
 async function usuarioEquipeLogado() {
   const session = await auth();
@@ -41,15 +42,24 @@ export async function enviarMensagem(formData: FormData) {
 
   const usuario = await usuarioEquipeLogado();
 
-  await db.insert(mensagens).values({
-    usuarioId: usuario.id ?? null,
-    usuarioNome: usuario.name ?? "Equipe",
-    destinatarioId,
-    corpo,
-    anexoCaminho,
-    anexoNome,
-  });
+  const [mensagem] = await db
+    .insert(mensagens)
+    .values({
+      usuarioId: usuario.id ?? null,
+      usuarioNome: usuario.name ?? "Equipe",
+      destinatarioId,
+      corpo,
+      anexoCaminho,
+      anexoNome,
+    })
+    .returning({ id: mensagens.id });
 
+  await registrarAuditoria(
+    "criar",
+    "mensagem",
+    mensagem.id,
+    destinatarioId ? `para usuário ${destinatarioId}` : "canal geral"
+  );
   revalidatePath("/chat");
 }
 
@@ -65,6 +75,7 @@ export async function editarMensagem(formData: FormData) {
     .set({ corpo, editadaEm: new Date() })
     .where(and(eq(mensagens.id, id), eq(mensagens.usuarioId, usuario.id ?? "")));
 
+  await registrarAuditoria("atualizar", "mensagem", id, "mensagem editada");
   revalidatePath("/chat");
 }
 
@@ -79,6 +90,7 @@ export async function apagarMensagem(formData: FormData) {
     .set({ apagadaEm: new Date(), corpo: "" })
     .where(and(eq(mensagens.id, id), eq(mensagens.usuarioId, usuario.id ?? "")));
 
+  await registrarAuditoria("excluir", "mensagem", id, "mensagem apagada");
   revalidatePath("/chat");
 }
 

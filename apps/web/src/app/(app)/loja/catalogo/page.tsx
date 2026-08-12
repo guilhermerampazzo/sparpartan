@@ -11,6 +11,7 @@ import {
   Pagination,
   paginar,
   type Column,
+  BackButton,
 } from "@/components/ui";
 import { LOJA_CATEGORIAS, rotuloCategoria, formatarMoeda } from "@/lib/loja";
 
@@ -73,6 +74,7 @@ export default async function CatalogoPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/loja" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-headline-lg font-bold text-primary">Catálogo</h1>
         <LinkButton href="/loja/catalogo/novo">+ Novo Produto</LinkButton>

@@ -12,6 +12,7 @@ import {
   Pagination,
   paginar,
   type Column,
+  BackButton,
 } from "@/components/ui";
 import { statusProcesso, urgenciaVencimento, infoUrgencia, vencimentoProtocolo } from "@/lib/status";
 
@@ -107,6 +108,7 @@ export default async function ProcessosPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Processos</h1>
         <LinkButton href="/processos/novo">+ Novo Atendimento</LinkButton>

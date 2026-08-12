@@ -2,7 +2,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { HardHat, Eye, Download, Trash2, FilePlus } from "lucide-react";
 import { db } from "@/db";
 import { obras, clientes, documentosGerados } from "@/db/schema";
-import { LinkButton, ConfirmButton, EmptyState, DataTable, Badge, type Column } from "@/components/ui";
+import { LinkButton, ConfirmButton, EmptyState, DataTable, Badge, type Column, BackButton } from "@/components/ui";
 import { excluirObra } from "./actions";
 import { statusObra } from "@/lib/status";
 
@@ -119,6 +119,7 @@ export default async function ObrasPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/documentos" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Obras</h1>
         <LinkButton href="/obras/novo">+ Nova Obra</LinkButton>

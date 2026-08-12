@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { pagamentos } from "@/db/schema";
+import { registrarAuditoria } from "@/lib/audit";
 
 export async function registrarPagamento(servicoContratadoId: string, formData: FormData) {
   const valor = String(formData.get("valor") ?? "").trim();
@@ -33,14 +34,29 @@ export async function registrarPagamento(servicoContratadoId: string, formData: 
       .update(pagamentos)
       .set({ status: "pago", dataPagamento, formaPagamento })
       .where(eq(pagamentos.id, cobrancaAberta.id));
+    await registrarAuditoria(
+      "alterar_status",
+      "pagamento",
+      cobrancaAberta.id,
+      `pago — R$ ${valor} (${formaPagamento ?? "forma não informada"})`
+    );
   } else {
-    await db.insert(pagamentos).values({
-      servicoContratadoId,
-      valor,
-      dataPagamento,
-      formaPagamento,
-      status: "pago",
-    });
+    const [novoPagamento] = await db
+      .insert(pagamentos)
+      .values({
+        servicoContratadoId,
+        valor,
+        dataPagamento,
+        formaPagamento,
+        status: "pago",
+      })
+      .returning({ id: pagamentos.id });
+    await registrarAuditoria(
+      "criar",
+      "pagamento",
+      novoPagamento.id,
+      `registrado R$ ${valor} (${formaPagamento ?? "forma não informada"})`
+    );
   }
 
   revalidatePath("/vendas");

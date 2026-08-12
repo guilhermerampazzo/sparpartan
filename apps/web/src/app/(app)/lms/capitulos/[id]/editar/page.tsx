@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
 import { capitulos, materias } from "@/db/schema";
-import { SectionCard } from "@/components/ui";
+import { SectionCard, BackButton } from "@/components/ui";
 import { atualizarCapitulo } from "../../actions";
 import { CapituloForm } from "../../capitulo-form";
 
@@ -19,6 +19,7 @@ export default async function EditarCapituloPage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/materias" />
       <div>
         {materia && (
           <Link href={`/lms/materias/${materia.id}`} className="text-body-sm text-outline hover:underline">

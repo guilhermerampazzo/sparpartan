@@ -5,6 +5,8 @@ import { capitulos } from "@/db/schema";
 import { criarAula } from "../actions";
 import { AulaForm } from "../aula-form";
 
+import { BackButton } from "@/components/ui";
+
 export default async function NovaAulaPage({
   searchParams,
 }: {
@@ -20,6 +22,7 @@ export default async function NovaAulaPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/materias" />
       <h1 className="font-display text-headline-lg font-bold text-primary">
         Nova Aula — {capitulo.titulo}
       </h1>

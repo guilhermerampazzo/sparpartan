@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { materias, capitulos, aulas, provas, progressoAula } from "@/db/schema";
 import { authAluno } from "@/lib/auth-aluno";
 import { verificarMatriculaAtiva } from "@/lib/acesso-aluno";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, BackButton } from "@/components/ui";
 
 export default async function MateriaAlunoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,6 +22,7 @@ export default async function MateriaAlunoPage({ params }: { params: Promise<{ i
   if (!temAcesso) {
     return (
       <div className="mx-auto max-w-xl space-y-4 rounded-xl border border-outline-variant bg-surface-container-lowest p-8 text-center">
+      <BackButton href="/aluno" />
         <h2 className="font-display text-title-lg font-bold text-primary">{materia.titulo}</h2>
         {materia.descricao && <p className="text-body-sm text-outline">{materia.descricao}</p>}
         {materia.precoCentavos ? (

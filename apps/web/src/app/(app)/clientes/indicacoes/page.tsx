@@ -3,7 +3,7 @@ import { sql, isNotNull } from "drizzle-orm";
 import { Users2 } from "lucide-react";
 import { db } from "@/db";
 import { clientes } from "@/db/schema";
-import { LinkButton, EmptyState, BarChart } from "@/components/ui";
+import { LinkButton, EmptyState, BarChart, BackButton } from "@/components/ui";
 
 export default async function IndicacoesPage() {
   const ranking = await db
@@ -27,9 +27,7 @@ export default async function IndicacoesPage() {
         <h1 className="font-display text-headline-lg font-bold text-primary">
           Relatório de Indicações
         </h1>
-        <LinkButton href="/clientes" variant="text" size="sm">
-          ← Voltar para Clientes
-        </LinkButton>
+        <BackButton href="/clientes" />
       </div>
 
       <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">

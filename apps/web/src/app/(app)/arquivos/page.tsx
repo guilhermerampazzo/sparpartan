@@ -14,7 +14,7 @@ import {
   processos,
   servicos,
 } from "@/db/schema";
-import { Button, EmptyState, LinkButton, SearchBox } from "@/components/ui";
+import { Button, EmptyState, LinkButton, SearchBox, BackButton } from "@/components/ui";
 import { CampoSelect } from "@/components/ui/form-field";
 import { LinhaArquivo, UploadArquivoCliente } from "./arquivo-actions";
 
@@ -251,6 +251,7 @@ export default async function ArquivosPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div>
         <h1 className="font-display text-headline-lg font-bold text-primary">Arquivos</h1>
         <p className="text-body-sm text-outline">

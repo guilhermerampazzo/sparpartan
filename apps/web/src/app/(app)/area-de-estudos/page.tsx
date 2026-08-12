@@ -3,7 +3,7 @@ import { GraduationCap, CheckCircle2, Circle } from "lucide-react";
 import { db } from "@/db";
 import { clientes, servicosContratados, materiaisEstudo, progressoEstudo, servicos } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Button, LinkButton, ProgressBar, EmptyState } from "@/components/ui";
+import { Button, LinkButton, ProgressBar, EmptyState, BackButton } from "@/components/ui";
 import { alternarProgresso } from "./actions";
 
 export default async function AreaEstudosPage({
@@ -57,6 +57,7 @@ export default async function AreaEstudosPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/escola" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Escola Náutica</h1>
         <LinkButton href="/area-de-estudos/materiais/novo" variant="outlined" size="sm">

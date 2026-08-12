@@ -7,6 +7,8 @@ import { authAluno } from "@/lib/auth-aluno";
 import { verificarMatriculaAtiva } from "@/lib/acesso-aluno";
 import { iniciarTentativa } from "../actions";
 
+import { BackButton } from "@/components/ui";
+
 const STATUS_LABEL: Record<string, string> = {
   em_andamento: "Em andamento",
   aguardando_correcao: "Aguardando correção",
@@ -43,9 +45,7 @@ export default async function ProvaAlunoPage({ params }: { params: Promise<{ id:
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <Link href={`/aluno/materias/${materiaId}`} className="text-body-sm text-outline hover:underline">
-          ← Voltar
-        </Link>
+        <BackButton href="/aluno" />
         <h2 className="font-display text-headline-md font-bold text-primary">{prova.titulo}</h2>
         {prova.descricao && <p className="text-body-sm text-outline">{prova.descricao}</p>}
         <p className="mt-1 text-body-sm text-outline">Nota mínima para aprovação: {prova.notaMinima}%</p>

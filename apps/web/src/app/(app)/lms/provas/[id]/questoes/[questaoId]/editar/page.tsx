@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
 import { provas, questoes, opcoesQuestao } from "@/db/schema";
-import { SectionCard } from "@/components/ui";
+import { SectionCard, BackButton } from "@/components/ui";
 import { atualizarQuestao } from "../../../../actions";
 import { QuestaoForm } from "../../../../questao-form";
 
@@ -30,6 +30,7 @@ export default async function EditarQuestaoPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/provas/[id]" />
       <div>
         <Link href={`/lms/provas/${id}`} className="text-body-sm text-outline hover:underline">
           ← {prova.titulo}

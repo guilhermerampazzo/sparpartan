@@ -5,6 +5,8 @@ import { provas } from "@/db/schema";
 import { criarQuestao } from "../../../actions";
 import { QuestaoForm } from "../../../questao-form";
 
+import { BackButton } from "@/components/ui";
+
 export default async function NovaQuestaoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -15,6 +17,7 @@ export default async function NovaQuestaoPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/provas/[id]" />
       <h1 className="font-display text-headline-lg font-bold text-primary">
         Nova Questão — {prova.titulo}
       </h1>

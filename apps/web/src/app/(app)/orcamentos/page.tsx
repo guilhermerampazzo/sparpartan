@@ -2,15 +2,7 @@ import { desc, eq, isNull, and } from "drizzle-orm";
 import { Receipt, Trash2, Landmark } from "lucide-react";
 import { db } from "@/db";
 import { orcamentos, clientes, servicos } from "@/db/schema";
-import {
-  StatusBadge,
-  Button,
-  LinkButton,
-  ConfirmButton,
-  EmptyState,
-  DataTable,
-  type Column,
-} from "@/components/ui";
+import { StatusBadge, Button, LinkButton, ConfirmButton, EmptyState, DataTable, type Column, BackButton } from "@/components/ui";
 import { statusOrcamento } from "@/lib/status";
 import { excluirOrcamento, aprovarOrcamento, recusarOrcamento } from "./actions";
 
@@ -120,6 +112,7 @@ export default async function OrcamentosPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="font-display text-headline-lg font-bold text-primary">Orçamentos</h1>

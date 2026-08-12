@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { pipelineOportunidades, pipelineHistorico } from "@/db/schema";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
+import { registrarAuditoria } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 
 async function usuarioAtualId(): Promise<string | null> {
@@ -70,6 +71,7 @@ export async function criarOportunidade(
     usuarioId: criadoPorId,
   });
 
+  await registrarAuditoria("criar", "oportunidade", oportunidade.id, campos.titulo);
   redirect(`/pipeline/${oportunidade.id}`);
 }
 
@@ -106,6 +108,7 @@ export async function atualizarOportunidade(
     })
     .where(eq(pipelineOportunidades.id, oportunidadeId));
 
+  await registrarAuditoria("atualizar", "oportunidade", oportunidadeId, campos.titulo);
   redirect(`/pipeline/${oportunidadeId}`);
 }
 
@@ -161,6 +164,12 @@ export async function moverEstagio(
     usuarioId,
   });
 
+  await registrarAuditoria(
+    "alterar_status",
+    "oportunidade",
+    oportunidadeId,
+    `${atual.estagio} → ${novoEstagio}`
+  );
   redirect(`/pipeline/${oportunidadeId}`);
 }
 
@@ -193,6 +202,12 @@ export async function moverEstagioNoQuadro(formData: FormData) {
     usuarioId,
   });
 
+  await registrarAuditoria(
+    "alterar_status",
+    "oportunidade",
+    oportunidadeId,
+    `${atual.estagio} → ${novoEstagio} (quadro)`
+  );
   redirect("/pipeline");
 }
 

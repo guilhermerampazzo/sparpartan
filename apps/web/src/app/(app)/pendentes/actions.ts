@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { lembretes } from "@/db/schema";
+import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 /**
@@ -23,18 +24,23 @@ export async function criarPendencia(
   const erro = new Validador().exigir(!!mensagem, "Descreva a pendência.").erro;
   if (erro) return { erro, valores };
 
-  await db.insert(lembretes).values({
-    mensagem,
-    dataLembrete,
-    clienteId,
-    origem: "manual",
-  });
+  const [lembrete] = await db
+    .insert(lembretes)
+    .values({
+      mensagem,
+      dataLembrete,
+      clienteId,
+      origem: "manual",
+    })
+    .returning({ id: lembretes.id });
 
+  await registrarAuditoria("criar", "lembrete", lembrete.id, mensagem);
   revalidatePath("/pendentes");
   return null;
 }
 
 export async function resolverPendencia(lembreteId: string) {
   await db.update(lembretes).set({ resolvido: true }).where(eq(lembretes.id, lembreteId));
+  await registrarAuditoria("alterar_status", "lembrete", lembreteId, "resolvido");
   revalidatePath("/pendentes");
 }

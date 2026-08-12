@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { clientes, usuarios, orcamentos } from "@/db/schema";
 import { NovaOportunidadeForm } from "./form";
 
+import { BackButton } from "@/components/ui";
+
 export default async function NovaOportunidadePage() {
   const listaClientes = await db
     .select({ id: clientes.id, nome: clientes.nome })
@@ -30,6 +32,7 @@ export default async function NovaOportunidadePage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/pipeline" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Nova Oportunidade</h1>
       <NovaOportunidadeForm
         listaClientes={listaClientes}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { db } from "@/db";
 import { mensagens, usuarios } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { Button, EmptyState } from "@/components/ui";
+import { Button, EmptyState, BackButton } from "@/components/ui";
 import { enviarMensagem, marcarChatComoLido } from "./actions";
 import { MensagemItem } from "./mensagem-item";
 
@@ -73,6 +73,7 @@ export default async function ChatPage({
 
       <div className="flex flex-1 flex-col space-y-gutter">
         <div>
+          <BackButton href="/" />
           <h1 className="font-display text-headline-lg font-bold text-primary">
             {contato ? `Conversa com ${contato.nome}` : "Chat da Equipe"}
           </h1>

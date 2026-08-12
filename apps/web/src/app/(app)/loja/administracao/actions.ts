@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { lojaFabricantes, lojaFornecedores, lojaTransportadoras } from "@/db/schema";
+import { registrarAuditoria } from "@/lib/audit";
 
 const TABELAS = {
   fabricantes: lojaFabricantes,
@@ -16,11 +17,13 @@ type Tipo = keyof typeof TABELAS;
 export async function criarItemAdministracaoLoja(tipo: Tipo, formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) throw new Error("Informe o nome.");
-  await db.insert(TABELAS[tipo]).values({ nome });
+  const [item] = await db.insert(TABELAS[tipo]).values({ nome }).returning({ id: TABELAS[tipo].id });
+  await registrarAuditoria("criar", `loja_${tipo}`, item.id, nome);
   revalidatePath("/loja/administracao");
 }
 
 export async function excluirItemAdministracaoLoja(tipo: Tipo, id: string) {
   await db.delete(TABELAS[tipo]).where(eq(TABELAS[tipo].id, id));
+  await registrarAuditoria("excluir", `loja_${tipo}`, id);
   revalidatePath("/loja/administracao");
 }

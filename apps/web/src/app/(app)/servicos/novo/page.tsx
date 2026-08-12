@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Campo, CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { SubmitButton, FormError, CampoMoeda } from "@/components/ui";
+import { SubmitButton, FormError, CampoMoeda, BackButton } from "@/components/ui";
 import { criarServico } from "../actions";
 
 export default function NovoServicoPage() {
@@ -11,6 +11,7 @@ export default function NovoServicoPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/servicos" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Novo Serviço</h1>
 
       <form action={formAction} className="max-w-2xl space-y-6">

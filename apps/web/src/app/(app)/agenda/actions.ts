@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { agendaEventos, agendaInteressados, clientes } from "@/db/schema";
 import { enviarEmail } from "@/lib/mail/adapter";
+import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -79,15 +80,18 @@ export async function criarEvento(
     }
   }
 
+  await registrarAuditoria("criar", "agenda_evento", evento.id, `${titulo} (${tipo})`);
   redirect("/agenda");
 }
 
 export async function confirmarEvento(eventoId: string) {
   await db.update(agendaEventos).set({ status: "confirmado" }).where(eq(agendaEventos.id, eventoId));
+  await registrarAuditoria("alterar_status", "agenda_evento", eventoId, "confirmado");
   redirect("/agenda");
 }
 
 export async function concluirEvento(eventoId: string) {
   await db.update(agendaEventos).set({ status: "concluido" }).where(eq(agendaEventos.id, eventoId));
+  await registrarAuditoria("alterar_status", "agenda_evento", eventoId, "concluído");
   redirect("/agenda");
 }

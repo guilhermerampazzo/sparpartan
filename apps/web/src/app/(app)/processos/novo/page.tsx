@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { clientes, servicos, usuarios } from "@/db/schema";
 import { NovoProcessoForm } from "./form";
 
+import { BackButton } from "@/components/ui";
+
 export default async function NovoProcessoPage({
   searchParams,
 }: {
@@ -28,6 +30,7 @@ export default async function NovoProcessoPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/processos" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Novo Atendimento</h1>
       <NovoProcessoForm
         listaClientes={listaClientes}

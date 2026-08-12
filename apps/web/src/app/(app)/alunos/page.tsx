@@ -2,7 +2,17 @@ import { and, desc, ilike, or, count, sql } from "drizzle-orm";
 import { GraduationCap } from "lucide-react";
 import { db } from "@/db";
 import { alunos, matriculas } from "@/db/schema";
-import { Badge, LinkButton, EmptyState, DataTable, SearchBox, Pagination, paginar, type Column } from "@/components/ui";
+import {
+  Badge,
+  LinkButton,
+  EmptyState,
+  DataTable,
+  SearchBox,
+  Pagination,
+  paginar,
+  type Column,
+  BackButton,
+} from "@/components/ui";
 
 type LinhaAluno = {
   id: string;
@@ -66,6 +76,7 @@ export default async function AlunosPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/escola" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Alunos</h1>
         <LinkButton href="/alunos/novo">+ Novo Aluno</LinkButton>

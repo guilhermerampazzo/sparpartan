@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { Wrench, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { servicos } from "@/db/schema";
-import { LinkButton, EmptyState, DataTable, ConfirmButton, type Column } from "@/components/ui";
+import { LinkButton, EmptyState, DataTable, ConfirmButton, type Column, BackButton } from "@/components/ui";
 import { excluirServico } from "./actions";
 
 function formatMoney(v: string | null) {
@@ -59,6 +59,7 @@ export default async function ServicosPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Serviços</h1>
         <div className="flex gap-3">

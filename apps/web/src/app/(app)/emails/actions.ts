@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { templatesEmail, enviosEmail, clientes } from "@/db/schema";
 import { enviarEmail } from "@/lib/mail/adapter";
 import { resolverVariaveis } from "@/lib/mail/templates";
+import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 export async function criarTemplate(
@@ -23,13 +24,17 @@ export async function criarTemplate(
     .exigir(!!corpo, "Informe o corpo do e-mail.").erro;
   if (erro) return { erro, valores };
 
-  await db.insert(templatesEmail).values({
-    nome,
-    tipo: String(formData.get("tipo") ?? "geral"),
-    assunto,
-    corpo,
-  });
+  const [template] = await db
+    .insert(templatesEmail)
+    .values({
+      nome,
+      tipo: String(formData.get("tipo") ?? "geral"),
+      assunto,
+      corpo,
+    })
+    .returning({ id: templatesEmail.id });
 
+  await registrarAuditoria("criar", "template_email", template.id, nome);
   redirect("/emails");
 }
 
@@ -59,11 +64,13 @@ export async function atualizarTemplate(
     })
     .where(eq(templatesEmail.id, templateId));
 
+  await registrarAuditoria("atualizar", "template_email", templateId, nome);
   redirect("/emails");
 }
 
 export async function excluirTemplate(templateId: string) {
   await db.delete(templatesEmail).where(eq(templatesEmail.id, templateId));
+  await registrarAuditoria("excluir", "template_email", templateId);
   redirect("/emails");
 }
 
@@ -118,6 +125,12 @@ export async function enviarEmailCliente(
     erro: erroEnvio,
   });
 
+  await registrarAuditoria(
+    "atualizar",
+    "envio_email",
+    clienteId,
+    `para ${cliente.email} — ${assunto}${erroEnvio ? ` (falhou: ${erroEnvio})` : ""}`
+  );
   redirect("/emails");
 }
 

@@ -4,7 +4,7 @@ import { ClipboardList } from "lucide-react";
 import { db } from "@/db";
 import { auditLog } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { LinkButton, Badge, EmptyState, DataTable, type Column } from "@/components/ui";
+import { LinkButton, Badge, EmptyState, DataTable, type Column, BackButton } from "@/components/ui";
 
 type LinhaAuditoria = typeof auditLog.$inferSelect;
 
@@ -12,7 +12,18 @@ const ACAO_TONE: Record<string, "success" | "info" | "danger" | "neutral"> = {
   criar: "success",
   atualizar: "info",
   excluir: "danger",
+  arquivar: "neutral",
+  alterar_status: "info",
   login: "neutral",
+};
+
+const ACAO_LABEL: Record<string, string> = {
+  criar: "Criar",
+  atualizar: "Atualizar",
+  excluir: "Excluir",
+  arquivar: "Arquivar",
+  alterar_status: "Alterar status",
+  login: "Login",
 };
 
 export default async function AuditoriaPage() {
@@ -29,7 +40,7 @@ export default async function AuditoriaPage() {
       header: "Ação",
       cell: (l) => (
         <Badge tone={ACAO_TONE[l.acao] ?? "neutral"} size="sm">
-          {l.acao}
+          {ACAO_LABEL[l.acao] ?? l.acao}
         </Badge>
       ),
     },
@@ -43,9 +54,7 @@ export default async function AuditoriaPage() {
         <h1 className="font-display text-headline-lg font-bold text-primary">
           Log de Auditoria
         </h1>
-        <LinkButton href="/configuracoes" variant="text" size="sm">
-          ← Voltar
-        </LinkButton>
+        <BackButton href="/configuracoes" />
       </div>
 
       <DataTable

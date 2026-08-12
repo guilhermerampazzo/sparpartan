@@ -1,6 +1,8 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { servicos } from "@/db/schema";
+import { BackButton } from "@/components/ui";
+
 import { NovoClienteForm } from "./form";
 
 export default async function NovoClientePage() {
@@ -10,5 +12,10 @@ export default async function NovoClientePage() {
     .where(eq(servicos.ativo, true))
     .orderBy(asc(servicos.nome));
 
-  return <NovoClienteForm listaServicos={listaServicos} />;
+  return (
+    <>
+      <BackButton href="/clientes" />
+      <NovoClienteForm listaServicos={listaServicos} />
+    </>
+  );
 }

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Package, Receipt, ShoppingBag, FileText, Truck, Settings } from "lucide-react";
 
+import { BackButton } from "@/components/ui";
+
 const CARTOES = [
   {
     href: "/loja/catalogo",
@@ -43,6 +45,7 @@ const CARTOES = [
 export default function LojaPage() {
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div>
         <h1 className="font-display text-headline-lg font-bold text-primary">Loja</h1>
         <p className="text-body-md text-on-surface-variant">

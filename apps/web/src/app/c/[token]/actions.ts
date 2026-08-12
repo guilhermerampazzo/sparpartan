@@ -11,6 +11,7 @@ import { buscarSolicitacaoValida, marcarConcluida } from "@/lib/solicitacoes";
 import { aprovarOrcamentoCore, recusarOrcamentoCore } from "@/lib/orcamentos";
 import { reclassificarProcesso } from "@/lib/processos";
 import { validarArquivo } from "@/lib/upload";
+import { registrarAuditoria } from "@/lib/audit";
 
 function uploadsDir() {
   return process.env.UPLOADS_DIR ?? "./data/uploads";
@@ -45,6 +46,22 @@ async function validarOuFalhar(token: string) {
   if (expirada) throw new Error("Link expirado");
   if (solicitacao.status === "concluida") throw new Error("Este link já foi utilizado");
   return solicitacao;
+}
+
+/** Nome do cliente para o rastro de auditoria quando a ação vem do link público. */
+async function nomeCliente(solicitacaoId: string): Promise<string | undefined> {
+  const [solicitacao] = await db
+    .select({ clienteId: solicitacoes.clienteId })
+    .from(solicitacoes)
+    .where(eq(solicitacoes.id, solicitacaoId))
+    .limit(1);
+  if (!solicitacao?.clienteId) return undefined;
+  const [cliente] = await db
+    .select({ nome: clientes.nome })
+    .from(clientes)
+    .where(eq(clientes.id, solicitacao.clienteId))
+    .limit(1);
+  return cliente?.nome;
 }
 
 export async function concluirCadastroCliente(token: string, formData: FormData) {
@@ -93,6 +110,13 @@ export async function concluirCadastroCliente(token: string, formData: FormData)
   await db.update(solicitacoes).set({ clienteId }).where(eq(solicitacoes.id, solicitacao.id));
   await marcarConcluida(solicitacao.id);
   await notificarEquipe(`${nome} preencheu o cadastro pelo link.`, "cliente", clienteId);
+  await registrarAuditoria(
+    "criar",
+    "cadastro_cliente_link",
+    clienteId,
+    `cadastro preenchido pelo link (${cpfCnpj})`,
+    nome
+  );
 
   revalidatePath(`/c/${token}`);
 }
@@ -121,6 +145,13 @@ export async function enviarDocumentoRequisito(
   });
 
   await reclassificarProcesso(solicitacao.processoId);
+  await registrarAuditoria(
+    "criar",
+    "documento_processo",
+    solicitacao.processoId,
+    `documento enviado pelo link: ${arquivo.name}`,
+    await nomeCliente(solicitacao.id)
+  );
 
   revalidatePath(`/c/${token}`);
 }
@@ -130,6 +161,13 @@ export async function concluirDocumentosProcesso(token: string) {
   await marcarConcluida(solicitacao.id);
   if (solicitacao.processoId) {
     await notificarEquipe("Cliente enviou os documentos pendentes pelo link.", "processo", solicitacao.processoId);
+    await registrarAuditoria(
+      "alterar_status",
+      "solicitacao",
+      solicitacao.id,
+      `documentos do processo ${solicitacao.processoId} concluídos pelo link`,
+      await nomeCliente(solicitacao.id)
+    );
   }
   revalidatePath(`/c/${token}`);
 }
@@ -174,6 +212,13 @@ export async function concluirCadastroEmbarcacao(token: string, formData: FormDa
     "embarcacao",
     embarcacao.id
   );
+  await registrarAuditoria(
+    "criar",
+    "embarcacao",
+    embarcacao.id,
+    `cadastrada pelo link do cliente`,
+    await nomeCliente(solicitacao.id)
+  );
 
   revalidatePath(`/c/${token}`);
 }
@@ -182,7 +227,7 @@ export async function aprovarOrcamentoPublico(token: string) {
   const solicitacao = await validarOuFalhar(token);
   if (!solicitacao.orcamentoId) throw new Error("Solicitação sem orçamento vinculado");
 
-  const resultado = await aprovarOrcamentoCore(solicitacao.orcamentoId);
+  const resultado = await aprovarOrcamentoCore(solicitacao.orcamentoId, await nomeCliente(solicitacao.id));
   if (!resultado.ok) throw new Error(`Não foi possível aprovar (${resultado.motivo})`);
 
   await marcarConcluida(solicitacao.id);
@@ -195,7 +240,7 @@ export async function recusarOrcamentoPublico(token: string) {
   const solicitacao = await validarOuFalhar(token);
   if (!solicitacao.orcamentoId) throw new Error("Solicitação sem orçamento vinculado");
 
-  const resultado = await recusarOrcamentoCore(solicitacao.orcamentoId);
+  const resultado = await recusarOrcamentoCore(solicitacao.orcamentoId, await nomeCliente(solicitacao.id));
   if (!resultado.ok) throw new Error(`Não foi possível recusar (${resultado.motivo})`);
 
   await marcarConcluida(solicitacao.id);

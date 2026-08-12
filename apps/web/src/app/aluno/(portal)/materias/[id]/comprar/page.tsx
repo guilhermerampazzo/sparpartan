@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/db";
 import { materias } from "@/db/schema";
+import { BackButton } from "@/components/ui";
+
 import { authAluno } from "@/lib/auth-aluno";
 import { verificarMatriculaAtiva } from "@/lib/acesso-aluno";
 import { iniciarCheckout } from "../../actions";
@@ -22,6 +24,9 @@ export default async function ComprarMateriaPage({ params }: { params: Promise<{
 
   return (
     <div className="mx-auto max-w-md space-y-4 rounded-xl border border-outline-variant bg-surface-container-lowest p-8 text-center">
+      <div className="text-left">
+        <BackButton href={`/aluno/materias/${id}`} />
+      </div>
       <h2 className="font-display text-title-lg font-bold text-primary">{materia.titulo}</h2>
       {materia.descricao && <p className="text-body-sm text-outline">{materia.descricao}</p>}
       <p className="text-title-md font-semibold text-primary">

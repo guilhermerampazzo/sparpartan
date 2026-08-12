@@ -8,6 +8,8 @@ import { authAluno } from "@/lib/auth-aluno";
 import { verificarMatriculaAtiva } from "@/lib/acesso-aluno";
 import { marcarAulaConcluida } from "../actions";
 
+import { BackButton } from "@/components/ui";
+
 export default async function AulaAlunoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await authAluno();
@@ -51,7 +53,8 @@ export default async function AulaAlunoPage({ params }: { params: Promise<{ id: 
   const urlVideo = aula.videoArquivo ? `/api/lms/arquivos/${aula.videoArquivo.replace(/^lms\//, "")}` : null;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6">
+      <BackButton href="/aluno" />
       <div>
         <Link href={`/aluno/materias/${capitulo.materiaId}`} className="text-body-sm text-outline hover:underline">
           ← {capitulo.titulo}

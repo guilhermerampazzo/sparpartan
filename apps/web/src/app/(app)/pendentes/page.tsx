@@ -3,7 +3,7 @@ import { FolderClock, Receipt, AlarmClock, Link2, CreditCard } from "lucide-reac
 import { db } from "@/db";
 import { processos, clientes, servicos, orcamentos, pagamentos, lembretes, solicitacoes, servicosContratados } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { StatusBadge, EmptyState, Button } from "@/components/ui";
+import { StatusBadge, EmptyState, Button, BackButton } from "@/components/ui";
 import { statusProcesso, statusOrcamento, rotuloPrazo } from "@/lib/status";
 import Link from "next/link";
 import { PendenciaForm } from "./form";
@@ -59,6 +59,7 @@ export default async function PendentesPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Pendentes</h1>
       <p className="text-body-sm text-outline">Tudo que precisa da sua atenção, num só lugar.</p>
 

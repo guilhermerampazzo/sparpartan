@@ -2,7 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { ClipboardList, Plus, RotateCcw, Archive, CheckCircle2 } from "lucide-react";
 import { db } from "@/db";
 import { pendencias, clientes } from "@/db/schema";
-import { Badge, Button, ConfirmButton, EmptyState, LinkButton } from "@/components/ui";
+import { Badge, Button, ConfirmButton, EmptyState, LinkButton, BackButton } from "@/components/ui";
 import { auth } from "@/lib/auth";
 import { PENDENCIA_CATEGORIAS, labelCategoria, labelPrioridade, diasAtePendencia, type PendenciaCategoria } from "@/lib/pendencias";
 import { concluirPendencia, reabrirPendencia, arquivarPendencia } from "./actions";
@@ -161,6 +161,7 @@ export default async function PendenciasPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-headline-lg font-bold text-primary">Central de Pendências</h1>

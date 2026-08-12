@@ -2,7 +2,7 @@ import { and, isNotNull, gte, desc } from "drizzle-orm";
 import { Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { clientes } from "@/db/schema";
-import { LinkButton, Button, Badge, EmptyState } from "@/components/ui";
+import { LinkButton, Button, Badge, EmptyState, BackButton } from "@/components/ui";
 import { restaurarCliente } from "../actions";
 
 export default async function LixeiraPage() {
@@ -21,9 +21,7 @@ export default async function LixeiraPage() {
         <h1 className="font-display text-headline-lg font-bold text-primary">
           Lixeira de Clientes
         </h1>
-        <LinkButton href="/clientes" variant="text" size="sm">
-          ← Voltar para Clientes
-        </LinkButton>
+        <BackButton href="/clientes" />
       </div>
       <p className="text-body-sm text-outline">
         Clientes excluídos ficam aqui por 30 dias antes da remoção definitiva.

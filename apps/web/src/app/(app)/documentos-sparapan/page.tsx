@@ -3,7 +3,7 @@ import { BookMarked, Download, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { arquivosEmpresa } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
-import { ConfirmButton, EmptyState } from "@/components/ui";
+import { ConfirmButton, EmptyState, BackButton } from "@/components/ui";
 import { NovoArquivoEmpresaForm } from "./form";
 import { excluirArquivoEmpresa } from "./actions";
 import { rotuloCategoriaArquivoEmpresa } from "@/lib/arquivos-empresa";
@@ -20,6 +20,7 @@ export default async function DocumentosSparapanPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Documentos Sparapan</h1>
       <p className="max-w-2xl text-body-sm text-outline">
         Repositório interno da empresa: notas fiscais, contratos assinados, documentos de

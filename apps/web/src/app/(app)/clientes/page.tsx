@@ -13,6 +13,7 @@ import {
   Pagination,
   paginar,
   type Column,
+  BackButton,
 } from "@/components/ui";
 import { CampoSelect } from "@/components/ui/form-field";
 import { excluirCliente, gerarLinkCadastroNovoCliente } from "./actions";
@@ -130,6 +131,7 @@ export default async function ClientesPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Clientes</h1>
         <div className="flex gap-3">

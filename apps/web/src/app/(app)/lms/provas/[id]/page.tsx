@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Trash2, ClipboardList, ClipboardCheck, Pencil } from "lucide-react";
 import { db } from "@/db";
 import { provas, capitulos, questoes } from "@/db/schema";
-import { SectionCard, LinkButton, ConfirmButton, EmptyState, Badge } from "@/components/ui";
+import { SectionCard, LinkButton, ConfirmButton, EmptyState, Badge, BackButton } from "@/components/ui";
 import { alternarStatusProva, atualizarProva, excluirProva, excluirQuestao } from "../actions";
 import { ProvaForm } from "../prova-form";
 
@@ -39,6 +39,7 @@ export default async function ProvaDetalhePage({ params }: { params: Promise<{ i
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/materias" />
       <div className="flex items-center justify-between">
         <div>
           {capitulo && (

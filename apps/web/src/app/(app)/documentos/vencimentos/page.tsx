@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { AlertOctagon, AlertTriangle, Clock, ShieldCheck, FileClock } from "lucide-react";
 import { db } from "@/db";
 import { documentosGerados, modelosDocumento, clientes } from "@/db/schema";
-import { StatCard, Badge, EmptyState, DataTable, type Column } from "@/components/ui";
+import { StatCard, Badge, EmptyState, DataTable, type Column, BackButton } from "@/components/ui";
 import { urgenciaVencimento, infoUrgencia, rotuloPrazo, type Urgencia } from "@/lib/status";
 
 const FILTROS: { key: Urgencia; label: string; icon: typeof AlertOctagon }[] = [
@@ -67,6 +67,7 @@ export default async function VencimentosPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/documentos" />
       <h1 className="font-display text-headline-lg font-bold text-primary">
         Vencimento de Documentos
       </h1>

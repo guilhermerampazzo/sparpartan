@@ -1,5 +1,5 @@
 import { SearchX } from "lucide-react";
-import { LinkButton } from "@/components/ui";
+import { BackButton } from "@/components/ui";
 
 export default function NaoEncontrado() {
   return (
@@ -15,7 +15,7 @@ export default function NaoEncontrado() {
           O registro pode ter sido excluído ou o endereço está errado.
         </p>
       </div>
-      <LinkButton href="/">Voltar para a Home</LinkButton>
+      <BackButton href="/" label="Voltar para a Home" />
     </div>
   );
 }

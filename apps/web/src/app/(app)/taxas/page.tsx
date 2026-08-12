@@ -2,7 +2,17 @@ import { desc, eq, sql, and, lte, gte, isNotNull, inArray } from "drizzle-orm";
 import { Landmark, Download, Trash2, Eye, AlarmClockOff, CalendarClock, CircleCheckBig } from "lucide-react";
 import { db } from "@/db";
 import { taxasPagar, clientes, processos, servicos } from "@/db/schema";
-import { StatCard, Button, LinkButton, Badge, EmptyState, DataTable, ConfirmButton, type Column } from "@/components/ui";
+import {
+  StatCard,
+  Button,
+  LinkButton,
+  Badge,
+  EmptyState,
+  DataTable,
+  ConfirmButton,
+  type Column,
+  BackButton,
+} from "@/components/ui";
 import { marcarTaxaComoEmitida, marcarTaxaComoPaga, excluirTaxa } from "./actions";
 
 function formatMoney(v: number) {
@@ -159,6 +169,7 @@ export default async function TaxasPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-headline-lg font-bold text-primary">Taxas</h1>
         <LinkButton href="/taxas/novo">+ Nova Taxa</LinkButton>

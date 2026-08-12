@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { clientes, templatesEmail, enviosEmail } from "@/db/schema";
 import { enviarEmail } from "@/lib/mail/adapter";
 import { resolverVariaveis } from "@/lib/mail/templates";
+import { registrarAuditoria } from "@/lib/audit";
 
 const ASSUNTO_PADRAO = "Feliz Aniversário! 🎉 — Sparapan";
 const CORPO_PADRAO =
@@ -46,5 +47,11 @@ export async function enviarParabens(clienteId: string) {
     erro,
   });
 
+  await registrarAuditoria(
+    "atualizar",
+    "envio_email",
+    clienteId,
+    `parabéns enviado para ${cliente.email}${erro ? ` (falhou: ${erro})` : ""}`
+  );
   revalidatePath("/clientes/aniversariantes");
 }

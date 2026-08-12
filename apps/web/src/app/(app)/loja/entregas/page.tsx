@@ -3,7 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { Truck } from "lucide-react";
 import { db } from "@/db";
 import { lojaEntregas, lojaVendas, clientes, lojaVendaItens } from "@/db/schema";
-import { Badge, EmptyState, DataTable, type Column } from "@/components/ui";
+import { Badge, EmptyState, DataTable, type Column, BackButton } from "@/components/ui";
 
 type LinhaEntrega = {
   id: string;
@@ -78,6 +78,7 @@ export default async function EntregasLojaPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/loja" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Entregas</h1>
       <p className="text-body-sm text-outline">Atualize o status de cada entrega na ficha da venda correspondente.</p>
 

@@ -3,7 +3,7 @@ import { asc, eq, gte, and, ne, lt, count, desc } from "drizzle-orm";
 import { BookOpen, UserCog, GraduationCap, CalendarClock, ClipboardCheck, BadgeX, UsersRound, ScrollText } from "lucide-react";
 import { db } from "@/db";
 import { alunos, agendaEventos, clientes, tentativasProva, provas } from "@/db/schema";
-import { StatCard, Badge, EmptyState } from "@/components/ui";
+import { StatCard, Badge, EmptyState, BackButton } from "@/components/ui";
 import { SectionCard } from "@/components/ui/form-field";
 
 const CARTOES = [
@@ -104,6 +104,7 @@ export default async function EscolaPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div>
         <h1 className="font-display text-headline-lg font-bold text-primary">Escola Náutica</h1>
         <p className="text-body-md text-on-surface-variant">

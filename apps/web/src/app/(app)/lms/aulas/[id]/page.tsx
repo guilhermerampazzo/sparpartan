@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Trash2, Paperclip } from "lucide-react";
 import { db } from "@/db";
 import { aulas, capitulos, materiaisApoio } from "@/db/schema";
-import { SectionCard, ConfirmButton, EmptyState, Badge } from "@/components/ui";
+import { SectionCard, ConfirmButton, EmptyState, Badge, BackButton } from "@/components/ui";
 import { atualizarAula } from "../actions";
 import { AulaForm } from "../aula-form";
 import { criarMaterialApoio, excluirMaterialApoio } from "../../materiais/actions";
@@ -34,6 +34,7 @@ export default async function AulaDetalhePage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/materias" />
       <div>
         {capitulo && (
           <Link href={`/lms/capitulos/${capitulo.id}`} className="text-body-sm text-outline hover:underline">

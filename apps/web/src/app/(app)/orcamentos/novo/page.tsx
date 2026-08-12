@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { clientes, servicos, embarcacoes, contasBancarias } from "@/db/schema";
 import { NovoOrcamentoForm } from "./form";
 
+import { BackButton } from "@/components/ui";
+
 export default async function NovoOrcamentoPage() {
   const listaClientes = await db
     .select({ id: clientes.id, nome: clientes.nome })
@@ -22,6 +24,7 @@ export default async function NovoOrcamentoPage() {
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/orcamentos" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Novo Orçamento</h1>
       <NovoOrcamentoForm
         listaClientes={listaClientes}

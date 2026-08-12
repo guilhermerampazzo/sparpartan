@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ClipboardCheck } from "lucide-react";
 import { db } from "@/db";
 import { provas, tentativasProva, alunos, respostasAluno, questoes } from "@/db/schema";
-import { SectionCard, EmptyState, Badge, SubmitButton } from "@/components/ui";
+import { SectionCard, EmptyState, Badge, SubmitButton, BackButton } from "@/components/ui";
 import { corrigirTentativa } from "../../actions";
 
 export default async function CorrigirProvaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,6 +27,7 @@ export default async function CorrigirProvaPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/lms/provas/[id]" />
       <div>
         <Link href={`/lms/provas/${id}`} className="text-body-sm text-outline hover:underline">
           ← {prova.titulo}

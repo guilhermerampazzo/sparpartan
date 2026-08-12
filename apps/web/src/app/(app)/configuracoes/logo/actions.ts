@@ -3,6 +3,7 @@
 import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
+import { registrarAuditoria } from "@/lib/audit";
 
 const EXTENSOES_LOGO = [".png", ".jpg", ".jpeg", ".webp", ".svg"];
 const TAMANHO_MAX_LOGO = 2 * 1024 * 1024; // 2 MB
@@ -48,11 +49,13 @@ export async function salvarLogo(
   const bytes = Buffer.from(await arquivo.arrayBuffer());
   await writeFile(path.join(dir, `logo${extensao}`), bytes);
 
+  await registrarAuditoria("atualizar", "logo", "empresa", `novo logo (${arquivo.name})`);
   revalidatePath("/configuracoes/logo");
   return { ok: "Logo atualizado com sucesso." };
 }
 
 export async function removerLogo() {
   await limparLogoAtual();
+  await registrarAuditoria("excluir", "logo", "empresa", "logo removido");
   revalidatePath("/configuracoes/logo");
 }

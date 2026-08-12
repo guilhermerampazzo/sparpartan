@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { modelosDocumento } from "@/db/schema";
 import { extractFieldsFromDocx } from "@/lib/docx/document";
+import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 import { validarArquivo } from "@/lib/upload";
 
@@ -39,19 +40,23 @@ export async function importarModelo(
   const nomeArquivo = `${randomUUID()}.docx`;
   await writeFile(path.join(modelosDir, nomeArquivo), bytes);
 
-  await db.insert(modelosDocumento).values({
-    nome,
-    categoria: String(formData.get("categoria") ?? "") || null,
-    norma: String(formData.get("norma") ?? "") || null,
-    servicoId: String(formData.get("servicoId") ?? "") || null,
-    arquivoCaminho: path.join("modelos", nomeArquivo),
-    campos,
-    obrigatorio: formData.get("obrigatorio") === "on",
-    duasVias: formData.get("duasVias") === "on",
-    validadeMeses: Number(formData.get("validadeMeses")) || null,
-    padraoParaObra: formData.get("padraoParaObra") === "on",
-  });
+  const [modelo] = await db
+    .insert(modelosDocumento)
+    .values({
+      nome,
+      categoria: String(formData.get("categoria") ?? "") || null,
+      norma: String(formData.get("norma") ?? "") || null,
+      servicoId: String(formData.get("servicoId") ?? "") || null,
+      arquivoCaminho: path.join("modelos", nomeArquivo),
+      campos,
+      obrigatorio: formData.get("obrigatorio") === "on",
+      duasVias: formData.get("duasVias") === "on",
+      validadeMeses: Number(formData.get("validadeMeses")) || null,
+      padraoParaObra: formData.get("padraoParaObra") === "on",
+    })
+    .returning({ id: modelosDocumento.id });
 
+  await registrarAuditoria("criar", "modelo_documento", modelo.id, `${nome} (${campos.length} campos)`);
   redirect("/configuracoes/modelos");
 }
 
@@ -95,6 +100,12 @@ export async function atualizarModelo(
 
   await db.update(modelosDocumento).set(dadosParaAtualizar).where(eq(modelosDocumento.id, modeloId));
 
+  await registrarAuditoria(
+    "atualizar",
+    "modelo_documento",
+    modeloId,
+    dadosParaAtualizar.arquivoCaminho ? `${nome} (arquivo substituído)` : nome
+  );
   redirect("/configuracoes/modelos");
 }
 
@@ -118,5 +129,11 @@ export async function atualizarCamposMarcacao(modeloId: string, formData: FormDa
 
   await db.update(modelosDocumento).set({ camposMarcacao }).where(eq(modelosDocumento.id, modeloId));
 
+  await registrarAuditoria(
+    "atualizar",
+    "modelo_documento",
+    modeloId,
+    `campos de marcação: ${camposMarcacao.length} regra(s)`
+  );
   redirect(`/configuracoes/modelos/${modeloId}/editar`);
 }

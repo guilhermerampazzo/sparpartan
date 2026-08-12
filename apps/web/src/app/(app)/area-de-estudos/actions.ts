@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { materiaisEstudo, progressoEstudo } from "@/db/schema";
+import { registrarAuditoria } from "@/lib/audit";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 export async function criarMaterial(
@@ -22,14 +23,18 @@ export async function criarMaterial(
     .exigir(!!url, "Informe a URL.").erro;
   if (erro) return { erro, valores };
 
-  await db.insert(materiaisEstudo).values({
-    servicoId,
-    titulo,
-    url,
-    categoria: String(formData.get("categoria") ?? "") || null,
-    tipo: String(formData.get("tipo") ?? "pdf") as "pdf" | "video" | "link",
-  });
+  const [material] = await db
+    .insert(materiaisEstudo)
+    .values({
+      servicoId,
+      titulo,
+      url,
+      categoria: String(formData.get("categoria") ?? "") || null,
+      tipo: String(formData.get("tipo") ?? "pdf") as "pdf" | "video" | "link",
+    })
+    .returning({ id: materiaisEstudo.id });
 
+  await registrarAuditoria("criar", "material_estudo", material.id, titulo);
   redirect("/area-de-estudos");
 }
 
@@ -55,5 +60,11 @@ export async function alternarProgresso(
     await db.insert(progressoEstudo).values({ clienteId, materialId, concluido: true });
   }
 
+  await registrarAuditoria(
+    "atualizar",
+    "progresso_estudo",
+    materialId,
+    `cliente ${clienteId} — ${concluidoAtual ? "desmarcado" : "marcado como concluído"}`
+  );
   revalidatePath("/area-de-estudos");
 }

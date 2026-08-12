@@ -12,7 +12,7 @@ import {
   processos,
 } from "@/db/schema";
 import { CampoSelect, SectionCard } from "@/components/ui/form-field";
-import { Button, LinkButton } from "@/components/ui";
+import { Button, LinkButton, BackButton } from "@/components/ui";
 import { resolverCamposConhecidos } from "@/lib/docx/resolver";
 import { GerarDocumentoForm } from "./form";
 
@@ -120,6 +120,7 @@ export default async function GerarDocumentoPage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/documentos" />
       <h1 className="font-display text-headline-lg font-bold text-primary">Gerar Documento</h1>
 
       <SectionCard title="1. Cliente, Embarcação/Obra e Modelo">

@@ -7,6 +7,8 @@ import { CampoSelect } from "@/components/ui/form-field";
 import { PipelineComercial } from "./pipeline-comercial";
 import { CentralOperacional } from "./central-operacional";
 
+import { BackButton } from "@/components/ui";
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export default async function PipelinePage({
@@ -27,6 +29,7 @@ export default async function PipelinePage({
 
   return (
     <div className="space-y-gutter">
+      <BackButton href="/" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-headline-lg font-bold text-primary">Pipeline</h1>
       </div>
