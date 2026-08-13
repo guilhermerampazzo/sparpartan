@@ -304,6 +304,14 @@ Refatoração do módulo de Agenda em duas entidades independentes (migration 00
 - **Reflexos automáticos (regra D9)**: toda fonte do calendário e lista que referencia entidade com soft-delete passou a filtrar `excluido_em IS NULL` — orçamento excluído some do calendário, agendamento de cliente excluído some da agenda operacional sem apagar histórico. Exclusão de agendamento é hard delete com cascade (interessados e processos vinculados) e auditoria.
 - Worker e portal do cliente intactos (jobs continuam sobre `agenda_eventos`).
 
+### M13 — Chat clicável + Clientes (cartões, cadastro por serviço, processos no topo, DPEM, busca fluida)
+Lote de correções de usabilidade (itens 7–12 do pedido, testados E2E):
+- **Chat**: o item do menu era um botão-popover (`ChatPopover`) no lugar de link — trocado por **link direto para `/chat`** com badge de não lidas (`ChatBadge` via `/api/chat/recentes`); popover removido. O módulo estava funcional; o problema era só o acesso.
+- **Lista de clientes**: a tabela virou **grade de cartões compactos** (`GradeClientes`) — só informações que existem (nome, CPF, telefone, e-mail/cidade, serviço do processo mais recente + badge de status), sem "—" nem caixas grandes; grid responsivo para enxergar mais clientes por tela. **Busca fluida client-side**: digitar filtra na hora (nome/CPF/e-mail), apagar devolve a lista completa imediatamente — sem navegação e sem resultado velho (estado derivado do input).
+- **Novo cliente**: ganhou **Órgão Emissor** e **Data de Emissão do Documento** (colunas `orgao_emissor`/`data_emissao_rg`, que já existiam). Removida a digitação livre de embarcação/serviço; no lugar, **seleção por ícones** (`OPCOES_SERVICO_NOVO_CLIENTE` em `lib/novo-cliente-opcoes.ts`): Orçamento, Escola Náutica, Embarcação Esporte e Recreio, Embarcação Comercial, Obras. Ao salvar, o sistema cria os processos certos automaticamente — **Escola Náutica → Arrais Amador + Motonauta**; **Esporte/Comercial → embarcação (classe automática) + Inscrição (NORMAM-211)**; **Obras → serviço de engenharia** — cada um com pendências automáticas e auditoria (serviços resolvidos por nome no cadastro; se faltar, registra em auditoria sem quebrar o cliente).
+- **Detalhe do cliente**: contato existente (telefone/e-mail/cidade) logo no topo; seção **"Processos/Serviços deste cliente"** logo abaixo com **cards clicáveis → `/processos/[id]`** (o card não linkava antes) + badge de status; botão "+ Novo Processo".
+- **Senha DPEM** (item 11): coluna nova `senha_dpem` em `clientes` (migration 0036) — a mesma senha vale para todas as embarcações do cliente. Campo no cadastro/edição e **card no detalhe apenas quando o cliente possui ≥1 embarcação**.
+
 ---
 
 ## Onde entra o mapa
