@@ -203,6 +203,7 @@ export const clientes = pgTable("clientes", {
   uf: text("uf"),
   despachante: text("despachante"),
   indicadoPor: text("indicado_por"),
+  senhaDpem: text("senha_dpem"),
   classificacao: clienteClassificacao("classificacao").notNull().default("cliente"),
   observacoes: text("observacoes"),
   ativo: boolean("ativo").notNull().default(true),

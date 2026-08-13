@@ -1,0 +1,1 @@
+ALTER TABLE "clientes" ADD COLUMN "senha_dpem" text;
