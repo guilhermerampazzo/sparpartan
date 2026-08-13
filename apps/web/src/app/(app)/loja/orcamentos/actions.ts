@@ -9,8 +9,10 @@ import {
   lojaVendas,
   lojaVendaItens,
   lojaProdutos,
+  clientes,
 } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
 
 const MAX_ITENS = 8;
@@ -106,7 +108,7 @@ export async function aprovarOrcamentoLoja(orcamentoId: string) {
     .where(eq(lojaOrcamentos.id, orcamentoId))
     .limit(1);
   if (!orcamento) throw new Error("Orçamento não encontrado.");
-  if (orcamento.status !== "pendente") throw new Error("Só é possível aprovar orçamentos pendentes.");
+  if (orcamento.status === "convertido") throw new Error("Este orçamento já foi convertido em venda.");
 
   const itens = await db
     .select()
@@ -120,6 +122,10 @@ export async function aprovarOrcamentoLoja(orcamentoId: string) {
       clienteId: orcamento.clienteId,
       valorTotal: orcamento.valorTotal,
       observacoes: orcamento.observacoes,
+      vendedorId: orcamento.vendedorId ?? (await idUsuarioEquipe()),
+      formaPagamento: orcamento.formaPagamento,
+      frete: orcamento.frete,
+      status: "aprovada",
     })
     .returning({ id: lojaVendas.id });
 
@@ -146,7 +152,91 @@ export async function aprovarOrcamentoLoja(orcamentoId: string) {
     }
   }
 
-  await db.update(lojaOrcamentos).set({ status: "aprovado" }).where(eq(lojaOrcamentos.id, orcamentoId));
+  await db.update(lojaOrcamentos).set({ status: "convertido" }).where(eq(lojaOrcamentos.id, orcamentoId));
   await registrarAuditoria("criar", "loja_venda", venda.id, `convertida do orçamento ${orcamento.numero}`);
   redirect(`/loja/vendas/${venda.id}`);
+}
+
+/** Avança o orçamento: rascunho → enviado → aguardando aprovação. */
+export async function avancarOrcamentoLoja(orcamentoId: string, formData: FormData) {
+  const proximo = String(formData.get("proximo") ?? "");
+  if (!["enviado", "aguardando_aprovacao", "aprovado"].includes(proximo)) throw new Error("Transição inválida.");
+
+  await db.update(lojaOrcamentos).set({ status: proximo as never }).where(eq(lojaOrcamentos.id, orcamentoId));
+  await registrarAuditoria("atualizar", "loja_orcamento", orcamentoId, `status → ${proximo}`);
+  redirect(`/loja/orcamentos/${orcamentoId}`);
+}
+
+/**
+ * Finaliza o carrinho da Loja: cria o orçamento (rascunho) com vendedor =
+ * usuário logado, desconto/frete/validade/forma de pagamento. Se o cliente não
+ * existir, faz o cadastro rápido inline (mesmo cadastro principal — sem duplicidade).
+ */
+export async function finalizarOrcamentoCarrinho(formData: FormData) {
+  const itensJson = String(formData.get("itens") ?? "[]");
+  let itens: { produtoId: string; nome: string; preco: string; quantidade: number }[];
+  try {
+    itens = JSON.parse(itensJson) as typeof itens;
+  } catch {
+    throw new Error("Carrinho inválido.");
+  }
+  if (itens.length === 0) throw new Error("Carrinho vazio.");
+
+  let clienteId = String(formData.get("clienteId") ?? "").trim();
+  if (!clienteId) {
+    // Cadastro rápido inline — mesmo cadastro de clientes do sistema.
+    const nome = String(formData.get("nome") ?? "").trim();
+    if (!nome) throw new Error("Informe o nome do cliente.");
+    const cpfCnpj = String(formData.get("cpfCnpj") ?? "").trim();
+    const { randomUUID } = await import("node:crypto");
+    const [cliente] = await db
+      .insert(clientes)
+      .values({
+        nome,
+        // cpf_cnpj é NOT NULL — placeholder único quando o cliente não informa
+        cpfCnpj: cpfCnpj || `loja-${randomUUID()}`,
+        email: String(formData.get("email") ?? "").trim() || null,
+        telefone: String(formData.get("telefone") ?? "").trim() || null,
+        celular: String(formData.get("celular") ?? "").trim() || null,
+        classificacao: "cliente",
+      })
+      .returning({ id: clientes.id });
+    clienteId = cliente.id;
+    await registrarAuditoria("criar", "cliente", clienteId, `cadastro rápido pela Loja: ${nome}`);
+  }
+
+  const desconto = Number(String(formData.get("desconto") ?? "0").replace(",", ".")) || 0;
+  const frete = Number(String(formData.get("frete") ?? "0").replace(",", ".")) || 0;
+  const subtotal = itens.reduce((acc, i) => acc + i.quantidade * Number(i.preco), 0);
+  const valorTotal = Math.max(0, subtotal - desconto) + frete;
+
+  const numero = await proximoNumeroOrcamentoLoja();
+  const [orcamento] = await db
+    .insert(lojaOrcamentos)
+    .values({
+      numero,
+      clienteId,
+      valorTotal: valorTotal.toFixed(2),
+      status: "rascunho",
+      observacoes: String(formData.get("observacoes") ?? "") || null,
+      vendedorId: await idUsuarioEquipe(),
+      validade: String(formData.get("validade") ?? "") || null,
+      desconto: desconto.toFixed(2),
+      frete: frete.toFixed(2),
+      formaPagamento: String(formData.get("formaPagamento") ?? "") || null,
+    })
+    .returning({ id: lojaOrcamentos.id });
+
+  for (const item of itens) {
+    await db.insert(lojaOrcamentoItens).values({
+      orcamentoId: orcamento.id,
+      produtoId: item.produtoId,
+      descricao: item.nome,
+      quantidade: item.quantidade,
+      precoUnitario: item.preco,
+    });
+  }
+
+  await registrarAuditoria("criar", "loja_orcamento", orcamento.id, `${numero} (carrinho)`);
+  redirect(`/loja/orcamentos/${orcamento.id}`);
 }

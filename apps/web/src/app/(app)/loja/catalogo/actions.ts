@@ -46,6 +46,21 @@ export async function criarProdutoLoja(
       preco: opt(formData, "preco"),
       estoque: Number(opt(formData, "estoque") ?? "0") || 0,
       observacoes: opt(formData, "observacoes"),
+      marca: opt(formData, "marca"),
+      modelo: opt(formData, "modelo"),
+      sku: opt(formData, "sku"),
+      fichaTecnica: opt(formData, "fichaTecnica"),
+      unidade: opt(formData, "unidade") ?? "un",
+      disponibilidade: opt(formData, "disponibilidade") ?? "estoque",
+      custo: opt(formData, "custo"),
+      descontoMaximo: opt(formData, "descontoMaximo") ?? "0",
+      precoPromocional: opt(formData, "precoPromocional"),
+      estoqueMinimo: Number(opt(formData, "estoqueMinimo") ?? "0") || 0,
+      numeroSerie: opt(formData, "numeroSerie"),
+      anoFabricacao: opt(formData, "anoFabricacao"),
+      potencia: opt(formData, "potencia"),
+      caracteristicasTecnicas: opt(formData, "caracteristicasTecnicas"),
+      ativo: formData.get("ativo") === "on" || formData.get("ativo") === "true",
     })
     .returning({ id: lojaProdutos.id });
 
@@ -78,6 +93,21 @@ export async function atualizarProdutoLoja(
       preco: opt(formData, "preco"),
       estoque: Number(opt(formData, "estoque") ?? "0") || 0,
       observacoes: opt(formData, "observacoes"),
+      marca: opt(formData, "marca"),
+      modelo: opt(formData, "modelo"),
+      sku: opt(formData, "sku"),
+      fichaTecnica: opt(formData, "fichaTecnica"),
+      unidade: opt(formData, "unidade") ?? "un",
+      disponibilidade: opt(formData, "disponibilidade") ?? "estoque",
+      custo: opt(formData, "custo"),
+      descontoMaximo: opt(formData, "descontoMaximo") ?? "0",
+      precoPromocional: opt(formData, "precoPromocional"),
+      estoqueMinimo: Number(opt(formData, "estoqueMinimo") ?? "0") || 0,
+      numeroSerie: opt(formData, "numeroSerie"),
+      anoFabricacao: opt(formData, "anoFabricacao"),
+      potencia: opt(formData, "potencia"),
+      caracteristicasTecnicas: opt(formData, "caracteristicasTecnicas"),
+      ativo: formData.get("ativo") === "on" || formData.get("ativo") === "true",
     })
     .where(eq(lojaProdutos.id, produtoId));
 

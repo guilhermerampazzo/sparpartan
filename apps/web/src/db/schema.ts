@@ -147,14 +147,25 @@ export const lojaCategoriaEnum = pgEnum("loja_categoria", [
   "servico",
 ]);
 export const lojaOrcamentoStatusEnum = pgEnum("loja_orcamento_status", [
-  "pendente",
-  "aprovado",
+  "pendente", // legado
+  "aprovado", // legado
   "recusado",
+  "rascunho",
+  "enviado",
+  "aguardando_aprovacao",
+  "expirado",
+  "convertido",
 ]);
 export const lojaVendaStatusEnum = pgEnum("loja_venda_status", [
-  "em_andamento",
-  "concluida",
+  "em_andamento", // legado
+  "concluida", // legado
   "cancelada",
+  "aprovada",
+  "aguardando_pagamento",
+  "pagamento_parcial",
+  "pago",
+  "preparando_entrega",
+  "entregue",
 ]);
 
 export const pendenciaCategoria = pgEnum("pendencia_categoria", [
@@ -1177,6 +1188,27 @@ export const lojaProdutos = pgTable("loja_produtos", {
   observacoes: text("observacoes"),
   ativo: boolean("ativo").notNull().default(true),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  // Catálogo completo (item 21)
+  marca: text("marca"),
+  modelo: text("modelo"),
+  sku: text("sku"),
+  fichaTecnica: text("ficha_tecnica"),
+  unidade: text("unidade").notNull().default("un"),
+  disponibilidade: text("disponibilidade").notNull().default("estoque"), // estoque | encomenda
+  custo: numeric("custo"),
+  margem: numeric("margem"),
+  descontoMaximo: numeric("desconto_maximo").notNull().default("0"),
+  precoPromocional: numeric("preco_promocional"),
+  estoqueMinimo: integer("estoque_minimo").notNull().default(0),
+  estoqueReservado: integer("estoque_reservado").notNull().default(0),
+  // Campos específicos para embarcações e motores
+  numeroSerie: text("numero_serie"),
+  anoFabricacao: text("ano_fabricacao"),
+  potencia: text("potencia"),
+  caracteristicasTecnicas: text("caracteristicas_tecnicas"),
+  fornecedorId: uuid("fornecedor_id").references(() => lojaFornecedores.id, {
+    onDelete: "set null",
+  }),
 });
 
 export const lojaProdutoFotos = pgTable("loja_produto_fotos", {
@@ -1208,6 +1240,12 @@ export const lojaOrcamentos = pgTable("loja_orcamentos", {
   status: lojaOrcamentoStatusEnum("status").notNull().default("pendente"),
   observacoes: text("observacoes"),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  // Item 21 — orçamento da loja completo
+  vendedorId: uuid("vendedor_id").references(() => usuarios.id, { onDelete: "set null" }),
+  validade: date("validade"),
+  desconto: numeric("desconto").notNull().default("0"),
+  frete: numeric("frete").notNull().default("0"),
+  formaPagamento: text("forma_pagamento"),
 });
 
 export const lojaOrcamentoItens = pgTable("loja_orcamento_itens", {
@@ -1219,6 +1257,7 @@ export const lojaOrcamentoItens = pgTable("loja_orcamento_itens", {
   descricao: text("descricao").notNull(),
   quantidade: integer("quantidade").notNull().default(1),
   precoUnitario: numeric("preco_unitario").notNull().default("0"),
+  desconto: numeric("desconto").notNull().default("0"),
 });
 
 export const lojaVendas = pgTable("loja_vendas", {
@@ -1233,6 +1272,10 @@ export const lojaVendas = pgTable("loja_vendas", {
   status: lojaVendaStatusEnum("status").notNull().default("em_andamento"),
   observacoes: text("observacoes"),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  // Item 21 — venda completa
+  vendedorId: uuid("vendedor_id").references(() => usuarios.id, { onDelete: "set null" }),
+  formaPagamento: text("forma_pagamento"),
+  frete: numeric("frete").notNull().default("0"),
 });
 
 export const lojaVendaItens = pgTable("loja_venda_itens", {
@@ -1298,13 +1341,229 @@ export const lojaFabricantes = pgTable("loja_fabricantes", {
 
 export const lojaFornecedores = pgTable("loja_fornecedores", {
   id: uuid("id").primaryKey().defaultRandom(),
-  nome: text("nome").notNull(),
+  nome: text("nome"), // legada — era o nome; hoje usa razaoSocial
+  razaoSocial: text("razao_social").notNull(),
+  nomeFantasia: text("nome_fantasia"),
+  cnpj: text("cnpj"),
+  telefone: text("telefone"),
+  whatsapp: text("whatsapp"),
+  email: text("email"),
+  endereco: text("endereco"),
+  cidade: text("cidade"),
+  contatoResponsavel: text("contato_responsavel"),
+  observacoes: text("observacoes"),
+  condicoesPagamento: text("condicoes_pagamento"),
+  prazoMedioEntrega: text("prazo_medio_entrega"),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+/** Produtos fornecidos por cada fornecedor (preço, prazo, condição, preferencial). */
+export const lojaProdutoFornecedores = pgTable("loja_produto_fornecedores", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  produtoId: uuid("produto_id")
+    .notNull()
+    .references(() => lojaProdutos.id, { onDelete: "cascade" }),
+  fornecedorId: uuid("fornecedor_id")
+    .notNull()
+    .references(() => lojaFornecedores.id, { onDelete: "cascade" }),
+  preco: numeric("preco").notNull().default("0"),
+  prazoEntrega: text("prazo_entrega"),
+  condicaoPagamento: text("condicao_pagamento"),
+  preferencial: boolean("preferencial").notNull().default(false),
+});
+
+export const lojaCompraStatus = pgEnum("loja_compra_status", [
+  "rascunho",
+  "aguardando_envio",
+  "pedido_enviado",
+  "aguardando_fornecedor",
+  "confirmado",
+  "em_transporte",
+  "recebido",
+  "finalizado",
+  "cancelado",
+]);
+
+export const lojaCompras = pgTable("loja_compras", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  numero: text("numero").notNull().unique(),
+  fornecedorId: uuid("fornecedor_id")
+    .notNull()
+    .references(() => lojaFornecedores.id, { onDelete: "restrict" }),
+  status: lojaCompraStatus("status").notNull().default("rascunho"),
+  dataPrevista: date("data_prevista"),
+  observacoes: text("observacoes"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaCompraItens = pgTable("loja_compra_itens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  compraId: uuid("compra_id")
+    .notNull()
+    .references(() => lojaCompras.id, { onDelete: "cascade" }),
+  produtoId: uuid("produto_id")
+    .notNull()
+    .references(() => lojaProdutos.id, { onDelete: "restrict" }),
+  quantidade: integer("quantidade").notNull().default(1),
+  quantidadeRecebida: integer("quantidade_recebida").notNull().default(0),
+  precoUnitario: numeric("preco_unitario").notNull().default("0"),
 });
 
 export const lojaTransportadoras = pgTable("loja_transportadoras", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Documentos Sparapan — ambiente 2: embarcações da própria empresa
+// ---------------------------------------------------------------------------
+
+export const embarcacoesSparapan = pgTable("embarcacoes_sparapan", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  numeroInscricao: text("numero_inscricao"),
+  tipo: text("tipo"),
+  atividade: text("atividade"),
+  anoFabricacao: text("ano_fabricacao"),
+  motor: text("motor"),
+  numeroSerie: text("numero_serie"),
+  observacoes: text("observacoes"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const embarcacaoSparapanArquivos = pgTable("embarcacao_sparapan_arquivos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  embarcacaoId: uuid("embarcacao_id")
+    .notNull()
+    .references(() => embarcacoesSparapan.id, { onDelete: "cascade" }),
+  tipo: text("tipo").notNull(), // documento | seguro | foto | outro
+  titulo: text("titulo").notNull(),
+  caminho: text("caminho").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Gestão de Empresas — módulo independente (contratantes da Sparapan)
+// ---------------------------------------------------------------------------
+
+export const empresaStatus = pgEnum("empresa_status", ["ativa", "inativa"]);
+
+export const empresas = pgTable("empresas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  razaoSocial: text("razao_social").notNull(),
+  nomeFantasia: text("nome_fantasia"),
+  cnpj: text("cnpj"),
+  inscricaoEstadual: text("inscricao_estadual"),
+  endereco: text("endereco"),
+  telefone: text("telefone"),
+  email: text("email"),
+  responsavel: text("responsavel"),
+  observacoes: text("observacoes"),
+  status: empresaStatus("status").notNull().default("ativa"),
+  clienteId: uuid("cliente_id").references(() => clientes.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const empresaEmbarcacoes = pgTable("empresa_embarcacoes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  empresaId: uuid("empresa_id")
+    .notNull()
+    .references(() => empresas.id, { onDelete: "cascade" }),
+  nome: text("nome").notNull(),
+  numeroInscricao: text("numero_inscricao"),
+  tipo: text("tipo"),
+  atividade: text("atividade"),
+  anoFabricacao: text("ano_fabricacao"),
+  motor: text("motor"),
+  numeroSerie: text("numero_serie"),
+  observacoes: text("observacoes"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const empresaMarinheiros = pgTable("empresa_marinheiros", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  empresaId: uuid("empresa_id")
+    .notNull()
+    .references(() => empresas.id, { onDelete: "cascade" }),
+  nome: text("nome").notNull(),
+  cpf: text("cpf"),
+  funcao: text("funcao"),
+  numeroHabilitacao: text("numero_habilitacao"),
+  categoria: text("categoria"),
+  dataEmissao: date("data_emissao"),
+  dataValidade: date("data_validade"),
+  habilitacaoCaminho: text("habilitacao_caminho"),
+  observacoes: text("observacoes"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const empresaDocumentos = pgTable("empresa_documentos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  empresaId: uuid("empresa_id")
+    .notNull()
+    .references(() => empresas.id, { onDelete: "cascade" }),
+  embarcacaoId: uuid("embarcacao_id").references(() => empresaEmbarcacoes.id, {
+    onDelete: "set null",
+  }),
+  tipo: text("tipo").notNull(), // seguro_obrigatorio | documentacao_embarcacao | certificado | licenca | outro
+  titulo: text("titulo"),
+  numero: text("numero"),
+  dataEmissao: date("data_emissao"),
+  dataVencimento: date("data_vencimento"),
+  observacoes: text("observacoes"),
+  caminho: text("caminho"),
+  regularizado: boolean("regularizado").notNull().default(false),
+  /** Substituição de documento — mantém o histórico anterior (2025 → 2026). */
+  substituidoPorId: uuid("substituido_por_id"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const empresaManutencoes = pgTable("empresa_manutencoes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  empresaId: uuid("empresa_id")
+    .notNull()
+    .references(() => empresas.id, { onDelete: "cascade" }),
+  embarcacaoId: uuid("embarcacao_id").references(() => empresaEmbarcacoes.id, {
+    onDelete: "set null",
+  }),
+  tipo: text("tipo").notNull(), // manutencao | troca_oleo
+  descricao: text("descricao"),
+  dataRealizada: date("data_realizada"),
+  horimetro: text("horimetro"),
+  proximaManutencao: date("proxima_manutencao"),
+  proximaTrocaOleo: date("proxima_troca_oleo"),
+  oleoUtilizado: text("oleo_utilizado"),
+  responsavel: text("responsavel"),
+  observacoes: text("observacoes"),
+  caminho: text("caminho"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const empresaAlertaTipo = pgEnum("empresa_alerta_tipo", [
+  "vencimento_proximo", // 35 dias
+  "vencimento_urgente", // 15 dias
+  "vencido",
+  "manutencao_proxima",
+]);
+
+export const empresaAlertas = pgTable("empresa_alertas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  empresaId: uuid("empresa_id")
+    .notNull()
+    .references(() => empresas.id, { onDelete: "cascade" }),
+  documentoId: uuid("documento_id").references(() => empresaDocumentos.id, {
+    onDelete: "cascade",
+  }),
+  manutencaoId: uuid("manutencao_id").references(() => empresaManutencoes.id, {
+    onDelete: "cascade",
+  }),
+  tipo: empresaAlertaTipo("tipo").notNull(),
+  mensagem: text("mensagem").notNull(),
+  resolvido: boolean("resolvido").notNull().default(false),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
