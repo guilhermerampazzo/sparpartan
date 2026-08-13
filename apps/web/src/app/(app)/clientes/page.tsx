@@ -18,6 +18,9 @@ export default async function ClientesPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-headline-lg font-bold text-primary">Clientes</h1>
         <div className="flex flex-wrap gap-2">
+          <LinkButton href="/processos" variant="outlined" size="sm">
+            Processos
+          </LinkButton>
           <LinkButton href="/clientes/lixeira" variant="outlined" size="sm">
             Lixeira
           </LinkButton>
