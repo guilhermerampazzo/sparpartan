@@ -70,16 +70,15 @@ export default async function DocumentosPage({
           <LinkButton href="/documentos/vencimentos" variant="outlined" size="sm">
             Vencimentos
           </LinkButton>
-          <LinkButton href="/documentos/gerar">+ Gerar Documento</LinkButton>
         </div>
       </div>
 
       <div>
         <p className="mb-4 max-w-2xl text-body-md text-on-surface-variant">
-          Escolha o setor para ver somente os modelos daquela finalidade — cada módulo tem seus
-          próprios formulários, evitando erro de preenchimento.
+          Escolha o serviço para ver somente os modelos daquela área — cada área tem seus próprios
+          formulários, evitando erro de preenchimento.
         </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {MODULOS_DOCUMENTO.map((modulo) => {
             const Icon = modulo.icon;
             return (

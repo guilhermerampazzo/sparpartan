@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { desc, eq, inArray, or, ilike, count, and } from "drizzle-orm";
 import { FileText, HardHat } from "lucide-react";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui";
 import { CampoSelect } from "@/components/ui/form-field";
 import { statusDocumento } from "@/lib/status";
-import { moduloPorSlug } from "@/lib/documentos-modulos";
+import { moduloPorSlug, SLUGS_ANTIGOS_DOCUMENTO, categoriasCobertas } from "@/lib/documentos-modulos";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -28,16 +28,32 @@ export default async function ModuloDocumentosPage({
   searchParams: Promise<{ q?: string; page?: string; clienteId?: string }>;
 }) {
   const { slug } = await params;
+  // Slugs antigos (por setor) redirecionam para a página de áreas por serviço.
+  if (SLUGS_ANTIGOS_DOCUMENTO.includes(slug)) {
+    redirect("/documentos");
+  }
   const modulo = moduloPorSlug(slug);
   if (!modulo) notFound();
 
   const { q, page, clienteId } = await searchParams;
   const clienteFiltro = clienteId && UUID_RE.test(clienteId) ? clienteId : undefined;
 
+  // "Outros" abrange toda categoria ativa que não pertence aos módulos fixos.
+  let categorias = modulo.categorias;
+  if (modulo.slug === "outros") {
+    const distintas = await db
+      .selectDistinct({ categoria: modelosDocumento.categoria })
+      .from(modelosDocumento)
+      .where(eq(modelosDocumento.ativo, true));
+    categorias = distintas
+      .map((d) => d.categoria)
+      .filter((c): c is string => !!c && !categoriasCobertas(true).includes(c));
+  }
+
   const modelos = await db
     .select()
     .from(modelosDocumento)
-    .where(and(eq(modelosDocumento.ativo, true), inArray(modelosDocumento.categoria, modulo.categorias)))
+    .where(and(eq(modelosDocumento.ativo, true), inArray(modelosDocumento.categoria, categorias)))
     .orderBy(modelosDocumento.nome);
 
   const modeloIds = modelos.map((m) => m.id);
@@ -105,7 +121,7 @@ export default async function ModuloDocumentosPage({
         <LinkButton href="/documentos/gerar">+ Gerar Documento</LinkButton>
       </div>
 
-      {modulo.slug === "obras-nauticas" && (
+      {modulo.slug === "obras" && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
           <div>
             <p className="font-mono-caps text-label-sm uppercase tracking-wide text-outline">

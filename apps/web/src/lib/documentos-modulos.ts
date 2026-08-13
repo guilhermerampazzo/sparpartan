@@ -1,4 +1,4 @@
-import { GraduationCap, Ship, Anchor, HardHat, type LucideIcon } from "lucide-react";
+import { GraduationCap, Zap, Ship, Anchor, HardHat, FileText, type LucideIcon } from "lucide-react";
 
 export type ModuloDocumento = {
   slug: string;
@@ -10,48 +10,62 @@ export type ModuloDocumento = {
 };
 
 /**
- * Os 4 módulos de preenchimento de documentos — um por setor, para cada setor
- * só ver os modelos da sua finalidade (evita erro de preenchimento). O quinto
- * item ("cadastro de obras") vive dentro do módulo de obras.
+ * Áreas de documentos por serviço — cada serviço tem sua própria área
+ * (nada de todos os ícones levarem para a mesma tela).
  */
 export const MODULOS_DOCUMENTO: ModuloDocumento[] = [
   {
-    slug: "escola-nautica",
-    titulo: "Escola Náutica",
-    descricao: "Requerimentos e formulários de habilitação: Arrais Amador, Motonauta e Carteira de Trabalho Náutico.",
+    slug: "arrais-amador",
+    titulo: "Arrais Amador",
+    descricao: "Requerimentos e formulários da habilitação de Arrais Amador.",
     icon: GraduationCap,
-    categorias: [
-      "Habilitação Náutica — Arrais Amador",
-      "Habilitação Náutica — Motonauta",
-      "Carteira de Trabalho Náutico",
-    ],
+    categorias: ["Habilitação Náutica — Arrais Amador"],
   },
   {
-    slug: "esporte-recreio",
-    titulo: "Embarcações Esporte e Recreio",
+    slug: "motonauta",
+    titulo: "Motonauta",
+    descricao: "Requerimentos e formulários da habilitação de Motonauta.",
+    icon: Zap,
+    categorias: ["Habilitação Náutica — Motonauta"],
+  },
+  {
+    slug: "embarcacao",
+    titulo: "Embarcação Esporte e Recreio",
     descricao: "Inscrição e documentação de embarcações de esporte e recreio (NORMAM-211), incluindo jetski.",
     icon: Ship,
     categorias: ["Embarcação", "Jetski"],
   },
   {
-    slug: "comerciais",
-    titulo: "Embarcações Comerciais",
+    slug: "embarcacao-comercial",
+    titulo: "Embarcação Comercial",
     descricao: "Inscrição e documentação de embarcações comerciais (NORMAM-202).",
     icon: Anchor,
     categorias: ["Embarcação Comercial"],
   },
   {
-    slug: "obras-nauticas",
+    slug: "obras",
     titulo: "Obras Náuticas",
     descricao: "Memorial Descritivo e Requerimento 2-B-1 (NORMAM-303) para trapiches, flutuantes e marinas.",
     icon: HardHat,
     categorias: ["Obras (NORMAM-303)"],
   },
+  {
+    slug: "outros",
+    titulo: "Outros",
+    descricao: "Demais modelos e formulários (carteira de trabalho náutico etc.).",
+    icon: FileText,
+    categorias: ["Carteira de Trabalho Náutico"],
+  },
 ];
+
+/** Slugs antigos (por setor) → página inicial de documentos (áreas por serviço). */
+export const SLUGS_ANTIGOS_DOCUMENTO = ["escola-nautica", "esporte-recreio", "comerciais", "obras-nauticas"];
+
+/** Categorias cobertas pelos módulos fixos (exclui "Outros" para não se cobrir). */
+export function categoriasCobertas(excluirOutros = false): string[] {
+  return MODULOS_DOCUMENTO.filter((m) => (excluirOutros ? m.slug !== "outros" : true)).flatMap((m) => m.categorias);
+}
 
 export function moduloPorSlug(slug: string): ModuloDocumento | undefined {
   return MODULOS_DOCUMENTO.find((m) => m.slug === slug);
 }
-
-/** Categorias de todos os módulos, em ordem — útil para filtros/agrupamentos. */
-export const TODAS_CATEGORIAS_MODULOS: string[] = MODULOS_DOCUMENTO.flatMap((m) => m.categorias);
