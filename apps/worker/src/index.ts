@@ -2,6 +2,7 @@ import { Queue, Worker } from "bullmq";
 import { verificarVencimentos } from "./jobs/vencimentos.js";
 import { confirmarCompromissos, confirmarProvas } from "./jobs/compromissos.js";
 import { varrerStatus } from "./jobs/status.js";
+import { varrerEmpresas } from "./jobs/empresas.js";
 import { digestDiario } from "./jobs/digest.js";
 import { enviarAniversarios } from "./jobs/aniversarios.js";
 
@@ -40,6 +41,11 @@ const worker = new Worker(
     if (job.name === "enviar-aniversarios") {
       const resultado = await enviarAniversarios();
       console.log("[worker] enviar-aniversarios:", resultado);
+      return resultado;
+    }
+    if (job.name === "varrer-empresas") {
+      const resultado = await varrerEmpresas();
+      console.log("[worker] varrer-empresas:", resultado);
       return resultado;
     }
     console.warn(`[worker] job desconhecido: ${job.name}`);
@@ -97,6 +103,14 @@ async function registrarJobsAgendados() {
     "enviar-aniversarios-diario",
     { pattern: "0 10 * * *", tz: fuso },
     { name: "enviar-aniversarios" }
+  );
+
+  // Roda todo dia às 10:30 — recria alertas de vencimento das empresas contratantes
+  // (35 dias → próximo, 15 dias → urgente, vencido) e manutenções próximas.
+  await lembretesQueue.upsertJobScheduler(
+    "varrer-empresas-diario",
+    { pattern: "30 10 * * *", tz: fuso },
+    { name: "varrer-empresas" }
   );
 
   console.log(

@@ -18,6 +18,7 @@ import {
   BookOpen,
   UserCog,
   Landmark,
+  Building2,
   BookMarked,
   MessageSquare,
   Kanban,
@@ -66,6 +67,7 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/gestao-empresas", label: "Gestão de Empresas", icon: Building2 },
   { href: "/loja", label: "Loja", icon: Store },
 ];
 
