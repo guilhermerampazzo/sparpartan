@@ -91,7 +91,8 @@ export default async function HomePage() {
         and(
           gte(agendaEventos.dataHora, inicioHoje),
           lt(agendaEventos.dataHora, fimHoje),
-          ne(agendaEventos.status, "cancelado")
+          ne(agendaEventos.status, "cancelado"),
+          isNull(clientes.excluidoEm) // reflexo: cliente excluído não polui a Home
         )
       )
       .orderBy(asc(agendaEventos.dataHora)),
@@ -409,7 +410,7 @@ export default async function HomePage() {
             {[
               { href: "/clientes/novo", label: "Novo Cliente", icon: UserPlus },
               { href: "/documentos/gerar", label: "Novo Documento", icon: FileText },
-              { href: "/agenda/novo", label: "Agendar", icon: CalendarPlus },
+              { href: "/agenda/agendamentos/novo", label: "Agendar", icon: CalendarPlus },
               { href: "/area-de-estudos", label: "Escola Náutica", icon: GraduationCap },
               { href: "/processos/novo", label: "Novo Processo", icon: FolderClock },
               { href: "/orcamentos/novo", label: "Novo Orçamento", icon: Receipt },

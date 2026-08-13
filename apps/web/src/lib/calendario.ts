@@ -1,4 +1,4 @@
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, isNull, lte, ne, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   agendaEventos,
@@ -15,6 +15,7 @@ import {
   solicitacoes,
   processos,
   despesas,
+  eventos,
 } from "@/db/schema";
 import type { FonteCalendarioTipo } from "@/lib/status";
 
@@ -29,6 +30,7 @@ export type ItemCalendario = {
 /** Fontes que aparecem ligadas por padrão ao abrir o calendário — prazos e compromissos. */
 export const FONTES_PADRAO: FonteCalendarioTipo[] = [
   "agenda",
+  "evento_interno",
   "documento_gerado",
   "dpem",
   "salvatagem",
@@ -74,8 +76,36 @@ async function buscarFonte(
         })
         .from(agendaEventos)
         .leftJoin(clientes, eq(agendaEventos.clienteId, clientes.id))
-        .where(and(gte(agendaEventos.dataHora, inicio), lte(agendaEventos.dataHora, fim)));
-      return linhas.map((l) => ({ data: l.data, tipo, titulo: l.titulo, clienteNome: l.clienteNome, href: `/agenda` }));
+        .where(
+          and(
+            gte(agendaEventos.dataHora, inicio),
+            lte(agendaEventos.dataHora, fim),
+            isNull(clientes.excluidoEm) // reflexo: cliente excluído some da agenda operacional
+          )
+        );
+      return linhas.map((l) => ({ data: l.data, tipo, titulo: l.titulo, clienteNome: l.clienteNome, href: `/agenda/agendamentos/${l.id}` }));
+    }
+
+    case "evento_interno": {
+      const linhas = await db
+        .select({ data: eventos.data, prazo: eventos.prazoSolucao, titulo: eventos.titulo, id: eventos.id, status: eventos.status })
+        .from(eventos)
+        .where(
+          and(
+            ne(eventos.status, "arquivado"),
+            or(
+              and(gte(eventos.data, inicioStr), lte(eventos.data, fimStr)),
+              and(gte(eventos.prazoSolucao, inicioStr), lte(eventos.prazoSolucao, fimStr))
+            )
+          )
+        );
+      return linhas.map((l) => ({
+        data: l.data,
+        tipo,
+        titulo: l.prazo && l.prazo !== l.data ? `${l.titulo} (prazo ${l.prazo})` : l.titulo,
+        clienteNome: null,
+        href: `/agenda/eventos/${l.id}`,
+      }));
     }
 
     case "documento_gerado": {
@@ -184,7 +214,13 @@ async function buscarFonte(
         .from(orcamentos)
         .innerJoin(clientes, eq(orcamentos.clienteId, clientes.id))
         .where(
-          and(eq(orcamentos.status, "pendente"), gte(orcamentos.validoAte, inicioStr), lte(orcamentos.validoAte, fimStr))
+          and(
+            eq(orcamentos.status, "pendente"),
+            // Reflexo automático: orçamento excluído (soft-delete) some do calendário.
+            isNull(orcamentos.excluidoEm),
+            gte(orcamentos.validoAte, inicioStr),
+            lte(orcamentos.validoAte, fimStr)
+          )
         );
       return linhas.map((l) => ({
         data: l.data!,

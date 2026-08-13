@@ -41,6 +41,8 @@ import {
   Handshake,
   Wrench,
   ClipboardList,
+  Loader,
+  Archive,
   Star,
   Ban,
   Hourglass,
@@ -190,6 +192,17 @@ export function statusEvento(status: string): StatusInfo {
   return map[status] ?? { label: status, tone: "neutral", icon: Minus };
 }
 
+/** Status do Evento interno (ocorrência) — independente do agendamento. */
+export function statusEventoInterno(status: string): StatusInfo {
+  const map: Record<string, StatusInfo> = {
+    pendente: { label: "Pendente", tone: "warning", icon: Clock },
+    em_andamento: { label: "Em andamento", tone: "info", icon: Loader },
+    concluido: { label: "Concluído", tone: "success", icon: Check },
+    arquivado: { label: "Arquivado", tone: "neutral", icon: Archive },
+  };
+  return map[status] ?? { label: status, tone: "neutral", icon: Minus };
+}
+
 export function tipoEvento(tipo: string): StatusInfo {
   const map: Record<string, StatusInfo> = {
     compromisso: { label: "Compromisso", tone: "info", icon: Calendar },
@@ -225,6 +238,7 @@ export function statusEnvio(status: string): StatusInfo {
 
 export type FonteCalendarioTipo =
   | "agenda"
+  | "evento_interno"
   | "documento_gerado"
   | "dpem"
   | "salvatagem"
@@ -242,6 +256,7 @@ export type FonteCalendarioTipo =
 export function fonteCalendario(tipo: FonteCalendarioTipo): StatusInfo {
   const map: Record<FonteCalendarioTipo, StatusInfo> = {
     agenda: { label: "Agenda", tone: "info", icon: Calendar },
+    evento_interno: { label: "Eventos", tone: "info", icon: ClipboardList },
     documento_gerado: { label: "Vencimento de Documento", tone: "danger", icon: FileText },
     dpem: { label: "DPEM", tone: "danger", icon: Ship },
     salvatagem: { label: "Salvatagem", tone: "danger", icon: LifeBuoy },

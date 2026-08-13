@@ -1,4 +1,4 @@
-import { asc, eq, gte, and, inArray, isNotNull, ne } from "drizzle-orm";
+import { asc, eq, gte, and, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { ChevronLeft, ChevronRight, CalendarClock, Landmark, Eye, Trash2, FileDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
@@ -85,7 +85,13 @@ export default async function AgendaPage({
     })
     .from(agendaEventos)
     .leftJoin(clientes, eq(agendaEventos.clienteId, clientes.id))
-    .where(and(gte(agendaEventos.dataHora, inicioHoje), ne(agendaEventos.status, "cancelado")))
+    .where(
+      and(
+        gte(agendaEventos.dataHora, inicioHoje),
+        ne(agendaEventos.status, "cancelado"),
+        isNull(clientes.excluidoEm)
+      )
+    )
     .orderBy(asc(agendaEventos.dataHora))
     .limit(10);
 
@@ -103,7 +109,10 @@ export default async function AgendaPage({
           <LinkButton href={montarUrl(mesStr, fontesAtivas, "lista")} variant="outlined" size="sm">
             Ver Lista
           </LinkButton>
-          <LinkButton href="/agenda/novo">+ Novo Evento</LinkButton>
+          <LinkButton href="/agenda/eventos/novo" variant="outlined" size="sm">
+            + Novo Evento
+          </LinkButton>
+          <LinkButton href="/agenda/agendamentos/novo">+ Novo Agendamento</LinkButton>
         </div>
       </div>
 
@@ -187,19 +196,21 @@ async function ProximosCompromissos({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate text-body-md font-medium text-primary">{ev.titulo}</p>
-                    <Badge tone={tipoEvento(ev.tipo).tone} size="sm">
-                      {tipoEvento(ev.tipo).label}
-                    </Badge>
-                  </div>
-                  <p className="text-body-sm text-outline">
-                    {new Date(ev.dataHora).toLocaleString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    {ev.clienteNome && ` — ${ev.clienteNome}`}
-                  </p>
+                      <Badge tone={tipoEvento(ev.tipo).tone} size="sm">
+                        {tipoEvento(ev.tipo).label}
+                      </Badge>
+                    </div>
+                    <p className="text-body-sm text-outline">
+                      <Link href={`/agenda/agendamentos/${ev.id}`} className="hover:underline">
+                        {new Date(ev.dataHora).toLocaleString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {ev.clienteNome && ` — ${ev.clienteNome}`}
+                      </Link>
+                    </p>
                   <div className="mt-1.5 flex gap-2">
                     {ev.status === "pendente" && (
                       <form action={confirmarComId}>
@@ -240,11 +251,14 @@ async function ProcessosAgendados() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-lg font-semibold text-primary">Processos Agendados</h2>
         <div className="flex gap-2">
-          <LinkButton href="/api/agenda/processos-agendados/pdf" variant="outlined" size="sm" icon={FileDown}>
+          <LinkButton href="/api/agenda/agendamentos/pdf" variant="outlined" size="sm" icon={FileDown}>
             Baixar PDF
           </LinkButton>
-          <LinkButton href="/agenda/novo" size="sm" icon={Plus}>
-            + Novo Processo
+          <LinkButton href="/agenda/agendamentos" variant="outlined" size="sm">
+            Ver todos
+          </LinkButton>
+          <LinkButton href="/agenda/agendamentos/novo" size="sm" icon={Plus}>
+            + Novo Agendamento
           </LinkButton>
         </div>
       </div>
@@ -348,7 +362,13 @@ async function ListaLevarMarinha() {
     })
     .from(agendaEventos)
     .leftJoin(clientes, eq(agendaEventos.clienteId, clientes.id))
-    .where(and(isNotNull(agendaEventos.local), gte(agendaEventos.dataHora, hoje)))
+    .where(
+      and(
+        isNotNull(agendaEventos.local),
+        gte(agendaEventos.dataHora, hoje),
+        isNull(clientes.excluidoEm)
+      )
+    )
     .orderBy(asc(agendaEventos.dataHora));
 
   const interessadosPorEvento = new Map<string, { nomeInteressado: string; servicoSolicitado: string | null }[]>();
@@ -408,10 +428,9 @@ async function VistaLista({ clienteId, processoId }: { clienteId?: string; proce
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
-  const condicoes = [gte(agendaEventos.dataHora, hoje)];
+  const condicoes = [gte(agendaEventos.dataHora, hoje), isNull(clientes.excluidoEm)];
   if (clienteId) condicoes.push(eq(agendaEventos.clienteId, clienteId));
   if (processoId) condicoes.push(eq(agendaEventos.processoId, processoId));
-
   const eventos = await db
     .select({
       id: agendaEventos.id,
@@ -468,7 +487,7 @@ async function VistaLista({ clienteId, processoId }: { clienteId?: string; proce
           <LinkButton href="/agenda" variant="outlined" size="sm">
             Ver Calendário
           </LinkButton>
-          <LinkButton href="/agenda/novo">+ Novo Evento</LinkButton>
+          <LinkButton href="/agenda/agendamentos/novo">+ Novo Agendamento</LinkButton>
         </div>
       </div>
 
@@ -514,7 +533,9 @@ async function VistaLista({ clienteId, processoId }: { clienteId?: string; proce
                 <li key={evento.id} className="flex items-center justify-between gap-4 p-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-body-md font-medium text-primary">{evento.titulo}</p>
+                      <Link href={`/agenda/agendamentos/${evento.id}`} className="text-body-md font-medium text-primary hover:underline">
+                        {evento.titulo}
+                      </Link>
                       <Badge tone={tipoEvento(evento.tipo).tone} icon={tipoEvento(evento.tipo).icon} size="sm">
                         {tipoEvento(evento.tipo).label}
                       </Badge>
