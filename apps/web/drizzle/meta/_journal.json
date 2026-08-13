@@ -246,6 +246,13 @@
       "when": 1786544210881,
       "tag": "0034_aberrant_oracle",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1786631782188,
+      "tag": "0035_tearful_blade",
+      "breakpoints": true
     }
   ]
 }

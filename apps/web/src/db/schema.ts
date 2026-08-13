@@ -8,8 +8,10 @@ import {
   date,
   numeric,
   integer,
+  smallint,
   jsonb,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const userRole = pgEnum("user_role", ["admin", "operador", "leitura"]);
@@ -52,6 +54,13 @@ export const eventoStatus = pgEnum("evento_status", [
   "confirmado",
   "concluido",
   "cancelado",
+]);
+/** Status do Evento interno (ocorrência) — independente do Agendamento. */
+export const eventoInternoStatus = pgEnum("evento_interno_status", [
+  "pendente",
+  "em_andamento",
+  "concluido",
+  "arquivado",
 ]);
 export const envioStatus = pgEnum("envio_status", ["enviado", "falhou"]);
 export const despesaCategoria = pgEnum("despesa_categoria", [
@@ -616,13 +625,42 @@ export const pagamentos = pgTable("pagamentos", {
 export const agendaEventos = pgTable("agenda_eventos", {
   id: uuid("id").primaryKey().defaultRandom(),
   clienteId: uuid("cliente_id").references(() => clientes.id, { onDelete: "cascade" }),
+  /** Serviço principal do atendimento — obrigatório no form (o banco tolera null para dados antigos). */
+  servicoId: uuid("servico_id").references(() => servicos.id, { onDelete: "set null" }),
   processoId: uuid("processo_id").references(() => processos.id, { onDelete: "set null" }),
   titulo: text("titulo").notNull(),
   dataHora: timestamp("data_hora").notNull(),
   tipo: eventoTipo("tipo").notNull().default("compromisso"),
   status: eventoStatus("status").notNull().default("pendente"),
   local: text("local"),
+  /** Representante legal cadastrado (tabela própria). O texto antigo foi migrado para registros. */
+  representanteLegalId: uuid("representante_legal_id").references(() => representantesLegais.id, {
+    onDelete: "set null",
+  }),
+  /** Legado (pré-separação): texto livre do representante. Mantida para dados antigos; a UI usa a FK. */
   representanteLegal: text("representante_legal"),
+  observacoes: text("observacoes"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+});
+
+/** Processos vinculados a um agendamento — 1 agendamento pode ter até 5 processos no mesmo horário. */
+export const agendamentoProcessos = pgTable("agendamento_processos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  agendamentoId: uuid("agendamento_id")
+    .notNull()
+    .references(() => agendaEventos.id, { onDelete: "cascade" }),
+  processoId: uuid("processo_id")
+    .notNull()
+    .references(() => processos.id, { onDelete: "set null" }),
+  ordem: smallint("ordem").notNull().default(1),
+}, (t) => [uniqueIndex("agendamento_processos_agendamento_processo_uq").on(t.agendamentoId, t.processoId)]);
+
+/** Representantes legais — cadastro simplificado, nome obrigatório. */
+export const representantesLegais = pgTable("representantes_legais", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  cpf: text("cpf"),
   observacoes: text("observacoes"),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
@@ -637,8 +675,40 @@ export const agendaInteressados = pgTable("agenda_interessados", {
   nomeInteressado: text("nome_interessado").notNull(),
   cpfInteressado: text("cpf_interessado"),
   servicoSolicitado: text("servico_solicitado"),
+  observacao: text("observacao"),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
+
+/**
+ * Evento interno — ocorrência independente do Agendamento. Não representa um
+ * atendimento; pode ser vinculado a qualquer item do sistema via `eventoVinculos`.
+ */
+export const eventos = pgTable("eventos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  titulo: text("titulo").notNull(),
+  descricao: text("descricao"),
+  data: date("data").notNull(),
+  prazoSolucao: date("prazo_solucao"),
+  responsavelId: uuid("responsavel_id").references(() => usuarios.id, { onDelete: "set null" }),
+  status: eventoInternoStatus("status").notNull().default("pendente"),
+  observacoes: text("observacoes"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+  concluidoEm: timestamp("concluido_em"),
+  arquivadoEm: timestamp("arquivado_em"),
+});
+
+/** Vínculo polimórfico do Evento com qualquer entidade do sistema. */
+export const eventoVinculos = pgTable("evento_vinculos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventoId: uuid("evento_id")
+    .notNull()
+    .references(() => eventos.id, { onDelete: "cascade" }),
+  /** Valores validados na camada de ação: cliente, processo, embarcacao, orcamento, documento, servico, obra, taxa, venda, aluno. */
+  entidade: text("entidade").notNull(),
+  entidadeId: uuid("entidade_id").notNull(),
+}, (t) => [uniqueIndex("evento_vinculos_evento_entidade_uq").on(t.eventoId, t.entidade, t.entidadeId)]);
 
 export const materiaisEstudo = pgTable("materiais_estudo", {
   id: uuid("id").primaryKey().defaultRandom(),
