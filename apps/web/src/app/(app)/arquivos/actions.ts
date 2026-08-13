@@ -7,12 +7,18 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { arquivos } from "@/db/schema";
+import { arquivos, arquivoAlteracoes } from "@/db/schema";
 import { validarArquivo } from "@/lib/upload";
 import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
 
 function uploadsDir() {
   return process.env.UPLOADS_DIR ?? "./data/uploads";
+}
+
+/** Registra uma alteração no histórico do arquivo (pasta digital). */
+async function registrarAlteracaoArquivo(arquivoId: string, acao: string) {
+  await db.insert(arquivoAlteracoes).values({ arquivoId, acao, usuarioId: await idUsuarioEquipe() });
 }
 
 /** Adiciona um arquivo direto na pasta do cliente. */
@@ -32,14 +38,19 @@ export async function adicionarArquivo(clienteId: string, formData: FormData) {
   const bytes = Buffer.from(await arquivo.arrayBuffer());
   await writeFile(path.join(clienteDir, nomeArquivo), bytes);
 
-  await db.insert(arquivos).values({
-    clienteId,
-    tipo,
-    nomeOriginal: arquivo.name,
-    caminho: path.join("clientes", clienteId, nomeArquivo),
-  });
+  const [criado] = await db
+    .insert(arquivos)
+    .values({
+      clienteId,
+      tipo,
+      nomeOriginal: arquivo.name,
+      caminho: path.join("clientes", clienteId, nomeArquivo),
+      criadoPorId: await idUsuarioEquipe(),
+    })
+    .returning({ id: arquivos.id });
 
-  await registrarAuditoria("criar", "arquivo", tipo, arquivo.name);
+  await registrarAlteracaoArquivo(criado.id, `Arquivo enviado: ${arquivo.name}`);
+  await registrarAuditoria("criar", "arquivo", criado.id, arquivo.name);
   revalidatePath("/arquivos");
   revalidatePath(`/clientes/${clienteId}`);
 }
@@ -52,9 +63,10 @@ export async function atualizarArquivo(arquivoId: string, formData: FormData) {
 
   await db
     .update(arquivos)
-    .set({ nomeOriginal, tipo: tipo || "outro" })
+    .set({ nomeOriginal, tipo: tipo || "outro", atualizadoPorId: await idUsuarioEquipe(), atualizadoEm: new Date() })
     .where(eq(arquivos.id, arquivoId));
 
+  await registrarAlteracaoArquivo(arquivoId, `Alterado para: ${nomeOriginal}`);
   await registrarAuditoria("atualizar", "arquivo", arquivoId, nomeOriginal);
   revalidatePath("/arquivos");
 }

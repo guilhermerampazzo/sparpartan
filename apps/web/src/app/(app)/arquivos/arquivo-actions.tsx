@@ -32,12 +32,15 @@ export function LinhaArquivo({
   tipo,
   rotaApi,
   editavel = true,
+  historico,
 }: {
   id: string;
   nomeOriginal: string;
   tipo: string;
   rotaApi: string;
   editavel?: boolean;
+  /** Histórico da pasta digital: quem criou/alterou e quando. */
+  historico?: { criadoEm: Date; texto: string }[];
 }) {
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(nomeOriginal);
@@ -103,6 +106,20 @@ export function LinhaArquivo({
           </>
         )}
       </span>
+      {historico && historico.length > 0 && (
+        <details className="w-full">
+          <summary className="cursor-pointer text-body-sm font-medium text-primary hover:underline">
+            Histórico
+          </summary>
+          <ul className="mt-2 space-y-1 rounded-lg bg-surface-container-low p-3">
+            {historico.map((h, i) => (
+              <li key={i} className="text-body-sm text-outline">
+                {h.texto} — {h.criadoEm.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

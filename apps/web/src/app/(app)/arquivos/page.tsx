@@ -1,8 +1,9 @@
-import { and, desc, eq, isNull, or, ilike, inArray, sql } from "drizzle-orm";
-import { Folder, FolderOpen, SearchX } from "lucide-react";
+import { and, asc, desc, eq, isNull, or, ilike, inArray, sql } from "drizzle-orm";
+import { Folder, FolderOpen, SearchX, ChevronDown } from "lucide-react";
 import { db } from "@/db";
 import {
   arquivos,
+  arquivoAlteracoes,
   clientes,
   taxasPagar,
   embarcacaoFotos,
@@ -13,6 +14,7 @@ import {
   obras,
   processos,
   servicos,
+  usuarios,
 } from "@/db/schema";
 import { Button, EmptyState, LinkButton, SearchBox, BackButton } from "@/components/ui";
 import { CampoSelect } from "@/components/ui/form-field";
@@ -27,6 +29,7 @@ type ItemPasta = {
   editavel: boolean;
   embarcacaoId?: string | null;
   processoId?: string | null;
+  historico?: { criadoEm: Date; texto: string }[];
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -90,11 +93,45 @@ export default async function ArquivosPage({
           clienteId: arquivos.clienteId,
           embarcacaoId: arquivos.embarcacaoId,
           processoId: arquivos.processoId,
+          criadoPorId: arquivos.criadoPorId,
+          atualizadoPorId: arquivos.atualizadoPorId,
+          atualizadoEm: arquivos.atualizadoEm,
+          criadoEm: arquivos.criadoEm,
         })
         .from(arquivos)
         .where(inArray(arquivos.clienteId, clienteIds))
         .orderBy(desc(arquivos.criadoEm))
     : [];
+
+  // Histórico da pasta digital: alterações por arquivo + nomes dos usuários.
+  const arquivoIds = arquivosCliente.map((a) => a.id);
+  const alteracoesArquivo = arquivoIds.length > 0
+    ? await db
+        .select({
+          id: arquivoAlteracoes.id,
+          arquivoId: arquivoAlteracoes.arquivoId,
+          acao: arquivoAlteracoes.acao,
+          usuarioId: arquivoAlteracoes.usuarioId,
+          criadoEm: arquivoAlteracoes.criadoEm,
+        })
+        .from(arquivoAlteracoes)
+        .where(inArray(arquivoAlteracoes.arquivoId, arquivoIds))
+        .orderBy(asc(arquivoAlteracoes.criadoEm))
+    : [];
+
+  const usuarioIds = [
+    ...new Set([
+      ...arquivosCliente.map((a) => a.criadoPorId).filter(Boolean),
+      ...arquivosCliente.map((a) => a.atualizadoPorId).filter(Boolean),
+      ...alteracoesArquivo.map((a) => a.usuarioId).filter(Boolean),
+    ]),
+  ] as string[];
+  const usuariosMap = new Map<string, string>();
+  if (usuarioIds.length > 0) {
+    const linhasUsuarios = await db.select({ id: usuarios.id, nome: usuarios.nome }).from(usuarios).where(inArray(usuarios.id, usuarioIds));
+    for (const u of linhasUsuarios) usuariosMap.set(u.id, u.nome);
+  }
+  const nomeUsuario = (id: string | null | undefined) => (id ? usuariosMap.get(id) ?? "Sistema" : "Sistema");
 
   const taxasComBoleto = clienteIds.length > 0
     ? await db
@@ -178,6 +215,17 @@ export default async function ArquivosPage({
       editavel: true,
       embarcacaoId: a.embarcacaoId,
       processoId: a.processoId,
+      historico: [
+        ...(a.criadoEm
+          ? [{ criadoEm: a.criadoEm, texto: `Arquivo enviado por ${nomeUsuario(a.criadoPorId)}` }]
+          : []),
+        ...(a.atualizadoEm && a.atualizadoPorId
+          ? [{ criadoEm: a.atualizadoEm, texto: `Alterado por ${nomeUsuario(a.atualizadoPorId)}` }]
+          : []),
+        ...alteracoesArquivo
+          .filter((al) => al.arquivoId === a.id)
+          .map((al) => ({ criadoEm: al.criadoEm, texto: `${al.acao} — por ${nomeUsuario(al.usuarioId)}` })),
+      ],
     });
   }
   for (const t of taxasComBoleto) {
@@ -305,30 +353,34 @@ export default async function ArquivosPage({
           />
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {listaClientes.map((c) => {
             const itens = (porCliente.get(c.id) ?? []).filter(filtraItem);
             return (
-              <div
+              <details
                 key={c.id}
-                className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
+                className="group overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
+                open={itens.length > 0 && listaClientes.length <= 5}
               >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant bg-surface-container-low px-4 py-3">
+                <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 border-b border-outline-variant bg-surface-container-low px-4 py-3 hover:bg-surface-container-low">
                   <div className="flex items-center gap-3">
                     <span className="rounded-pill bg-primary-container p-2 text-on-primary-container">
                       <FolderOpen size={16} />
                     </span>
                     <div>
-                      <p className="font-display text-title-sm font-semibold text-primary">{c.nome}</p>
+                      <p className="font-display text-title-sm font-semibold text-primary">
+                        {c.nome} <span className="text-outline">▸</span>
+                      </p>
                       <p className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
                         {c.cpfCnpj}
                       </p>
                     </div>
                   </div>
-                  <span className="text-body-sm text-outline">
+                  <span className="flex items-center gap-3 text-body-sm text-outline">
                     {itens.length} arquivo(s)
+                    <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
                   </span>
-                </div>
+                </summary>
 
                 {itens.length === 0 ? (
                   <div className="flex items-center gap-2 px-4 py-3 text-body-sm text-outline">
@@ -344,6 +396,7 @@ export default async function ArquivosPage({
                           tipo={item.tipo}
                           rotaApi={item.rotaApi}
                           editavel={item.editavel}
+                          historico={item.historico}
                         />
                       </li>
                     ))}
@@ -353,7 +406,7 @@ export default async function ArquivosPage({
                 <div className="border-t border-outline-variant bg-surface-container-low px-4 py-3">
                   <UploadArquivoCliente clienteId={c.id} />
                 </div>
-              </div>
+              </details>
             );
           })}
 
