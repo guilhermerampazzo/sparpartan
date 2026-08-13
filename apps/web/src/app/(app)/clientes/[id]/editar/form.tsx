@@ -12,6 +12,8 @@ type Cliente = {
   tipo: string;
   cpfCnpj: string;
   rg: string | null;
+  orgaoEmissor: string | null;
+  dataEmissaoRg: string | null;
   dataNascimento: string | null;
   email: string | null;
   telefone: string | null;
@@ -24,6 +26,7 @@ type Cliente = {
   cidade: string | null;
   uf: string | null;
   indicadoPor: string | null;
+  senhaDpem: string | null;
   observacoes: string | null;
 };
 
@@ -58,6 +61,13 @@ export function EditarClienteForm({ cliente }: { cliente: Cliente }) {
           camposEmpresa={{ nome: "nome", cep: "cep", rua: "rua", bairro: "bairro", cidade: "cidade", uf: "uf" }}
         />
         <Campo label="RG" name="rg" defaultValue={v("rg")} />
+        <Campo label="Órgão Emissor" name="orgaoEmissor" defaultValue={v("orgaoEmissor")} />
+        <Campo
+          label="Data de Emissão do Documento"
+          name="dataEmissaoRg"
+          type="date"
+          defaultValue={v("dataEmissaoRg")}
+        />
         <Campo label="Data de Nascimento" name="dataNascimento" type="date" defaultValue={v("dataNascimento")} />
         <Campo label="E-mail" name="email" type="email" defaultValue={v("email")} />
         <Campo label="Telefone" name="telefone" defaultValue={v("telefone")} />
@@ -82,6 +92,7 @@ export function EditarClienteForm({ cliente }: { cliente: Cliente }) {
       </div>
 
       <Campo label="Indicado por" name="indicadoPor" defaultValue={v("indicadoPor")} />
+      <Campo label="Senha DPEM (se o cliente possui embarcação)" name="senhaDpem" defaultValue={v("senhaDpem")} />
 
       <label className="flex flex-col gap-1">
         <span className="font-mono-caps text-label-sm uppercase tracking-wide text-outline">Observações</span>

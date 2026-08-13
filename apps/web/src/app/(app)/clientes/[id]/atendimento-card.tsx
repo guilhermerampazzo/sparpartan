@@ -36,13 +36,18 @@ export function AtendimentoCard({ processo }: { processo: AtendimentoDados }) {
     <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-medium text-primary">{processo.servicoNome}</p>
+          <Link href={`/processos/${processo.id}`} className="font-medium text-primary hover:underline">
+            {processo.servicoNome}
+          </Link>
           <p className="text-body-sm text-outline">
             {processo.embarcacaoNome ?? "Sem embarcação"}
             {" — "}
             {new Date(processo.criadoEm).toLocaleDateString("pt-BR")}
           </p>
         </div>
+        <Link href={`/processos/${processo.id}`} aria-label={`Abrir processo ${processo.servicoNome}`}>
+          <ArrowRight size={16} className="text-outline transition-colors hover:text-primary" />
+        </Link>
         <Badge tone={opcao.tone} size="sm">
           {opcao.label}
         </Badge>

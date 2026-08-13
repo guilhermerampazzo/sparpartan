@@ -296,6 +296,20 @@ export default async function ClienteDetalhesPage({
         <div>
           <h1 className="font-display text-headline-lg font-bold text-primary">{cliente.nome}</h1>
           <p className="text-body-sm text-outline">{cliente.cpfCnpj}</p>
+          {(() => {
+            const contatos = [
+              cliente.celular ?? cliente.telefone,
+              cliente.email,
+              [cliente.cidade, cliente.uf].filter(Boolean).join(" - "),
+            ].filter((c): c is string => !!c);
+            return contatos.length > 0 ? (
+              <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-body-sm text-on-surface-variant">
+                {contatos.map((c, i) => (
+                  <span key={i}>{c}</span>
+                ))}
+              </p>
+            ) : null;
+          })()}
           <CadastradoPor usuarioId={cliente.criadoPorId} />
         </div>
         <div className="flex gap-2">
@@ -316,14 +330,13 @@ export default async function ClienteDetalhesPage({
         </div>
       </div>
 
-      <SectionCard title="Atendimentos em Andamento">
+      <SectionCard title="Processos/Serviços deste cliente">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-body-sm text-outline">
-            Acompanhe cada serviço e mude o status direto aqui — aguardando documentos, pagamento,
-            agendamento, protocolado (com nº e scan) ou concluído.
+            Cada serviço abre o processo diretamente — acompanhe status, documentos, pagamento e protocolo.
           </p>
           <LinkButton href={`/processos/novo?clienteId=${cliente.id}`} variant="outlined" size="sm">
-            + Novo Atendimento
+            + Novo Processo
           </LinkButton>
         </div>
         {atendimentos.length === 0 ? (
@@ -464,6 +477,21 @@ export default async function ClienteDetalhesPage({
           </div>
         </dl>
       </SectionCard>
+
+      {embarcacoesDoCliente.length > 0 && (
+        <SectionCard title="Senha DPEM">
+          <p className="text-body-sm text-outline">
+            A mesma senha vale para todas as embarcações deste cliente.
+          </p>
+          {cliente.senhaDpem ? (
+            <p className="mt-2 font-mono text-body-md font-semibold text-primary">{cliente.senhaDpem}</p>
+          ) : (
+            <p className="mt-2 text-body-sm font-medium text-warning">
+              Nenhuma senha DPEM cadastrada — informe em Editar cliente.
+            </p>
+          )}
+        </SectionCard>
+      )}
 
       <SectionCard title="Embarcações Esporte e Recreio">
         {embarcacoesEsporteRecreio.length === 0 ? (
