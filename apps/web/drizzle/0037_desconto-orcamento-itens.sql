@@ -1,0 +1,1 @@
+ALTER TABLE "orcamento_itens" ADD COLUMN "desconto" numeric DEFAULT '0' NOT NULL;

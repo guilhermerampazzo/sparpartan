@@ -13,7 +13,7 @@ import { NovaContaBancariaInline } from "./nova-conta-bancaria-inline";
 
 const MAX_ITENS = 20;
 
-type ItemForm = { id: number; descricao: string; quantidade: string; valor: string };
+type ItemForm = { id: number; descricao: string; quantidade: string; valor: string; desconto: string };
 
 let proximoIdItem = 1;
 
@@ -21,12 +21,13 @@ function formatMoney(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function itensIniciais(itens: { descricao: string; quantidade: number; valorUnitario: string }[]) {
+function itensIniciais(itens: { descricao: string; quantidade: number; valorUnitario: string; desconto?: string | null }[]) {
   return itens.map((item) => ({
     id: proximoIdItem++,
     descricao: item.descricao,
     quantidade: String(item.quantidade),
     valor: String(Number(item.valorUnitario) || ""),
+    desconto: item.desconto ? String(Number(item.desconto) || "") : "",
   }));
 }
 
@@ -59,7 +60,15 @@ export function NovoOrcamentoForm({
   const [contasBancarias, setContasBancarias] = useState(listaContasBancarias);
   const [clienteId, setClienteId] = useState(String(v("clienteId")));
   const [servicoLivre, setServicoLivre] = useState(!v("servicoId"));
-  const [itens, setItens] = useState<ItemForm[]>(() => itensIniciais(itensParaEdicao));
+  const criacao = !orcamentoInicial;
+  const [itens, setItens] = useState<ItemForm[]>(() => {
+    const iniciais = itensIniciais(itensParaEdicao);
+    // Criação começa com um item já visível — sem clicar em "Adicionar itens".
+    if (criacao && iniciais.length === 0) {
+      return [{ id: proximoIdItem++, descricao: "", quantidade: "1", valor: "", desconto: "" }];
+    }
+    return iniciais;
+  });
 
   const embarcacoesDoCliente = useMemo(
     () => embarcacoesTodas.filter((e) => e.clienteId === clienteId),
@@ -70,16 +79,23 @@ export function NovoOrcamentoForm({
     () =>
       itens.reduce((acc, item) => {
         const quantidade = Number(item.quantidade) > 0 ? Number(item.quantidade) : 1;
-        return acc + (Number(item.valor) || 0) * quantidade;
+        return acc + (Number(item.valor) || 0) * quantidade - (Number(item.desconto) || 0);
       }, 0),
     [itens]
   );
+
+  const totalItem = (item: ItemForm) =>
+    ((Number(item.valor) || 0) * (Number(item.quantidade) > 0 ? Number(item.quantidade) : 1) -
+      (Number(item.desconto) || 0));
 
   const atualizarItem = (id: number, campo: Partial<ItemForm>) =>
     setItens((atual) => atual.map((item) => (item.id === id ? { ...item, ...campo } : item)));
 
   const adicionarItem = () =>
-    setItens((atual) => [...atual, { id: proximoIdItem++, descricao: "", quantidade: "1", valor: "" }]);
+    setItens((atual) => [
+      ...atual,
+      { id: proximoIdItem++, descricao: "", quantidade: "1", valor: "", desconto: "" },
+    ]);
 
   const removerItem = (id: number) => setItens((atual) => atual.filter((item) => item.id !== id));
 
@@ -199,7 +215,11 @@ export function NovoOrcamentoForm({
                   setContasBancarias((atual) => [...atual, conta].sort((a, b) => a.apelido.localeCompare(b.apelido)));
                 }}
               />
-              <LinkButton href="/configuracoes/contas-bancarias" variant="text" size="sm">
+              <LinkButton
+                href={`/configuracoes/contas-bancarias?origem=${encodeURIComponent("/orcamentos/novo")}`}
+                variant="text"
+                size="sm"
+              >
                 Gerenciar contas
               </LinkButton>
             </div>
@@ -248,11 +268,11 @@ export function NovoOrcamentoForm({
               {itens.map((item, i) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-1 gap-3 rounded-lg border border-outline-variant p-3 sm:grid-cols-[1fr_80px_140px_auto]"
+                  className="grid grid-cols-1 gap-3 rounded-lg border border-outline-variant p-3 sm:grid-cols-[1fr_70px_120px_110px_110px_auto]"
                 >
                   <label className="flex flex-col gap-1">
                     <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
-                      Descrição
+                      Produto/Serviço
                     </span>
                     <input
                       name={`itemDescricao${i}`}
@@ -281,6 +301,18 @@ export function NovoOrcamentoForm({
                     defaultValue={item.valor}
                     onChange={(valor) => atualizarItem(item.id, { valor })}
                   />
+                  <CampoMoeda
+                    label="Desconto"
+                    name={`itemDesconto${i}`}
+                    defaultValue={item.desconto}
+                    onChange={(valor) => atualizarItem(item.id, { desconto: valor })}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">Total</span>
+                    <span className="rounded-lg border border-outline-variant bg-surface-container px-3 py-2 text-sm font-semibold text-primary">
+                      {formatMoney(Math.max(0, totalItem(item)))}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => removerItem(item.id)}

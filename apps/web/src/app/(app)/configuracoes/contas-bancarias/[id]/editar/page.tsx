@@ -8,10 +8,13 @@ import { atualizarContaBancaria } from "../../actions";
 
 export default async function EditarContaBancariaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ origem?: string }>;
 }) {
   const { id } = await params;
+  const { origem } = await searchParams;
   const [conta] = await db
     .select()
     .from(contasBancarias)
@@ -21,7 +24,7 @@ export default async function EditarContaBancariaPage({
 
   return (
     <div className="space-y-gutter">
-      <BackButton href="/configuracoes/contas-bancarias" />
+      <BackButton href={origem || "/configuracoes/contas-bancarias"} />
       <h1 className="font-display text-headline-lg font-bold text-primary">
         Editar Conta Bancária
       </h1>

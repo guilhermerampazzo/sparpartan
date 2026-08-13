@@ -8,7 +8,12 @@ import { ConfirmButton } from "@/components/ui";
 
 type LinhaConta = typeof contasBancarias.$inferSelect;
 
-export default async function ContasBancariasPage() {
+export default async function ContasBancariasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ origem?: string }>;
+}) {
+  const { origem } = await searchParams;
   const lista = await db.select().from(contasBancarias).orderBy(contasBancarias.apelido);
 
   const columns: Column<LinhaConta>[] = [
@@ -22,7 +27,12 @@ export default async function ContasBancariasPage() {
       align: "right",
       cell: (c) => (
         <div className="flex items-center justify-end gap-2">
-          <LinkButton href={`/configuracoes/contas-bancarias/${c.id}/editar`} variant="text" size="sm" icon={Pencil}>
+          <LinkButton
+            href={`/configuracoes/contas-bancarias/${c.id}/editar${origem ? `?origem=${encodeURIComponent(origem)}` : ""}`}
+            variant="text"
+            size="sm"
+            icon={Pencil}
+          >
             Editar
           </LinkButton>
           <form action={excluirContaBancaria.bind(null, c.id)}>
@@ -37,7 +47,7 @@ export default async function ContasBancariasPage() {
 
   return (
     <div className="space-y-gutter">
-      <BackButton href="/configuracoes" />
+      <BackButton href={origem || "/configuracoes"} />
       <h1 className="font-display text-headline-lg font-bold text-primary">Contas Bancárias</h1>
       <p className="max-w-2xl text-body-sm text-outline">
         Cadastre as contas usadas para receber pagamentos. Elas ficam disponíveis para escolha nos

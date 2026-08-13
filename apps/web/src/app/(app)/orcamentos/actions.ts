@@ -32,25 +32,32 @@ async function apagarPdfDoDisco(pdfCaminho: string | null) {
 
 const MAX_ITENS = 20;
 
-function itensDoFormData(formData: FormData) {
-  const itens: { descricao: string; quantidade: number; valorUnitario: string }[] = [];
+type ItemOrcamento = { descricao: string; quantidade: number; valorUnitario: string; desconto: string };
+
+function itensDoFormData(formData: FormData): ItemOrcamento[] {
+  const itens: ItemOrcamento[] = [];
   for (let i = 0; i < MAX_ITENS; i++) {
     const descricao = String(formData.get(`itemDescricao${i}`) ?? "").trim();
     const valorUnitario = String(formData.get(`itemValor${i}`) ?? "").trim();
     if (!descricao && !valorUnitario) continue;
     const quantidade = Number(formData.get(`itemQuantidade${i}`) ?? "1");
+    const desconto = String(formData.get(`itemDesconto${i}`) ?? "").trim();
     itens.push({
       descricao: descricao || `Item ${i + 1}`,
       quantidade: Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 1,
       valorUnitario: valorUnitario || "0",
+      desconto: Number.isFinite(Number(desconto)) && Number(desconto) > 0 ? Number(desconto).toFixed(2) : "0",
     });
   }
   return itens;
 }
 
-function totalDeItens(itens: { quantidade: number; valorUnitario: string }[]): string {
-  const total = itens.reduce((acc, item) => acc + Number(item.valorUnitario) * item.quantidade, 0);
-  return total.toFixed(2);
+function totalDeItens(itens: ItemOrcamento[]): string {
+  const total = itens.reduce(
+    (acc, item) => acc + Number(item.valorUnitario) * item.quantidade - Number(item.desconto || "0"),
+    0
+  );
+  return Math.max(0, total).toFixed(2);
 }
 
 async function gerarNumeroOrcamento(): Promise<string> {
@@ -147,6 +154,7 @@ export async function criarOrcamento(
           descricao: item.descricao,
           quantidade: item.quantidade,
           valorUnitario: item.valorUnitario,
+          desconto: item.desconto,
           ordem: i + 1,
         }))
       );
@@ -250,6 +258,7 @@ export async function atualizarOrcamento(
           descricao: item.descricao,
           quantidade: item.quantidade,
           valorUnitario: item.valorUnitario,
+          desconto: item.desconto,
           ordem: i + 1,
         }))
       );

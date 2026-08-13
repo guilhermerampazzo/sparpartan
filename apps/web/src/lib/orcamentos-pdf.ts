@@ -69,14 +69,18 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
             style: "currency",
             currency: "BRL",
           });
-          const totalLinha = (Number(item.valorUnitario) * item.quantidade).toLocaleString("pt-BR", {
+          const desconto = Number(item.desconto || "0");
+          const descontoFormatado = desconto > 0
+            ? desconto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+            : "—";
+          const totalLinha = (Number(item.valorUnitario) * item.quantidade - desconto).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
           });
-          return `<tr><td>${item.quantidade}</td><td>Item ${item.ordem}</td><td>${escapaHtml(item.descricao)}</td><td>${preco}</td><td>${totalLinha}</td></tr>`;
+          return `<tr><td>${item.quantidade}</td><td>Item ${item.ordem}</td><td>${escapaHtml(item.descricao)}</td><td>${preco}</td><td>${descontoFormatado}</td><td>${totalLinha}</td></tr>`;
         })
         .join("")
-    : `<tr><td>1</td><td>Item 1</td><td>${escapaHtml(descricaoItem)}</td><td>${valorFormatado}</td><td>${valorFormatado}</td></tr>`;
+    : `<tr><td>1</td><td>Item 1</td><td>${escapaHtml(descricaoItem)}</td><td>${valorFormatado}</td><td>—</td><td>${valorFormatado}</td></tr>`;
 
   const dataEmissao = orcamento.criadoEm.toLocaleDateString("pt-BR");
   const validoAteFormatado = orcamento.validoAte
@@ -95,27 +99,27 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
 <html><head><meta charset="utf-8"><style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; padding: 48px 44px; color: #001736; font-size: 12px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
-  .brand h1 { margin: 0 0 8px; font-size: 30px; color: #002b5b; letter-spacing: 1.5px; }
-  .brand p { margin: 3px 0; line-height: 1.5; }
-  .numero-box { border: 1.5px solid #002b5b; border-radius: 6px; padding: 18px 24px; text-align: center; min-width: 190px; }
-  .numero-box .label { font-size: 11px; font-weight: bold; color: #002b5b; }
-  .numero-box .numero { font-size: 22px; font-weight: bold; color: #002b5b; margin: 6px 0; }
-  .section { border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 18px; overflow: hidden; page-break-inside: avoid; }
-  .section-title { background: #002b5b; color: #fff; padding: 8px 14px; font-weight: bold; font-size: 12px; letter-spacing: 0.5px; }
-  .section-body { padding: 14px; }
-  .section-body p { margin: 6px 0; line-height: 1.6; }
+  body { font-family: Arial, Helvetica, sans-serif; padding: 22px 26px; color: #001736; font-size: 11px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .brand h1 { margin: 0 0 4px; font-size: 24px; color: #002b5b; letter-spacing: 1.5px; }
+  .brand p { margin: 2px 0; line-height: 1.35; }
+  .numero-box { border: 1.5px solid #002b5b; border-radius: 6px; padding: 10px 16px; text-align: center; min-width: 160px; }
+  .numero-box .label { font-size: 9px; font-weight: bold; color: #002b5b; }
+  .numero-box .numero { font-size: 18px; font-weight: bold; color: #002b5b; margin: 3px 0; }
+  .section { border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; overflow: hidden; page-break-inside: avoid; }
+  .section-title { background: #002b5b; color: #fff; padding: 5px 12px; font-weight: bold; font-size: 10px; letter-spacing: 0.5px; }
+  .section-body { padding: 8px 12px; }
+  .section-body p { margin: 2px 0; line-height: 1.35; }
   table.itens { width: 100%; border-collapse: collapse; }
-  table.itens th { background: #002b5b; color: #fff; text-align: left; padding: 9px; font-size: 11px; }
-  table.itens td { padding: 9px; border-bottom: 1px solid #e2e8f0; }
+  table.itens th { background: #002b5b; color: #fff; text-align: left; padding: 5px 8px; font-size: 9px; }
+  table.itens td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; }
   table.itens tr.total td { background: #002b5b; color: #fff; font-weight: bold; }
-  .footer { margin-top: 28px; text-align: center; font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-  .aviso-assinatura { margin-top: 56px; page-break-after: avoid; }
-  .assinaturas { display: flex; justify-content: space-between; margin-top: 90px; gap: 48px; page-break-inside: avoid; }
-  .assinatura-box { flex: 1; padding-top: 12px; text-align: center; }
+  .footer { margin-top: 10px; text-align: center; font-size: 8px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 6px; }
+  .aviso-assinatura { margin-top: 18px; page-break-after: avoid; }
+  .assinaturas { display: flex; justify-content: space-between; margin-top: 30px; gap: 32px; page-break-inside: avoid; }
+  .assinatura-box { flex: 1; padding-top: 8px; text-align: center; }
   .assinatura-box .linha { border-top: 1.5px solid #001736; height: 0; }
-  .assinatura-box p { margin: 6px 0; }
+  .assinatura-box p { margin: 3px 0; }
 </style></head><body>
 
 <div class="header">
@@ -148,10 +152,10 @@ export async function gerarPdfCore(orcamentoId: string): Promise<{ pdfCaminho: s
   <div class="section-title">ITENS DO ORÇAMENTO</div>
   <div class="section-body" style="padding:0">
     <table class="itens">
-      <thead><tr><th>Qtd</th><th>Item</th><th>Descrição</th><th>Preço Unit.</th><th>Total</th></tr></thead>
+      <thead><tr><th>Qtd</th><th>Item</th><th>Descrição</th><th>Preço Unit.</th><th>Desc.</th><th>Total</th></tr></thead>
       <tbody>
         ${linhasItens}
-        <tr class="total"><td colspan="4">VALOR TOTAL</td><td>${valorFormatado}</td></tr>
+        <tr class="total"><td colspan="5">VALOR TOTAL</td><td>${valorFormatado}</td></tr>
       </tbody>
     </table>
   </div>

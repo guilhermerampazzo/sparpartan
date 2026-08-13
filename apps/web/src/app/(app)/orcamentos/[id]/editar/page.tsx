@@ -34,7 +34,12 @@ export default async function EditarOrcamentoPage({
     .from(contasBancarias)
     .orderBy(contasBancarias.apelido);
   const itens = await db
-    .select({ descricao: orcamentoItens.descricao, quantidade: orcamentoItens.quantidade, valorUnitario: orcamentoItens.valorUnitario })
+    .select({
+      descricao: orcamentoItens.descricao,
+      quantidade: orcamentoItens.quantidade,
+      valorUnitario: orcamentoItens.valorUnitario,
+      desconto: orcamentoItens.desconto,
+    })
     .from(orcamentoItens)
     .where(eq(orcamentoItens.orcamentoId, id))
     .orderBy(asc(orcamentoItens.ordem));

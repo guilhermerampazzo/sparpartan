@@ -578,6 +578,7 @@ export const orcamentoItens = pgTable("orcamento_itens", {
   descricao: text("descricao").notNull(),
   quantidade: integer("quantidade").notNull().default(1),
   valorUnitario: numeric("valor_unitario").notNull().default("0"),
+  desconto: numeric("desconto").notNull().default("0"),
   ordem: integer("ordem").notNull().default(1),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
