@@ -361,3 +361,12 @@ select {
   background-color: #ffffff;
   border-radius: 9999px;
 }
+
+/* Impressão de detalhes (agendamentos/eventos): esconde barra de navegação e ações. */
+@media print {
+  header, footer, aside, .no-print, .print-hide {
+    display: none !important;
+  }
+  body { background: #fff !important; }
+  main { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+}

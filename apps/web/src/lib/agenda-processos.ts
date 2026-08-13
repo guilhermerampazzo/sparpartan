@@ -1,6 +1,6 @@
-import { and, asc, eq, gte, inArray, ne } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "@/db";
-import { agendaEventos, agendaInteressados, clientes, processos, servicos } from "@/db/schema";
+import { agendaEventos, agendaInteressados, clientes, processos, representantesLegais, servicos } from "@/db/schema";
 
 export type ProcessoAgendadoLinha = {
   id: string;
@@ -16,7 +16,7 @@ export type ProcessoAgendadoLinha = {
   interessados: { nomeInteressado: string; servicoSolicitado: string | null }[];
 };
 
-/** Eventos agendados (de hoje em diante, não cancelados) com cliente/serviço e interessados. */
+/** Agendamentos (de hoje em diante, não cancelados, cliente ativo) com cliente/serviço e interessados. */
 export async function buscarProcessosAgendados(): Promise<ProcessoAgendadoLinha[]> {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -29,16 +29,23 @@ export async function buscarProcessosAgendados(): Promise<ProcessoAgendadoLinha[
       tipo: agendaEventos.tipo,
       status: agendaEventos.status,
       local: agendaEventos.local,
-      representanteLegal: agendaEventos.representanteLegal,
+      representanteLegal: representantesLegais.nome,
       processoId: agendaEventos.processoId,
       clienteNome: clientes.nome,
       servicoNome: servicos.nome,
     })
     .from(agendaEventos)
     .leftJoin(clientes, eq(agendaEventos.clienteId, clientes.id))
+    .leftJoin(representantesLegais, eq(agendaEventos.representanteLegalId, representantesLegais.id))
     .leftJoin(processos, eq(agendaEventos.processoId, processos.id))
     .leftJoin(servicos, eq(processos.servicoId, servicos.id))
-    .where(and(gte(agendaEventos.dataHora, hoje), ne(agendaEventos.status, "cancelado")))
+    .where(
+      and(
+        gte(agendaEventos.dataHora, hoje),
+        ne(agendaEventos.status, "cancelado"),
+        isNull(clientes.excluidoEm) // reflexo: cliente excluído não aparece
+      )
+    )
     .orderBy(asc(agendaEventos.dataHora));
 
   const interessadosPorEvento = new Map<string, ProcessoAgendadoLinha["interessados"]>();
