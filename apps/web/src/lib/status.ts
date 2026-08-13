@@ -98,22 +98,26 @@ export function statusCertificado(status: string): StatusInfo {
 export function statusProcesso(status: string): StatusInfo {
   const map: Record<string, StatusInfo> = {
     aberto: { label: "Aberto", tone: "info", icon: FolderOpen },
-    documentos_pendentes: { label: "Documentos Pendentes", tone: "warning", icon: FileWarning },
-    pronto_para_protocolo: { label: "Pronto para Protocolo", tone: "info", icon: PackageCheck },
+    processo_preenchido: { label: "Processo Preenchido", tone: "info", icon: FileCheck2 },
+    processo_assinado: { label: "Processo Assinado", tone: "info", icon: PenLine },
+    aguardando_pagamento: { label: "Pagamento", tone: "warning", icon: CreditCard },
     protocolado: { label: "Protocolado", tone: "info", icon: Send },
-    aguardando_retorno_marinha: { label: "Aguardando Retorno da Marinha", tone: "warning", icon: Hourglass },
     concluido: { label: "Concluído", tone: "success", icon: CheckCircle2 },
     cancelado: { label: "Cancelado", tone: "danger", icon: XCircle },
+    // Valores legados (migrados para o novo fluxo) — mantidos para leitura de dados antigos.
+    documentos_pendentes: { label: "Documentos Pendentes", tone: "warning", icon: FileWarning },
+    pronto_para_protocolo: { label: "Pronto para Protocolo", tone: "info", icon: PackageCheck },
+    aguardando_retorno_marinha: { label: "Aguardando Retorno da Marinha", tone: "warning", icon: Hourglass },
   };
   return map[status] ?? { label: status, tone: "neutral", icon: Minus };
 }
 
 export const PROCESSO_STEPS: { key: string; label: string }[] = [
   { key: "aberto", label: "Aberto" },
-  { key: "documentos_pendentes", label: "Documentos Pendentes" },
-  { key: "pronto_para_protocolo", label: "Pronto p/ Protocolo" },
+  { key: "processo_preenchido", label: "Processo Preenchido" },
+  { key: "processo_assinado", label: "Processo Assinado" },
+  { key: "aguardando_pagamento", label: "Pagamento" },
   { key: "protocolado", label: "Protocolado" },
-  { key: "aguardando_retorno_marinha", label: "Retorno da Marinha" },
   { key: "concluido", label: "Concluído" },
 ];
 

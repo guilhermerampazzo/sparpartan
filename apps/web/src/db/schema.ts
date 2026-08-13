@@ -35,6 +35,9 @@ export const processoStatus = pgEnum("processo_status", [
   "aguardando_retorno_marinha",
   "concluido",
   "cancelado",
+  "processo_preenchido",
+  "processo_assinado",
+  "aguardando_pagamento",
 ]);
 export const orcamentoStatus = pgEnum("orcamento_status", [
   "pendente",
@@ -455,6 +458,20 @@ export const arquivos = pgTable("arquivos", {
   nomeOriginal: text("nome_original").notNull(),
   caminho: text("caminho").notNull(),
   textoExtraido: text("texto_extraido"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  atualizadoPorId: uuid("atualizado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  atualizadoEm: timestamp("atualizado_em"),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+/** Histórico de alterações de um arquivo da pasta digital do cliente. */
+export const arquivoAlteracoes = pgTable("arquivo_alteracoes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  arquivoId: uuid("arquivo_id")
+    .notNull()
+    .references(() => arquivos.id, { onDelete: "cascade" }),
+  usuarioId: uuid("usuario_id").references(() => usuarios.id, { onDelete: "set null" }),
+  acao: text("acao").notNull(),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
@@ -515,6 +532,8 @@ export const processos = pgTable("processos", {
   numeroProtocolo: text("numero_protocolo"),
   dataProtocolo: date("data_protocolo"),
   protocoloEscaneadoCaminho: text("protocolo_escaneado_caminho"),
+  /** Observação de exigência preenchida quando o processo é protocolado (ex.: "apresentar documento X"). */
+  exigenciaObservacao: text("exigencia_observacao"),
   observacoes: text("observacoes"),
   excluidoEm: timestamp("excluido_em"),
   criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),

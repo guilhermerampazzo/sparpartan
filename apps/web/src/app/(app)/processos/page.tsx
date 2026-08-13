@@ -27,10 +27,10 @@ type LinhaProcesso = {
 
 const ABAS = [
   { key: "geral", label: "Geral", status: null as string[] | null },
-  { key: "andamento", label: "Em Andamento", status: ["aberto", "documentos_pendentes", "pronto_para_protocolo"] },
+  { key: "andamento", label: "Em Andamento", status: ["aberto", "processo_preenchido", "processo_assinado", "aguardando_pagamento"] },
   { key: "protocolado", label: "Protocolado", status: ["protocolado"] },
-  { key: "retorno", label: "Retorno Marinha", status: ["aguardando_retorno_marinha"] },
-  { key: "prontos", label: "Prontos", status: ["concluido"] },
+  { key: "pagamento", label: "Pagamento", status: ["aguardando_pagamento"] },
+  { key: "prontos", label: "Concluídos", status: ["concluido"] },
 ] as const;
 
 export default async function ProcessosPage({
@@ -111,7 +111,9 @@ export default async function ProcessosPage({
       <BackButton href="/" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg font-bold text-primary">Processos</h1>
-        <LinkButton href="/processos/novo">+ Novo Atendimento</LinkButton>
+        <p className="text-body-sm text-outline">
+          Processos são os serviços em execução para cada cliente — cadastre pelo Novo Cliente.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -138,7 +140,6 @@ export default async function ProcessosPage({
           <EmptyState
             icon={FolderClock}
             title={q ? "Nenhum processo encontrado" : "Nenhum processo nessa aba"}
-            action={q ? undefined : { label: "+ Novo Atendimento", href: "/processos/novo" }}
           />
         }
       />

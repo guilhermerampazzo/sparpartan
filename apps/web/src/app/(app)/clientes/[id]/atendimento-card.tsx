@@ -8,8 +8,9 @@ import { atualizarStatusProcesso } from "../../processos/actions";
 
 const STATUS_OPCOES: { valor: string; label: string; tone: "info" | "warning" | "success" | "danger" | "neutral" }[] = [
   { valor: "aberto", label: "Aberto", tone: "info" },
-  { valor: "documentos_pendentes", label: "Aguardando Documentos", tone: "warning" },
-  { valor: "pronto_para_protocolo", label: "Pronto p/ Protocolo", tone: "info" },
+  { valor: "processo_preenchido", label: "Processo Preenchido", tone: "info" },
+  { valor: "processo_assinado", label: "Processo Assinado", tone: "info" },
+  { valor: "aguardando_pagamento", label: "Pagamento", tone: "warning" },
   { valor: "protocolado", label: "Protocolado", tone: "info" },
   { valor: "concluido", label: "Serviço Concluído", tone: "success" },
   { valor: "cancelado", label: "Cancelado", tone: "danger" },
@@ -22,6 +23,7 @@ export type AtendimentoDados = {
   embarcacaoNome: string | null;
   numeroProtocolo: string | null;
   dataProtocolo: string | null;
+  exigenciaObservacao: string | null;
   criadoEm: Date;
   diasProtocolo: number | null;
 };
@@ -59,6 +61,12 @@ export function AtendimentoCard({ processo }: { processo: AtendimentoDados }) {
           <span className={diasProtocolo <= 10 ? "font-semibold text-danger" : "font-semibold text-primary"}>
             {diasProtocolo} dia(s) restante(s)
           </span>
+        </p>
+      )}
+
+      {processo.exigenciaObservacao && (
+        <p className="mt-2 rounded-lg bg-warning-container px-3 py-2 text-body-sm text-on-warning-container">
+          <strong>Exigência:</strong> {processo.exigenciaObservacao}
         </p>
       )}
 
@@ -114,6 +122,17 @@ export function AtendimentoCard({ processo }: { processo: AtendimentoDados }) {
                   name="comprovante"
                   type="file"
                   accept="image/*,.pdf"
+                  className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
+                />
+              </label>
+              <label className="flex flex-col gap-1 sm:col-span-2 lg:col-span-4">
+                <span className="font-mono-caps text-[11px] uppercase tracking-wide text-outline">
+                  Observação de exigência (ex.: apresentar documento X)
+                </span>
+                <input
+                  name="exigenciaObservacao"
+                  defaultValue={processo.exigenciaObservacao ?? ""}
+                  placeholder="Protocolo realizado — exigência: ..."
                   className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-primary"
                 />
               </label>

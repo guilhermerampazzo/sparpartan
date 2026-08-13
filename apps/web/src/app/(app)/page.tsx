@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, count, eq, gte, isNull, lt, lte, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, isNull, lt, lte, ne, sql } from "drizzle-orm";
 import {
   Users,
   Ship,
@@ -63,7 +63,10 @@ export default async function HomePage() {
       .select({ n: count() })
       .from(processos)
       .where(and(ne(processos.status, "concluido"), ne(processos.status, "cancelado"))),
-    db.select({ n: count() }).from(processos).where(eq(processos.status, "documentos_pendentes")),
+    db
+      .select({ n: count() })
+      .from(processos)
+      .where(inArray(processos.status, ["aberto", "processo_preenchido", "processo_assinado"] as const)),
     db.select({ n: count() }).from(pagamentos).where(eq(pagamentos.status, "atrasado")),
     db
       .select({
@@ -136,7 +139,7 @@ export default async function HomePage() {
   const andamentoPorColaborador = await db
     .select({
       colaboradorNome: usuarios.nome,
-      aguardando: sql<number>`count(*) filter (where ${processos.status} in ('aberto', 'documentos_pendentes', 'pronto_para_protocolo'))::int`,
+      aguardando: sql<number>`count(*) filter (where ${processos.status} in ('aberto', 'processo_preenchido', 'processo_assinado', 'aguardando_pagamento'))::int`,
       protocolado: sql<number>`count(*) filter (where ${processos.status} = 'protocolado')::int`,
       finalizados: sql<number>`count(*) filter (where ${processos.status} = 'concluido')::int`,
     })

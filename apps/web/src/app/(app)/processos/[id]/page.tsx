@@ -18,7 +18,6 @@ import { PROCESSO_STEPS, urgenciaVencimento, infoUrgencia, vencimentoProtocolo, 
 import {
   definirEmbarcacao,
   protocolarProcesso,
-  marcarAguardandoRetornoMarinha,
   concluirProcesso,
   cancelarProcesso,
   gerarLinkDocumentos,
@@ -77,12 +76,10 @@ export default async function ProcessoDetalhesPage({
   const podeProtocolar =
     obrigatoriosFaltando.length === 0 &&
     processo.status !== "protocolado" &&
-    processo.status !== "aguardando_retorno_marinha" &&
     processo.status !== "concluido";
 
   const definirEmbarcacaoComId = definirEmbarcacao.bind(null, id);
   const protocolarComId = protocolarProcesso.bind(null, id);
-  const aguardandoRetornoComId = marcarAguardandoRetornoMarinha.bind(null, id);
   const concluirComId = concluirProcesso.bind(null, id);
   const cancelarComId = cancelarProcesso.bind(null, id);
   const gerarLinkDocumentosComId = gerarLinkDocumentos.bind(null, id);
@@ -247,20 +244,17 @@ export default async function ProcessoDetalhesPage({
           </dl>
           {processo.status === "protocolado" && (
             <div className="mt-4 flex flex-wrap gap-3">
-              <form action={aguardandoRetornoComId}>
-                <Button type="submit">Aguardando Retorno da Marinha</Button>
-              </form>
+              {processo.exigenciaObservacao && (
+                <p className="w-full rounded-lg bg-warning-container px-3 py-2 text-body-sm text-on-warning-container">
+                  <strong>Exigência:</strong> {processo.exigenciaObservacao}
+                </p>
+              )}
               <form action={concluirComId}>
                 <Button type="submit" variant="outlined">
                   Marcar como Concluído
                 </Button>
               </form>
             </div>
-          )}
-          {processo.status === "aguardando_retorno_marinha" && (
-            <form action={concluirComId} className="mt-4">
-              <Button type="submit">Marcar como Concluído</Button>
-            </form>
           )}
         </SectionCard>
       ) : (

@@ -159,10 +159,10 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
     db.select({ n: count() }).from(pipelineOportunidades).where(p(and(eq(pipelineOportunidades.estagio, "aguardando_pagamento"), respOportunidade))),
     db.select({ n: count() }).from(pipelineOportunidades).where(p(and(eq(pipelineOportunidades.estagio, "servico_contratado"), respOportunidade))),
     db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "aberto"), isNull(processos.excluidoEm), respProcesso))),
-    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "documentos_pendentes"), isNull(processos.excluidoEm), respProcesso))),
-    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "pronto_para_protocolo"), isNull(processos.excluidoEm), respProcesso))),
+    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "processo_preenchido"), isNull(processos.excluidoEm), respProcesso))),
+    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "processo_assinado"), isNull(processos.excluidoEm), respProcesso))),
     db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "protocolado"), isNull(processos.excluidoEm), respProcesso))),
-    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "aguardando_retorno_marinha"), isNull(processos.excluidoEm), respProcesso))),
+    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "aguardando_pagamento"), isNull(processos.excluidoEm), respProcesso))),
     db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "concluido"), isNull(processos.excluidoEm), respProcesso))),
     db.select({ n: count() }).from(obras).where(p(and(eq(obras.status, "em_projeto"), isNull(obras.excluidoEm), respObra))),
     db.select({ n: count() }).from(obras).where(p(and(eq(obras.status, "em_execucao"), isNull(obras.excluidoEm), respObra))),
@@ -191,7 +191,7 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
       .where(p(and(eq(pagamentos.status, "pendente"), resp ? eq(servicosContratados.vendedorId, resp) : undefined))),
     db.select({ n: count() }).from(despesas).where(p(and(gte(despesas.data, inicioMes), respDespesa))),
     db.select({ n: count() }).from(despesas).where(p(and(eq(despesas.paga, false), respDespesa))),
-    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "documentos_pendentes"), isNull(processos.excluidoEm), respProcesso))),
+    db.select({ n: count() }).from(processos).where(p(and(eq(processos.status, "processo_preenchido"), isNull(processos.excluidoEm), respProcesso))),
     db.select({ n: count() }).from(documentosGerados).where(eq(documentosGerados.status, "gerado")),
     db.select({ n: count() }).from(documentosGerados).where(eq(documentosGerados.status, "protocolado")),
     db.select({ n: count() }).from(documentosGerados).where(eq(documentosGerados.status, "entregue")),
@@ -233,10 +233,10 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
       icone: FileStack,
       indicadores: [
         { rotulo: "Processos em montagem", valor: n(processosAbertos), href: "/processos?status=aberto", tone: "info" },
-        { rotulo: "Aguardando documentos", valor: n(processosDocs), href: "/processos?status=documentos_pendentes", tone: "warning" },
-        { rotulo: "Prontos para protocolar", valor: n(processosProntos), href: "/processos?status=pronto_para_protocolo", tone: "warning" },
+        { rotulo: "Processos preenchidos", valor: n(processosDocs), href: "/processos?status=processo_preenchido", tone: "warning" },
+        { rotulo: "Processos assinados", valor: n(processosProntos), href: "/processos?status=processo_assinado", tone: "warning" },
         { rotulo: "Protocolados", valor: n(processosProtocolados), href: "/processos?status=protocolado", tone: "info" },
-        { rotulo: "Aguardando retorno da Marinha", valor: n(retornoMarinha), href: "/processos?status=aguardando_retorno_marinha", tone: "warning" },
+        { rotulo: "Pagamento pendente", valor: n(retornoMarinha), href: "/processos?status=aguardando_pagamento", tone: "warning" },
         { rotulo: "Concluídos", valor: n(processosConcluidos), href: "/processos?status=concluido", tone: "success" },
       ],
     },
@@ -267,7 +267,7 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
       titulo: "Documentos",
       icone: FileText,
       indicadores: [
-        { rotulo: "Documentos para gerar", valor: n(docsParaGerar), href: "/processos?status=documentos_pendentes", tone: "warning" },
+        { rotulo: "Documentos para gerar", valor: n(docsParaGerar), href: "/processos?status=processo_preenchido", tone: "warning" },
         { rotulo: "Aguardando revisão", valor: n(docsGerados), href: "/documentos", tone: "info" },
         { rotulo: "Prontos (protocolados)", valor: n(docsProtocolados), href: "/documentos", tone: "success" },
         { rotulo: "Entregues", valor: n(docsEntregues), href: "/documentos", tone: "success" },
@@ -348,9 +348,9 @@ async function ResumoDoDia({
             respOportunidade
           )
         ),
-      db.select({ n: count() }).from(processos).where(and(eq(processos.status, "pronto_para_protocolo"), respProcesso)),
+      db.select({ n: count() }).from(processos).where(and(eq(processos.status, "processo_assinado"), respProcesso)),
       db.select({ n: count() }).from(taxasPagar).where(and(eq(taxasPagar.status, "pendente"), eq(taxasPagar.vencimento, hojeStr), respTaxa)),
-      db.select({ n: count() }).from(processos).where(and(eq(processos.status, "documentos_pendentes"), respProcesso)),
+      db.select({ n: count() }).from(processos).where(and(eq(processos.status, "processo_preenchido"), respProcesso)),
       db
         .select({ n: count() })
         .from(lojaEntregas)
@@ -367,9 +367,9 @@ async function ResumoDoDia({
 
   const itens: { rotulo: string; valor: number; href: string }[] = [
     { rotulo: "Clientes aguardando resposta", valor: clientesResposta[0]?.n ?? 0, href: "/pipeline?aba=comercial" },
-    { rotulo: "Processos prontos para protocolar", valor: processosProtocolar[0]?.n ?? 0, href: "/processos?status=pronto_para_protocolo" },
+    { rotulo: "Processos assinados", valor: processosProtocolar[0]?.n ?? 0, href: "/processos?status=processo_assinado" },
     { rotulo: "Taxas vencendo hoje", valor: taxasHoje[0]?.n ?? 0, href: "/taxas?status=pendente" },
-    { rotulo: "Documentos para gerar", valor: docsGerar[0]?.n ?? 0, href: "/processos?status=documentos_pendentes" },
+    { rotulo: "Documentos para gerar", valor: docsGerar[0]?.n ?? 0, href: "/processos?status=processo_preenchido" },
     { rotulo: "Entregas programadas", valor: entregasHoje[0]?.n ?? 0, href: "/loja/entregas" },
     { rotulo: "Reuniões agendadas", valor: reunioesAgendadas[0]?.n ?? 0, href: "/agenda" },
     { rotulo: "Pendências críticas", valor: pendenciasCriticas[0]?.n ?? 0, href: "/pendencias" },

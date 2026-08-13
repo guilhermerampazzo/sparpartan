@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { documentosGerados, modelosDocumento, clientes } from "@/db/schema";
 import { StatCard, Badge, EmptyState, DataTable, type Column, BackButton } from "@/components/ui";
 import { urgenciaVencimento, infoUrgencia, rotuloPrazo, type Urgencia } from "@/lib/status";
+import { dataIsoParaBR } from "@/lib/datas";
 
 const FILTROS: { key: Urgencia; label: string; icon: typeof AlertOctagon }[] = [
   { key: "vencido", label: "Vencidos", icon: AlertOctagon },
@@ -58,7 +59,7 @@ export default async function VencimentosPage({
         <div className="flex items-center gap-2">
           <span>{d.vencimento && rotuloPrazo(d.vencimento)}</span>
           <Badge tone={infoUrgencia(urgenciaVencimento(d.vencimento)).tone} size="sm">
-            {d.vencimento}
+            {dataIsoParaBR(d.vencimento)}
           </Badge>
         </div>
       ),

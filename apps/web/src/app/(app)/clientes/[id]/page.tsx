@@ -218,6 +218,7 @@ export default async function ClienteDetalhesPage({
       embarcacaoNome: embarcacoes.nome,
       numeroProtocolo: processos.numeroProtocolo,
       dataProtocolo: processos.dataProtocolo,
+      exigenciaObservacao: processos.exigenciaObservacao,
       criadoEm: processos.criadoEm,
     })
     .from(processos)
@@ -335,15 +336,12 @@ export default async function ClienteDetalhesPage({
           <p className="text-body-sm text-outline">
             Cada serviço abre o processo diretamente — acompanhe status, documentos, pagamento e protocolo.
           </p>
-          <LinkButton href={`/processos/novo?clienteId=${cliente.id}`} variant="outlined" size="sm">
-            + Novo Processo
-          </LinkButton>
         </div>
         {atendimentos.length === 0 ? (
           <EmptyState
             icon={FileStack}
-            title="Nenhum atendimento para este cliente ainda"
-            description="Comece clicando em Novo Atendimento — depois os documentos e o protocolo são acompanhados daqui."
+            title="Nenhum processo para este cliente ainda"
+            description="Os processos são criados automaticamente ao cadastrar um cliente com serviço (Novo Cliente)."
           />
         ) : (
           <div className="space-y-3">

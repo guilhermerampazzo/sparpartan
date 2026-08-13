@@ -15,10 +15,10 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db;
 
 export const STATUS_PROCESSO_VALIDOS = [
   "aberto",
-  "documentos_pendentes",
-  "pronto_para_protocolo",
+  "processo_preenchido",
+  "processo_assinado",
+  "aguardando_pagamento",
   "protocolado",
-  "aguardando_retorno_marinha",
   "concluido",
   "cancelado",
 ] as const;
@@ -79,24 +79,25 @@ export async function pendenciasDoProcesso(processoId: string, con: Tx = db): Pr
 }
 
 /**
- * Reclassifica o processo conforme o que falta. Antes o operador só descobria que
- * havia pendência ao tentar protocolar e levar um erro — e o status
- * `documentos_pendentes` nunca era escrito por ninguém.
+ * Fluxo padrão do processo: o avanço entre etapas (preenchido → assinado →
+ * pagamento → protocolado → concluído) é manual, feito pelo operador. Esta
+ * função só garante que o processo não regrida de etapas manuais e atualiza o
+ * timestamp — a documentação pendente é exposta na Central de Pendências.
  */
 export async function reclassificarProcesso(processoId: string, con: Tx = db) {
   const [processo] = await con.select().from(processos).where(eq(processos.id, processoId)).limit(1);
   if (!processo) return;
 
-  // Não mexe em processo já finalizado, protocolado ou aguardando retorno da Marinha.
-  if (["protocolado", "aguardando_retorno_marinha", "concluido", "cancelado"].includes(processo.status)) return;
+  // Não mexe em processo finalizado, protocolado ou em etapa manual avançada.
+  if (["protocolado", "concluido", "cancelado"].includes(processo.status)) return;
 
   const pendencias = await pendenciasDoProcesso(processoId, con);
-  const novoStatus = pendencias.length > 0 ? "documentos_pendentes" : "pronto_para_protocolo";
-
-  if (processo.status === novoStatus) return;
-
-  await con
-    .update(processos)
-    .set({ status: novoStatus, atualizadoEm: new Date() })
-    .where(eq(processos.id, processoId));
+  // Com documentação pendente e ainda em "aberto", avança a conferência de documentos
+  // apenas se o operador já começou o preenchimento; nunca regride etapas manuais.
+  if (processo.status === "aberto" && pendencias.length === 0) {
+    await con
+      .update(processos)
+      .set({ status: "processo_preenchido", atualizadoEm: new Date() })
+      .where(eq(processos.id, processoId));
+  }
 }
