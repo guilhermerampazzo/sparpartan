@@ -6,7 +6,7 @@ import { LogOut } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav-items";
 import { itemNavLiberado } from "@/lib/permissoes";
 import { Logo } from "@/components/logo";
-import { ChatPopover } from "./chat-popover";
+import { ChatBadge } from "./chat-badge";
 import { NavBadge, useContadoresNotificacao } from "./nav-notificacoes";
 
 const CONTADOR_POR_HREF: Record<string, "lembretes" | "taxas" | "agenda" | "orcamentos"> = {
@@ -55,7 +55,18 @@ export function Sidebar({
           if (item.href === "/chat") {
             return (
               <div key={item.href}>
-                <ChatPopover />
+                <Link
+                  href="/chat"
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    active
+                      ? "border-r-2 border-nav-text bg-nav-text/15 font-bold text-nav-text"
+                      : "text-nav-text/70 hover:bg-nav-text/10"
+                  }`}
+                >
+                  <Icon size={18} strokeWidth={active ? 2.5 : 2} />
+                  <span className="font-mono-caps text-[11px] uppercase tracking-wide">{item.label}</span>
+                  <ChatBadge />
+                </Link>
               </div>
             );
           }
