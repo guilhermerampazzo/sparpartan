@@ -329,6 +329,15 @@ Testado E2E no navegador:
 
 ---
 
+### M16 — Rastro digital, Documentos Sparapan, Gestão de Empresas e Loja completa (itens 19, 20, 21 + módulo novo)
+Testado E2E no navegador:
+- **Rastro digital (19)**: página de auditoria turbinada — busca por usuário/ação/entidade, filtro de período e paginação. O registro (usuário + ação + data + item) já existia em todos os módulos via `registrarAuditoria`.
+- **Documentos Sparapan (20)**: **2 ambientes** — ① Documentação da empresa (adicionar/visualizar/substituir/baixar/imprimir/excluir) e ② **Embarcações Sparapan** com cadastro próprio e pasta (documentos/seguro/fotos/arquivos). Migration 0039.
+- **Gestão de Empresas (módulo novo)**: empresas (com vínculo a cliente existente) → embarcações/marinheiros → documentos/manutenções; **leitura automática do PDF anexado** (tipo, número, CNPJ, emissão, vencimento — revisar antes de salvar; testado com apólice real gerada: número/CNPJ/vencimento preenchidos); **alertas automáticos 35 dias → próximo, 15 dias → urgente, vencido + manutenções próximas** (botão "Recalcular alertas" + **worker diário 10:30** `varrer-empresas`; testado: licença vencida gerou alerta e badge); histórico mantido na substituição; rastro de usuário; isolamento por empresa.
+- **Loja (21)**: tela principal com **7 indicadores** + 8 módulos; **catálogo admin completo** (marca/modelo/SKU/ficha técnica/custo/desconto máx/promo/estoque mínimo/disponibilidade/unidade + dados de embarcação/motor por categoria; custo/margem nunca no cliente); **catálogo cliente** com carrinho (agrupa quantidade, desconto, frete, total; cadastro rápido inline); **orçamentos** Rascunho→Enviado→Aguardando aprovação→Convertido (+Recusado/Expirado), **PDF próprio** com logo e foto dos produtos, WhatsApp e e-mail, **converter em venda** com vendedor automático e baixa de estoque; **vendas** com status novos; **financeiro da Loja** (vendido/recebido/a receber/custo/lucro/comissões/fretes); **fornecedores** com produtos fornecidos; **compras inteligentes** (informa produto+qtd → identifica fornecedores → compara menor preço/preferencial → separa pedidos por fornecedor → PDF → status → recebimento parcial com estoque automático); **estoque** com alerta de reposição; **integração Clientes** ("Compras na Loja" no detalhe). Migrations 0039 e 0040 (status novos de orçamento/venda).
+
+---
+
 ## Onde entra o mapa
 
 Único uso real: **NORMAM-303 (obras)**, que exige as coordenadas Ponto A/B/C/D. Em vez de digitar lat/long, o usuário desenha a obra no mapa (MapLibre + terra-draw) e o sistema extrai as 4 coordenadas para o Memorial Descritivo. Secundariamente, um mapa das obras cadastradas. Fica atrás de um `MAP_STYLE_URL` no `.env` — trocar para tiles self-hosted depois é mudar uma variável.
