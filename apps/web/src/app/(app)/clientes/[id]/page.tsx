@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { eq, inArray, and, desc, isNull, asc, ilike } from "drizzle-orm";
-import { FileText, Mail, CircleDollarSign, CalendarClock, Ship, Download, Trash2, Eye, Landmark, FileStack, Plus, Receipt, ClipboardList, ShoppingBag, GraduationCap } from "lucide-react";
+import { FileText, Mail, CircleDollarSign, CalendarClock, Ship, Download, Trash2, Eye, Landmark, FileStack, Plus, Receipt, ClipboardList, ShoppingBag, GraduationCap, Store } from "lucide-react";
 import { db } from "@/db";
 import {
   clientes,
@@ -22,6 +22,7 @@ import {
   orcamentos,
   pendencias,
   lojaVendas,
+  lojaOrcamentos,
   alunos,
   matriculas,
   materias,
@@ -74,6 +75,18 @@ export default async function ClienteDetalhesPage({
 
   const [cliente] = await db.select().from(clientes).where(eq(clientes.id, id)).limit(1);
   if (!cliente) notFound();
+
+  // Compras na Loja (integração Loja × Clientes)
+  const lojaOrcamentosDoCliente = await db
+    .select({ id: lojaOrcamentos.id, numero: lojaOrcamentos.numero, valorTotal: lojaOrcamentos.valorTotal, status: lojaOrcamentos.status })
+    .from(lojaOrcamentos)
+    .where(eq(lojaOrcamentos.clienteId, id))
+    .orderBy(desc(lojaOrcamentos.criadoEm));
+  const lojaVendasDoCliente = await db
+    .select({ id: lojaVendas.id, valorTotal: lojaVendas.valorTotal, status: lojaVendas.status })
+    .from(lojaVendas)
+    .where(eq(lojaVendas.clienteId, id))
+    .orderBy(desc(lojaVendas.criadoEm));
 
   const gerarLinkCadastroComId = gerarLinkCadastro.bind(null, id);
   const gerarLinkEmbarcacaoComId = gerarLinkEmbarcacao.bind(null, id);
@@ -347,6 +360,39 @@ export default async function ClienteDetalhesPage({
           <div className="space-y-3">
             {atendimentosComPrazo.map((p) => (
               <AtendimentoCard key={p.id} processo={p} />
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Compras na Loja">
+        {lojaOrcamentosDoCliente.length === 0 && lojaVendasDoCliente.length === 0 ? (
+          <EmptyState icon={Store} title="Nenhuma compra na Loja ainda" />
+        ) : (
+          <div className="space-y-3">
+            {lojaOrcamentosDoCliente.map((o) => (
+              <Link
+                key={o.id}
+                href={`/loja/orcamentos/${o.id}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant px-4 py-3 hover:bg-surface-container-low"
+              >
+                <span className="text-body-md text-primary">
+                  Orçamento {o.numero} <span className="text-outline">· {formatMoney(o.valorTotal)}</span>
+                </span>
+                <Badge tone="info" size="sm">{o.status}</Badge>
+              </Link>
+            ))}
+            {lojaVendasDoCliente.map((v) => (
+              <Link
+                key={v.id}
+                href={`/loja/vendas/${v.id}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant px-4 py-3 hover:bg-surface-container-low"
+              >
+                <span className="text-body-md text-primary">
+                  Venda <span className="text-outline">· {formatMoney(v.valorTotal)}</span>
+                </span>
+                <Badge tone="success" size="sm">{v.status}</Badge>
+              </Link>
             ))}
           </div>
         )}
