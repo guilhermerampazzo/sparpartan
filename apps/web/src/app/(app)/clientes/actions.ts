@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { eq } from "drizzle-orm";
+import { eq, and, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
 import { clientes, embarcacoes, processos, orcamentos, obras, servicos, arquivos } from "@/db/schema";
+import { opcaoServicoValida, type OpcaoServicoNovoCliente } from "@/lib/novo-cliente-opcoes";
 import { registrarAuditoria } from "@/lib/audit";
 import { idUsuarioEquipe } from "@/lib/sessao";
 import { criarSolicitacao } from "@/lib/solicitacoes";
@@ -38,6 +39,73 @@ function uuidValido(valor: string | null): string | null {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(valor)
     ? valor
     : null;
+}
+
+/** Busca o serviço ativo por palavras-chave no nome (fallback: categoria). */
+async function buscarServicoPorNome(palavras: string[], categoria?: string) {
+  const condicoes = palavras.map((p) => ilike(servicos.nome, `%${p}%`));
+  const servico = await db
+    .select({ id: servicos.id, nome: servicos.nome })
+    .from(servicos)
+    .where(
+      and(
+        eq(servicos.ativo, true),
+        or(...condicoes),
+        categoria ? eq(servicos.categoria, categoria as never) : undefined
+      )
+    )
+    .limit(1);
+  return servico[0] ?? null;
+}
+
+/** Cria um processo (com pendências automáticas e auditoria) para o cliente. */
+async function criarProcessoComPendencias(clienteId: string, servicoId: string, embarcacaoId: string | null) {
+  const [processo] = await db
+    .insert(processos)
+    .values({
+      clienteId,
+      servicoId,
+      embarcacaoId,
+      criadoPorId: await idUsuarioEquipe(),
+    })
+    .returning({ id: processos.id });
+
+  await reclassificarProcesso(processo.id);
+  await registrarAuditoria("criar", "processo", processo.id, servicoId);
+
+  await criarPendencias([
+    {
+      descricao: "Conferir documentação do processo",
+      categoria: "processos",
+      prioridade: "media",
+      data: hojeMais(1),
+      clienteId,
+      processoId: processo.id,
+      origem: "auto",
+      criadoPorId: await idUsuarioEquipe(),
+    },
+    {
+      descricao: "Emitir anexos do processo",
+      categoria: "processos",
+      prioridade: "media",
+      data: hojeMais(1),
+      clienteId,
+      processoId: processo.id,
+      origem: "auto",
+      criadoPorId: await idUsuarioEquipe(),
+    },
+    {
+      descricao: "Protocolar processo",
+      categoria: "processos",
+      prioridade: "alta",
+      data: hojeMais(3),
+      clienteId,
+      processoId: processo.id,
+      origem: "auto",
+      criadoPorId: await idUsuarioEquipe(),
+    },
+  ]);
+  return processo.id;
 }
 
 /** Salva o documento anexado pelo OCR (CNH Digital etc.) na pasta de arquivos do cliente. */
@@ -105,6 +173,8 @@ export async function criarCliente(
       tipo: String(formData.get("tipo") ?? "pessoa_fisica") as "pessoa_fisica" | "pessoa_juridica",
       cpfCnpj,
       rg: String(formData.get("rg") ?? "") || null,
+      orgaoEmissor: String(formData.get("orgaoEmissor") ?? "") || null,
+      dataEmissaoRg: String(formData.get("dataEmissaoRg") ?? "") || null,
       dataNascimento: String(formData.get("dataNascimento") ?? "") || null,
       email: String(formData.get("email") ?? "") || null,
       telefone: String(formData.get("telefone") ?? "") || null,
@@ -117,6 +187,7 @@ export async function criarCliente(
       cidade: String(formData.get("cidade") ?? "") || null,
       uf: String(formData.get("uf") ?? "") || null,
       indicadoPor: String(formData.get("indicadoPor") ?? "") || null,
+      senhaDpem: String(formData.get("senhaDpem") ?? "") || null,
       observacoes: String(formData.get("observacoes") ?? "") || null,
       criadoPorId: await idUsuarioEquipe(),
     })
@@ -127,81 +198,55 @@ export async function criarCliente(
   // Documento anexado no OCR (CNH Digital etc.) vai direto para a pasta do cliente.
   await salvarDocumentoOcr(cliente.id, formData);
 
-  // Fluidez do cadastro: se o operador já informou a embarcação e/ou o serviço
-  // solicitado junto com o cliente, o sistema vincula tudo na hora.
-  let embarcacaoId: string | null = null;
-  const nomeEmbarcacao = opt(formData, "embarcacaoNome");
-  if (nomeEmbarcacao) {
-    const [embarcacao] = await db
-      .insert(embarcacoes)
-      .values({
-        clienteId: cliente.id,
-        nome: nomeEmbarcacao,
-        tipo: opt(formData, "embarcacaoTipo"),
-        numeroInscricao: opt(formData, "embarcacaoNumeroInscricao"),
-        classe:
-          (opt(formData, "embarcacaoClasse") as "esporte_recreio" | "comercial" | null) ?? "esporte_recreio",
-        criadoPorId: await idUsuarioEquipe(),
-      })
-      .returning({ id: embarcacoes.id });
-    embarcacaoId = embarcacao.id;
-    await registrarAuditoria("criar", "embarcacao", embarcacao.id, nomeEmbarcacao);
+  // Fluidez do cadastro: a opção de serviço selecionada cria os processos certos
+  // automaticamente, com os dados do cliente já preenchidos (sem digitar 2x).
+  const tipoServico = String(formData.get("tipoServico") ?? "") as OpcaoServicoNovoCliente | "";
+  if (!tipoServico || !opcaoServicoValida(tipoServico)) {
+    redirect("/clientes");
   }
 
-  const servicoId = uuidValido(opt(formData, "servicoSolicitadoId"));
-  if (servicoId) {
-    const [servico] = await db
-      .select({ categoria: servicos.categoria })
-      .from(servicos)
-      .where(eq(servicos.id, servicoId))
-      .limit(1);
-    if (servico) {
-      const [processo] = await db
-        .insert(processos)
+  let embarcacaoId: string | null = null;
+
+  // Embarcações (Esporte e Recreio / Comercial): cria a embarcação e o processo de inscrição.
+  if (tipoServico === "esporte_recreio" || tipoServico === "comercial") {
+    const nomeEmbarcacao = opt(formData, "embarcacaoNome");
+    if (nomeEmbarcacao) {
+      const [embarcacao] = await db
+        .insert(embarcacoes)
         .values({
           clienteId: cliente.id,
-          servicoId,
-          embarcacaoId,
+          nome: nomeEmbarcacao,
+          tipo: opt(formData, "embarcacaoTipo"),
+          numeroInscricao: opt(formData, "embarcacaoNumeroInscricao"),
+          classe: tipoServico === "comercial" ? "comercial" : "esporte_recreio",
           criadoPorId: await idUsuarioEquipe(),
         })
-        .returning({ id: processos.id });
+        .returning({ id: embarcacoes.id });
+      embarcacaoId = embarcacao.id;
+      await registrarAuditoria("criar", "embarcacao", embarcacao.id, nomeEmbarcacao);
+    }
 
-      await reclassificarProcesso(processo.id);
-      await registrarAuditoria("criar", "processo", processo.id, servicoId);
+    const servicoInscricao = await buscarServicoPorNome(["inscri", "embarca"]);
+    if (servicoInscricao) {
+      await criarProcessoComPendencias(cliente.id, servicoInscricao.id, embarcacaoId);
+    }
+  }
 
-      // A Central de Pendências conduz o trabalho gerado pelo novo atendimento.
-      await criarPendencias([
-        {
-          descricao: "Conferir documentação do processo",
-          categoria: "processos",
-          prioridade: "media",
-          data: hojeMais(1),
-          clienteId: cliente.id,
-          processoId: processo.id,
-          origem: "auto",
-          criadoPorId: await idUsuarioEquipe(),
-        },
-        {
-          descricao: "Emitir anexos do processo",
-          categoria: "processos",
-          prioridade: "media",
-          data: hojeMais(1),
-          clienteId: cliente.id,
-          processoId: processo.id,
-          origem: "auto",
-          criadoPorId: await idUsuarioEquipe(),
-        },
-        {
-          descricao: "Protocolar processo",
-          categoria: "processos",
-          prioridade: "alta",
-          data: hojeMais(3),
-          clienteId: cliente.id,
-          processoId: processo.id,
-          origem: "auto",
-          criadoPorId: await idUsuarioEquipe(),
-        },
-      ]);
+  // Escola Náutica: cria os processos de Arrais Amador e Motonauta automaticamente.
+  if (tipoServico === "escola") {
+    const arrais = await buscarServicoPorNome(["arrais"]);
+    const motonauta = await buscarServicoPorNome(["motonauta"]);
+    if (arrais) await criarProcessoComPendencias(cliente.id, arrais.id, null);
+    if (motonauta) await criarProcessoComPendencias(cliente.id, motonauta.id, null);
+    if (!arrais) await registrarAuditoria("criar", "cliente", cliente.id, "serviço Arrais Amador não encontrado no cadastro — processo não criado");
+    if (!motonauta) await registrarAuditoria("criar", "cliente", cliente.id, "serviço Motonauta não encontrado no cadastro — processo não criado");
+  }
+
+  // Obras: cria o processo do serviço de engenharia.
+  if (tipoServico === "obras") {
+    const servicoObra = await buscarServicoPorNome(["obra"]);
+    if (servicoObra) {
+      await criarProcessoComPendencias(cliente.id, servicoObra.id, null);
     }
   }
 
@@ -295,6 +340,8 @@ export async function atualizarCliente(
       tipo: String(formData.get("tipo") ?? "pessoa_fisica") as "pessoa_fisica" | "pessoa_juridica",
       cpfCnpj,
       rg: String(formData.get("rg") ?? "") || null,
+      orgaoEmissor: String(formData.get("orgaoEmissor") ?? "") || null,
+      dataEmissaoRg: String(formData.get("dataEmissaoRg") ?? "") || null,
       dataNascimento: String(formData.get("dataNascimento") ?? "") || null,
       email: String(formData.get("email") ?? "") || null,
       telefone: String(formData.get("telefone") ?? "") || null,
@@ -307,6 +354,7 @@ export async function atualizarCliente(
       cidade: String(formData.get("cidade") ?? "") || null,
       uf: String(formData.get("uf") ?? "") || null,
       indicadoPor: String(formData.get("indicadoPor") ?? "") || null,
+      senhaDpem: String(formData.get("senhaDpem") ?? "") || null,
       observacoes: String(formData.get("observacoes") ?? "") || null,
       atualizadoEm: new Date(),
     })
