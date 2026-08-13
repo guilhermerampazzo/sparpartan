@@ -134,3 +134,15 @@ export async function arquivarPendencia(pendenciaId: string) {
   revalidatePath("/pendencias");
   revalidatePath("/");
 }
+
+/** Restaura uma pendência arquivada para a lista ativa — evita perda acidental. */
+export async function restaurarPendencia(pendenciaId: string) {
+  await db
+    .update(pendencias)
+    .set({ status: "pendente", arquivadaEm: null, atualizadoEm: new Date() })
+    .where(eq(pendencias.id, pendenciaId));
+
+  await registrarAuditoria("atualizar", "pendencia", pendenciaId, "restaurada do arquivo");
+  revalidatePath("/pendencias");
+  revalidatePath("/");
+}
