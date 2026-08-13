@@ -1,5 +1,5 @@
 import { desc, eq, sql, and, lte, gte, isNotNull, inArray } from "drizzle-orm";
-import { Landmark, Download, Trash2, Eye, AlarmClockOff, CalendarClock, CircleCheckBig } from "lucide-react";
+import { Landmark, Trash2, Eye, AlarmClockOff, CalendarClock, CircleCheckBig } from "lucide-react";
 import { db } from "@/db";
 import { taxasPagar, clientes, processos, servicos } from "@/db/schema";
 import {
@@ -112,22 +112,14 @@ export default async function TaxasPage({
       header: "Boleto",
       cell: (t) =>
         t.arquivoCaminho ? (
-          <div className="flex items-center gap-3">
-            <a
-              href={`/api/taxas/${t.id}?inline=1`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
-            >
-              <Eye size={12} /> Abrir
-            </a>
-            <a
-              href={`/api/taxas/${t.id}`}
-              className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
-            >
-              <Download size={12} /> Baixar
-            </a>
-          </div>
+          <a
+            href={`/api/taxas/${t.id}?inline=1`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-body-sm text-primary hover:underline"
+          >
+            <Eye size={12} /> Abrir
+          </a>
         ) : (
           "—"
         ),

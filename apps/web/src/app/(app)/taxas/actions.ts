@@ -10,7 +10,21 @@ import { taxasPagar } from "@/db/schema";
 import { salvarArquivoLocal, uploadsDir } from "@/lib/storage";
 import { registrarAuditoria } from "@/lib/audit";
 import { idUsuarioEquipe } from "@/lib/sessao";
+import { reclassificarProcesso } from "@/lib/processos";
 import { Validador, valoresDoFormData, type EstadoForm } from "@/lib/validacao";
+
+/**
+ * Pagamento de taxa reflete no processo vinculado: recalcula a etapa do processo
+ * (documentos, pagamentos etc.) e registra em auditoria — sem quebrar o fluxo.
+ */
+async function refletirPagamentoNoProcesso(processoId: string) {
+  try {
+    await reclassificarProcesso(processoId);
+    await registrarAuditoria("atualizar", "processo", processoId, "pagamento de taxa refletido no processo");
+  } catch {
+    // reclassificação é otimista — nunca impede o pagamento de ser registrado
+  }
+}
 
 export async function criarTaxa(
   _estadoAnterior: EstadoForm,
@@ -35,6 +49,11 @@ export async function criarTaxa(
     }
   }
 
+  // Reconhecimento automático de pagamento: o documento (comprovante) indica quitação.
+  const documentoPago = formData.get("documentoPago") === "on";
+  const processoId = String(formData.get("processoId") ?? "").trim() || null;
+  const clienteId = String(formData.get("clienteId") ?? "").trim() || null;
+
   const [taxa] = await db
     .insert(taxasPagar)
     .values({
@@ -42,17 +61,24 @@ export async function criarTaxa(
       numero: String(formData.get("numero") ?? "").trim() || null,
       valor,
       vencimento: String(formData.get("vencimento") ?? "") || null,
-      clienteId: String(formData.get("clienteId") ?? "") || null,
-      processoId: String(formData.get("processoId") ?? "") || null,
+      clienteId,
+      processoId,
       arquivoCaminho,
       // Sem boleto anexado ainda não foi emitida — o indicador "Taxas para emissão"
       // da Central Operacional é alimentado automaticamente por esta regra.
-      status: arquivoCaminho ? "pendente" : "para_emissao",
+      status: documentoPago ? "pago" : arquivoCaminho ? "pendente" : "para_emissao",
+      pagoEm: documentoPago ? new Date() : null,
       criadoPorId: await idUsuarioEquipe(),
     })
     .returning({ id: taxasPagar.id });
 
   await registrarAuditoria("criar", "taxa_pagar", taxa.id, descricao);
+
+  // Taxa reconhecida como paga reflete no processo vinculado.
+  if (documentoPago && processoId) {
+    await refletirPagamentoNoProcesso(processoId);
+  }
+
   redirect("/taxas");
 }
 
@@ -75,7 +101,7 @@ export async function marcarTaxaComoEmitida(taxaId: string) {
 
 export async function marcarTaxaComoPaga(taxaId: string, formData: FormData) {
   const [taxa] = await db
-    .select({ clienteId: taxasPagar.clienteId })
+    .select({ clienteId: taxasPagar.clienteId, processoId: taxasPagar.processoId, status: taxasPagar.status })
     .from(taxasPagar)
     .where(eq(taxasPagar.id, taxaId))
     .limit(1);
@@ -90,6 +116,12 @@ export async function marcarTaxaComoPaga(taxaId: string, formData: FormData) {
     .where(eq(taxasPagar.id, taxaId));
 
   await registrarAuditoria("atualizar", "taxa_pagar", taxaId, "marcada como paga");
+
+  // Reflexo automático: taxa paga atualiza o processo vinculado.
+  if (taxa?.processoId && taxa.status !== "pago") {
+    await refletirPagamentoNoProcesso(taxa.processoId);
+  }
+
   revalidatePath("/taxas");
   if (taxa?.clienteId) revalidatePath(`/clientes/${taxa.clienteId}`);
   revalidatePath("/agenda");

@@ -12,6 +12,8 @@ export type CamposExtraidosTaxa = {
   validade?: string;
   servicoNome?: string;
   valor?: string;
+  /** Indícios de que o documento já foi pago (comprovante/quitação). */
+  paga?: boolean;
 };
 
 import { cpfValido, cnpjValido } from "../validacao";
@@ -134,6 +136,13 @@ function extrairValor(texto: string): string | undefined {
   return fallback?.[1];
 }
 
+/** Comprovantes costumam carimbar/imprimir a quitação — evita confundir com o boleto. */
+function extrairPaga(texto: string): boolean {
+  return /(?:COMPROVANTE\s*(?:DE\s*)?(?:PAGAMENTO|PAGTO)|PAGAMENTO\s*(?:REALIZADO|EFETUADO|CONFIRMADO)|TAXA\s*PAGA|GUIA\s*PAGA|QUITAD[OA]|PAGO\s*(?:EM|NO|R\$)|PAGAMENTO\s*OK)/i.test(
+    texto
+  );
+}
+
 export function extrairCamposTaxa(textoOcr: string): CamposExtraidosTaxa {
   const texto = normalizar(textoOcr);
 
@@ -144,5 +153,6 @@ export function extrairCamposTaxa(textoOcr: string): CamposExtraidosTaxa {
     validade: extrairValidade(texto),
     servicoNome: extrairServicoNome(texto),
     valor: extrairValor(texto),
+    paga: extrairPaga(texto),
   };
 }

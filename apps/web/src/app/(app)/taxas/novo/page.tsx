@@ -13,6 +13,7 @@ export default async function NovaTaxaPage() {
   const processosRaw = await db
     .select({
       id: processos.id,
+      clienteId: processos.clienteId,
       clienteNome: clientes.nome,
       servicoNome: servicos.nome,
     })
@@ -23,6 +24,7 @@ export default async function NovaTaxaPage() {
 
   const listaProcessos = processosRaw.map((p) => ({
     id: p.id,
+    clienteId: p.clienteId,
     label: `${p.clienteNome} — ${p.servicoNome}`,
   }));
 
