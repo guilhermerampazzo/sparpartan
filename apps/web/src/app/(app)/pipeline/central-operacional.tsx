@@ -199,15 +199,15 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
     db.select({ n: count() }).from(agendaEventos).where(and(eq(agendaEventos.tipo, "prova"), eq(agendaEventos.status, "pendente"), gte(agendaEventos.dataHora, hoje))),
     db.select({ n: count() }).from(turmas).where(eq(turmas.status, "aberta")),
     db.select({ n: count() }).from(certificados).where(eq(certificados.status, "para_emitir")),
-    db.select({ n: count() }).from(lojaOrcamentos).where(eq(lojaOrcamentos.status, "pendente")),
-    db.select({ n: count() }).from(lojaVendas).where(eq(lojaVendas.status, "em_andamento")),
-    db.select({ n: count() }).from(lojaVendas).where(eq(lojaVendas.status, "concluida")),
+    db.select({ n: count() }).from(lojaOrcamentos).where(inArray(lojaOrcamentos.status, ["rascunho", "enviado", "aguardando_aprovacao"] as const)),
+    db.select({ n: count() }).from(lojaVendas).where(inArray(lojaVendas.status, ["aprovada", "aguardando_pagamento", "pagamento_parcial", "preparando_entrega"] as const)),
+    db.select({ n: count() }).from(lojaVendas).where(inArray(lojaVendas.status, ["pago", "entregue"] as const)),
     db
       .select({ n: sql<number>`coalesce(sum(${lojaVendaItens.quantidade}), 0)::int` })
       .from(lojaVendaItens)
       .innerJoin(lojaVendas, eq(lojaVendaItens.vendaId, lojaVendas.id))
-      .where(eq(lojaVendas.status, "em_andamento")),
-    db.select({ n: count() }).from(lojaEntregas).where(eq(lojaEntregas.status, "pendente")),
+      .where(inArray(lojaVendas.status, ["aprovada", "aguardando_pagamento", "pagamento_parcial", "preparando_entrega"] as const)),
+    db.select({ n: count() }).from(lojaEntregas).where(inArray(lojaEntregas.status, ["aguardando", "preparando", "em_transporte"] as const)),
     db.select({ n: count() }).from(pendencias).where(p(and(eq(pendencias.status, "pendente"), eq(pendencias.data, hojeStr), respPendencia))),
     db.select({ n: count() }).from(pendencias).where(p(and(eq(pendencias.status, "pendente"), lt(pendencias.data, hojeStr), respPendencia))),
     db.select({ n: count() }).from(pendencias).where(p(and(eq(pendencias.status, "pendente"), gte(pendencias.data, hojeStr), lte(pendencias.data, semanaStr), respPendencia))),
@@ -287,10 +287,10 @@ export async function CentralOperacional({ responsavelId }: { responsavelId?: st
       titulo: "Loja",
       icone: Store,
       indicadores: [
-        { rotulo: "Orçamentos", valor: n(lojaOrcamentosPendentes), href: "/loja/orcamentos", tone: "warning" },
-        { rotulo: "Pedidos", valor: n(lojaVendasAndamento), href: "/loja/vendas", tone: "info" },
+        { rotulo: "Orçamentos em aberto", valor: n(lojaOrcamentosPendentes), href: "/loja/orcamentos", tone: "warning" },
+        { rotulo: "Vendas em andamento", valor: n(lojaVendasAndamento), href: "/loja/vendas", tone: "info" },
         { rotulo: "Produtos reservados", valor: n(lojaProdutosReservados), href: "/loja/vendas", tone: "warning" },
-        { rotulo: "Entregas", valor: n(lojaEntregasPendentes), href: "/loja/entregas", tone: "warning" },
+        { rotulo: "Entregas em andamento", valor: n(lojaEntregasPendentes), href: "/loja/entregas", tone: "warning" },
         { rotulo: "Vendas finalizadas", valor: n(lojaVendasFinalizadas), href: "/loja/vendas", tone: "success" },
       ],
     },
@@ -354,7 +354,7 @@ async function ResumoDoDia({
       db
         .select({ n: count() })
         .from(lojaEntregas)
-        .where(and(eq(lojaEntregas.status, "pendente"), isNotNull(lojaEntregas.dataPrevista), lte(lojaEntregas.dataPrevista, semanaStr))),
+        .where(and(inArray(lojaEntregas.status, ["aguardando", "preparando", "em_transporte"] as const), isNotNull(lojaEntregas.dataPrevista), lte(lojaEntregas.dataPrevista, semanaStr))),
       db
         .select({ n: count() })
         .from(agendaEventos)
