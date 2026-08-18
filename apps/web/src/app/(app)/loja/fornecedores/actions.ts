@@ -1,10 +1,10 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { lojaFornecedores, lojaProdutoFornecedores } from "@/db/schema";
+import { lojaCompras, lojaCompraItens, lojaFornecedores, lojaProdutos, lojaProdutoFornecedores } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
 
 function opt(formData: FormData, key: string) {
@@ -88,4 +88,99 @@ export async function removerProdutoFornecedor(fornecedorId: string, vinculoId: 
   await db.delete(lojaProdutoFornecedores).where(eq(lojaProdutoFornecedores.id, vinculoId));
   await registrarAuditoria("excluir", "loja_produto_fornecedor", vinculoId, "vínculo removido");
   revalidatePath(`/loja/fornecedores/${fornecedorId}`);
+}
+
+export type HistoricoComprasFornecedor = {
+  pedidos: Array<{
+    id: string;
+    numero: string;
+    criadoEm: string;
+    status: string;
+    totalItens: number;
+    totalValor: string;
+  }>;
+  resumoPorProduto: Array<{
+    produtoId: string;
+    descricao: string;
+    quantidadeTotal: number;
+    ultimoPreco: string;
+    ultimaData: string;
+    quantidadePendente: number;
+  }>;
+  totais: {
+    pedidosRealizados: number;
+    pedidosPendentes: number;
+    valorTotalCompras: string;
+  };
+};
+
+/** Histórico de compras (pedidos de compra) de um fornecedor. */
+export async function buscarHistoricoComprasFornecedor(fornecedorId: string): Promise<HistoricoComprasFornecedor> {
+  const pedidos = await db
+    .select({
+      id: lojaCompras.id,
+      numero: lojaCompras.numero,
+      criadoEm: lojaCompras.criadoEm,
+      status: lojaCompras.status,
+    })
+    .from(lojaCompras)
+    .where(eq(lojaCompras.fornecedorId, fornecedorId))
+    .orderBy(desc(lojaCompras.criadoEm));
+
+  const comprasIds = pedidos.map((p) => p.id);
+
+  const agregadosPorCompra = comprasIds.length
+    ? await db
+        .select({
+          compraId: lojaCompraItens.compraId,
+          totalItens: sql<number>`count(*)::int`,
+          totalValor: sql<string>`coalesce(sum(${lojaCompraItens.precoUnitario} * ${lojaCompraItens.quantidade}), 0)`,
+        })
+        .from(lojaCompraItens)
+        .where(inArray(lojaCompraItens.compraId, comprasIds))
+        .groupBy(lojaCompraItens.compraId)
+    : [];
+  const porCompra = new Map(agregadosPorCompra.map((a) => [a.compraId, a]));
+
+  const resumoPorProduto = await db
+    .select({
+      produtoId: lojaCompraItens.produtoId,
+      descricao: lojaProdutos.nome,
+      quantidadeTotal: sql<number>`sum(${lojaCompraItens.quantidade})::int`,
+      ultimoPreco: sql<string>`(array_agg(${lojaCompraItens.precoUnitario} order by ${lojaCompras.criadoEm} desc))[1]`,
+      ultimaData: sql<Date>`max(${lojaCompras.criadoEm})`,
+      quantidadePendente: sql<number>`sum(${lojaCompraItens.quantidade} - ${lojaCompraItens.quantidadeRecebida})::int`,
+    })
+    .from(lojaCompraItens)
+    .innerJoin(lojaCompras, eq(lojaCompraItens.compraId, lojaCompras.id))
+    .innerJoin(lojaProdutos, eq(lojaCompraItens.produtoId, lojaProdutos.id))
+    .where(eq(lojaCompras.fornecedorId, fornecedorId))
+    .groupBy(lojaCompraItens.produtoId, lojaProdutos.nome)
+    .orderBy(lojaProdutos.nome);
+
+  const statusFinalizados = ["finalizado", "cancelado"];
+
+  return {
+    pedidos: pedidos.map((p) => ({
+      id: p.id,
+      numero: p.numero,
+      criadoEm: (p.criadoEm instanceof Date ? p.criadoEm : new Date(p.criadoEm)).toISOString(),
+      status: p.status,
+      totalItens: porCompra.get(p.id)?.totalItens ?? 0,
+      totalValor: porCompra.get(p.id)?.totalValor ?? "0",
+    })),
+    resumoPorProduto: resumoPorProduto.map((r) => ({
+      produtoId: r.produtoId,
+      descricao: r.descricao,
+      quantidadeTotal: r.quantidadeTotal,
+      ultimoPreco: r.ultimoPreco ?? "0",
+      ultimaData: r.ultimaData ? (r.ultimaData instanceof Date ? r.ultimaData : new Date(r.ultimaData)).toISOString() : "",
+      quantidadePendente: r.quantidadePendente,
+    })),
+    totais: {
+      pedidosRealizados: pedidos.length,
+      pedidosPendentes: pedidos.filter((p) => !statusFinalizados.includes(p.status)).length,
+      valorTotalCompras: agregadosPorCompra.reduce((acc, a) => acc + Number(a.totalValor), 0).toFixed(2),
+    },
+  };
 }

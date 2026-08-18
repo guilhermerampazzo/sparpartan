@@ -1,13 +1,13 @@
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Mail, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { lojaCompras, lojaCompraItens, lojaFornecedores, lojaProdutos } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
 import { Badge, Button, ConfirmButton, LinkButton, BackButton } from "@/components/ui";
 import { infoStatusCompra, formatarMoeda } from "@/lib/loja";
 import { formatarDataBR } from "@/lib/datas";
-import { avancarStatusCompra, registrarRecebimentoCompra, excluirCompra } from "../actions";
+import { avancarStatusCompra, registrarRecebimentoCompra, excluirCompra, enviarPedidoCompraEmail } from "../actions";
 
 const PROXIMOS: Record<string, string[]> = {
   rascunho: ["aguardando_envio"],
@@ -60,6 +60,11 @@ export default async function CompraDetalhePage({ params }: { params: Promise<{ 
           <LinkButton href={`/api/loja/compras/${id}/pdf`} variant="outlined" size="sm">
             PDF do Pedido
           </LinkButton>
+          <form action={enviarPedidoCompraEmail.bind(null, id)}>
+            <Button type="submit" variant="outlined" size="sm" icon={Mail}>
+              Enviar por e-mail
+            </Button>
+          </form>
           {avancos.map((proximo) => (
             <form key={proximo} action={avancarStatusCompra.bind(null, id)}>
               <input type="hidden" name="proximo" value={proximo} />

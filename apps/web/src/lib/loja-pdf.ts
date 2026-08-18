@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { lojaOrcamentos, lojaOrcamentoItens, lojaProdutos, lojaProdutoFotos, clientes, usuarios } from "@/db/schema";
+import { lojaOrcamentos, lojaOrcamentoItens, lojaProdutos, lojaProdutoFotos, clientes, usuarios, lojaCompras, lojaCompraItens, lojaFornecedores } from "@/db/schema";
 import { uploadsDir } from "@/lib/storage";
 import { formatarDataBR } from "@/lib/datas";
 
@@ -138,11 +138,8 @@ async function readArquivo(caminho: string): Promise<Buffer | null> {
   }
 }
 
-/** PDF do pedido de compra — logo Sparapan, fornecedor, itens, condições. */
-export async function gerarPdfPedidoCompra(compraId: string): Promise<{ pdfCaminho: string }> {
-  const { lojaCompras, lojaCompraItens, lojaFornecedores, lojaProdutos } = await import("@/db/schema");
-  const { eq } = await import("drizzle-orm");
-
+/** Gera o HTML do pedido de compra (reutilizado no PDF e no e-mail ao fornecedor). */
+export async function gerarHtmlPedidoCompra(compraId: string): Promise<string> {
   const [compra] = await db.select().from(lojaCompras).where(eq(lojaCompras.id, compraId)).limit(1);
   if (!compra) throw new Error("Pedido não encontrado");
   const [fornecedor] = await db.select().from(lojaFornecedores).where(eq(lojaFornecedores.id, compra.fornecedorId)).limit(1);
@@ -157,6 +154,21 @@ export async function gerarPdfPedidoCompra(compraId: string): Promise<{ pdfCamin
     .innerJoin(lojaProdutos, eq(lojaCompraItens.produtoId, lojaProdutos.id))
     .where(eq(lojaCompraItens.compraId, compraId));
 
+  return montarHtmlPedidoCompra(compra, fornecedor, itens);
+}
+
+function montarHtmlPedidoCompra(
+  compra: { numero: string; observacoes: string | null },
+  fornecedor: {
+    razaoSocial: string | null;
+    nomeFantasia: string | null;
+    cnpj: string | null;
+    endereco: string | null;
+    cidade: string | null;
+    condicoesPagamento: string | null;
+  } | undefined,
+  itens: { quantidade: number; precoUnitario: string; produtoNome: string }[]
+): string {
   const linhas = itens
     .map((item) => {
       const preco = Number(item.precoUnitario).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -167,7 +179,7 @@ export async function gerarPdfPedidoCompra(compraId: string): Promise<{ pdfCamin
 
   const totalGeral = itens.reduce((acc, i) => acc + i.quantidade * Number(i.precoUnitario), 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const html = `<!doctype html>
+  return `<!doctype html>
 <html><head><meta charset="utf-8" />
 <style>
   @page { size: A4; margin: 0; }
@@ -202,6 +214,13 @@ export async function gerarPdfPedidoCompra(compraId: string): Promise<{ pdfCamin
   ${compra.observacoes ? `<p style="font-size:10px"><strong>Observações:</strong> ${compra.observacoes}</p>` : ""}
   <div class="rodape">Sparapan Solução Naval — pedido gerado pelo sistema</div>
 </body></html>`;
+}
+
+/** PDF do pedido de compra — logo Sparapan, fornecedor, itens, condições. */
+export async function gerarPdfPedidoCompra(compraId: string): Promise<{ pdfCaminho: string }> {
+  const html = await gerarHtmlPedidoCompra(compraId);
+  const [compra] = await db.select({ numero: lojaCompras.numero }).from(lojaCompras).where(eq(lojaCompras.id, compraId)).limit(1);
+  if (!compra) throw new Error("Pedido não encontrado");
 
   const gotenbergUrl = process.env.GOTENBERG_URL ?? "http://gotenberg:3000";
   const form = new FormData();

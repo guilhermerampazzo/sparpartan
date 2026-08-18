@@ -1,12 +1,14 @@
 import { asc, eq } from "drizzle-orm";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Trash2, Pencil, Plus } from "lucide-react";
 import { db } from "@/db";
 import { lojaFornecedores, lojaProdutoFornecedores, lojaProdutos } from "@/db/schema";
 import { SectionCard } from "@/components/ui/form-field";
 import { Badge, Button, ConfirmButton, LinkButton, BackButton } from "@/components/ui";
-import { formatarMoeda } from "@/lib/loja";
-import { adicionarProdutoFornecedor, removerProdutoFornecedor, excluirFornecedor } from "../actions";
+import { infoStatusCompra, formatarMoeda } from "@/lib/loja";
+import { dataIsoParaBR } from "@/lib/datas";
+import { adicionarProdutoFornecedor, removerProdutoFornecedor, excluirFornecedor, buscarHistoricoComprasFornecedor } from "../actions";
 
 export default async function FornecedorDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,6 +36,8 @@ export default async function FornecedorDetalhePage({ params }: { params: Promis
     .from(lojaProdutos)
     .where(eq(lojaProdutos.ativo, true))
     .orderBy(asc(lojaProdutos.nome));
+
+  const historico = await buscarHistoricoComprasFornecedor(id);
 
   return (
     <div className="space-y-gutter">
@@ -115,6 +119,75 @@ export default async function FornecedorDetalhePage({ params }: { params: Promis
               ))}
             </tbody>
           </table>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Histórico de compras">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Badge tone="success" size="sm">{historico.totais.pedidosRealizados} pedidos realizados</Badge>
+          <Badge tone="warning" size="sm">{historico.totais.pedidosPendentes} pendentes</Badge>
+          <Badge tone="info" size="sm">Total comprado: {formatarMoeda(historico.totais.valorTotalCompras)}</Badge>
+        </div>
+
+        <h3 className="mb-2 font-display text-title-sm font-semibold text-primary">Pedidos</h3>
+        {historico.pedidos.length === 0 ? (
+          <p className="text-body-sm text-outline">Nenhuma compra registrada ainda.</p>
+        ) : (
+          <table className="w-full text-left text-body-md">
+            <thead>
+              <tr className="border-b border-outline-variant font-mono-caps text-label-sm uppercase tracking-wide text-outline">
+                <th className="px-2 py-2">Pedido</th>
+                <th className="px-2 py-2">Data</th>
+                <th className="px-2 py-2">Itens</th>
+                <th className="px-2 py-2">Total</th>
+                <th className="px-2 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historico.pedidos.map((pedido) => {
+                const status = infoStatusCompra(pedido.status);
+                return (
+                  <tr key={pedido.id} className="border-b border-outline-variant last:border-0">
+                    <td className="px-2 py-2"><Link href={`/loja/compras/${pedido.id}`} className="font-medium text-primary hover:underline">{pedido.numero}</Link></td>
+                    <td className="px-2 py-2">{dataIsoParaBR(pedido.criadoEm)}</td>
+                    <td className="px-2 py-2">{pedido.totalItens}</td>
+                    <td className="px-2 py-2">{formatarMoeda(pedido.totalValor)}</td>
+                    <td className="px-2 py-2"><Badge tone={status.tone} size="sm">{status.label}</Badge></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+
+        {historico.resumoPorProduto.length > 0 && (
+          <>
+            <h3 className="mb-2 mt-5 font-display text-title-sm font-semibold text-primary">Resumo por produto</h3>
+            <table className="w-full text-left text-body-md">
+              <thead>
+                <tr className="border-b border-outline-variant font-mono-caps text-label-sm uppercase tracking-wide text-outline">
+                  <th className="px-2 py-2">Produto</th>
+                  <th className="px-2 py-2">Quantidade total</th>
+                  <th className="px-2 py-2">Último preço</th>
+                  <th className="px-2 py-2">Última compra</th>
+                  <th className="px-2 py-2">Pendente</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historico.resumoPorProduto.map((produto) => (
+                  <tr key={produto.produtoId} className="border-b border-outline-variant last:border-0">
+                    <td className="px-2 py-2">{produto.descricao}</td>
+                    <td className="px-2 py-2">{produto.quantidadeTotal}</td>
+                    <td className="px-2 py-2">{formatarMoeda(produto.ultimoPreco)}</td>
+                    <td className="px-2 py-2">{dataIsoParaBR(produto.ultimaData)}</td>
+                    <td className="px-2 py-2">
+                      {produto.quantidadePendente > 0 ? <Badge tone="warning" size="sm">⚠️ {produto.quantidadePendente}</Badge> : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </SectionCard>
     </div>

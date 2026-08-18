@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { lojaCompras, lojaCompraItens, lojaProdutos, lojaProdutoFornecedores, lojaFornecedores } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
+import { enviarEmail } from "@/lib/mail/adapter";
+import { gerarHtmlPedidoCompra } from "@/lib/loja-pdf";
 import { idUsuarioEquipe } from "@/lib/sessao";
 
 async function proximoNumeroCompra(): Promise<string> {
@@ -156,4 +158,29 @@ export async function excluirCompra(compraId: string) {
   await db.delete(lojaCompras).where(eq(lojaCompras.id, compraId));
   await registrarAuditoria("excluir", "loja_compra", compraId, "compra excluída");
   redirect("/loja/compras");
+}
+
+/** Envia o pedido de compra por e-mail ao fornecedor (com o HTML do pedido). */
+export async function enviarPedidoCompraEmail(compraId: string) {
+  const [compra] = await db.select().from(lojaCompras).where(eq(lojaCompras.id, compraId)).limit(1);
+  if (!compra) throw new Error("Pedido de compra não encontrado");
+
+  const [fornecedor] = await db.select().from(lojaFornecedores).where(eq(lojaFornecedores.id, compra.fornecedorId)).limit(1);
+  if (!fornecedor?.email) throw new Error("Fornecedor sem e-mail cadastrado");
+
+  const html = await gerarHtmlPedidoCompra(compraId);
+
+  try {
+    await enviarEmail({
+      to: fornecedor.email,
+      subject: `Pedido de Compra ${compra.numero} — Sparapan`,
+      html,
+    });
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : "Falha ao enviar e-mail do pedido de compra");
+  }
+
+  await registrarAuditoria("enviar", "loja_compra", compraId, `pedido enviado por e-mail para ${fornecedor.email}`);
+  revalidatePath("/loja/compras");
+  revalidatePath(`/loja/compras/${compraId}`);
 }
