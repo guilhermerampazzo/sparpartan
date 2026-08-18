@@ -1,0 +1,1 @@
+ALTER TYPE "public"."audit_acao" ADD VALUE 'enviar';

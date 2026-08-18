@@ -5,7 +5,12 @@ export function formatarDataBR(
   opcoes: { comHora?: boolean; curto?: boolean } = {}
 ): string {
   if (!data) return "—";
-  const d = data instanceof Date ? data : new Date(`${data}T00:00:00`);
+  const d =
+    data instanceof Date
+      ? data
+      : String(data).includes("T")
+        ? new Date(data)
+        : new Date(`${data}T00:00:00`);
   if (Number.isNaN(d.getTime())) return "—";
 
   const formato: Intl.DateTimeFormatOptions = opcoes.curto
