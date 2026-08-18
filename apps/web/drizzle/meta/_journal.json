@@ -288,6 +288,20 @@
       "when": 1786644131439,
       "tag": "0040_loja-status-novos",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1787023172710,
+      "tag": "0041_entrega-completa",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1787024051997,
+      "tag": "0042_audit-enviar",
+      "breakpoints": true
     }
   ]
 }

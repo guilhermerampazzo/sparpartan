@@ -91,6 +91,7 @@ export const auditAcao = pgEnum("audit_acao", [
   "arquivar",
   "alterar_status",
   "login",
+  "enviar",
 ]);
 export const assinaturaStatus = pgEnum("assinatura_status", ["pendente", "assinado", "expirado"]);
 export const solicitacaoTipo = pgEnum("solicitacao_tipo", [
@@ -1330,7 +1331,29 @@ export const lojaEntregas = pgTable("loja_entregas", {
   responsavel: text("responsavel"),
   dataPrevista: date("data_prevista"),
   status: text("status").notNull().default("pendente"),
+  endereco: text("endereco"),
+  transportadora: text("transportadora"),
+  dataRealizada: date("data_realizada"),
+  frete: numeric("frete").notNull().default("0"),
+  pedagio: numeric("pedagio").notNull().default("0"),
+  outrosCustos: numeric("outros_custos").notNull().default("0"),
+  observacoes: text("observacoes"),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  atualizadoPorId: uuid("atualizado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
+  atualizadoEm: timestamp("atualizado_em"),
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
+});
+
+export const lojaEntregaDocumentos = pgTable("loja_entrega_documentos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  entregaId: uuid("entrega_id")
+    .notNull()
+    .references(() => lojaEntregas.id, { onDelete: "cascade" }),
+  tipo: text("tipo").notNull(),
+  nomeOriginal: text("nome_original").notNull(),
+  caminho: text("caminho").notNull(),
+  criadoEm: timestamp("criado_em").notNull().defaultNow(),
+  criadoPorId: uuid("criado_por_id").references(() => usuarios.id, { onDelete: "set null" }),
 });
 
 export const lojaFabricantes = pgTable("loja_fabricantes", {

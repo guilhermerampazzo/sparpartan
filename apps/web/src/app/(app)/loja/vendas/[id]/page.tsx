@@ -14,8 +14,8 @@ import {
   lojaOrcamentos,
 } from "@/db/schema";
 import { SectionCard, CampoSelect, Campo } from "@/components/ui/form-field";
-import { Badge, Button, BackButton, CampoMoeda } from "@/components/ui";
-import { infoStatusVenda, formatarMoeda, LOJA_VENDA_STATUS } from "@/lib/loja";
+import { Badge, Button, BackButton, CampoMoeda, SubmitButton } from "@/components/ui";
+import { infoStatusVenda, formatarMoeda, LOJA_VENDA_STATUS, LOJA_ENTREGA_STATUS, infoStatusEntrega } from "@/lib/loja";
 import {
   atualizarStatusVenda,
   atualizarFinanceiroVenda,
@@ -23,6 +23,7 @@ import {
   adicionarChecklistVenda,
   enviarDocumentoVenda,
   criarOuAtualizarEntregaVenda,
+  avancarStatusEntrega,
 } from "../actions";
 import { VendaTabs } from "./tabs";
 import { ChecklistToggle } from "./checklist-toggle";
@@ -73,6 +74,7 @@ export default async function VendaLojaDetalhesPage({
   const adicionarChecklistComId = adicionarChecklistVenda.bind(null, id);
   const enviarDocumentoComId = enviarDocumentoVenda.bind(null, id);
   const salvarEntregaComId = criarOuAtualizarEntregaVenda.bind(null, id);
+  const avancarEntregaComId = entrega ? avancarStatusEntrega.bind(null, entrega.id) : null;
 
   const resumo = (
     <div className="space-y-gutter">
@@ -118,25 +120,43 @@ export default async function VendaLojaDetalhesPage({
 
       <SectionCard title="Entrega">
         <form action={salvarEntregaComId} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+          <div className="sm:col-span-2">
+            <Campo label="Endereço" name="endereco" defaultValue={entrega?.endereco ?? ""} />
+          </div>
           <Campo label="Cidade" name="cidade" defaultValue={entrega?.cidade ?? ""} />
           <Campo label="Responsável" name="responsavel" defaultValue={entrega?.responsavel ?? ""} />
           <Campo label="Data Prevista" name="dataPrevista" type="date" defaultValue={entrega?.dataPrevista ?? ""} />
+          <Campo label="Transportadora" name="transportadora" defaultValue={entrega?.transportadora ?? ""} />
+          <Campo label="Data Realizada" name="dataRealizada" type="date" defaultValue={entrega?.dataRealizada ?? ""} />
+          <CampoMoeda label="Frete" name="frete" defaultValue={entrega?.frete ?? "0"} />
+          <CampoMoeda label="Pedágio" name="pedagio" defaultValue={entrega?.pedagio ?? "0"} />
+          <CampoMoeda label="Outros custos" name="outrosCustos" defaultValue={entrega?.outrosCustos ?? "0"} />
           <CampoSelect
             label="Status"
             name="status"
-            defaultValue={entrega?.status ?? "pendente"}
-            options={[
-              { value: "pendente", label: "Pendente" },
-              { value: "em_transito", label: "Em Trânsito" },
-              { value: "entregue", label: "Entregue" },
-            ]}
+            defaultValue={entrega?.status ?? "aguardando"}
+            options={LOJA_ENTREGA_STATUS.map((s) => ({ value: s.value, label: s.label }))}
           />
+          <div className="sm:col-span-4">
+            <Campo label="Observações" name="observacoes" defaultValue={entrega?.observacoes ?? ""} />
+          </div>
           <div className="sm:col-span-4">
             <Button type="submit" variant="outlined" size="sm">
               Salvar Entrega
             </Button>
           </div>
         </form>
+        {entrega && avancarEntregaComId && (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {(() => {
+              const status = infoStatusEntrega(entrega.status);
+              return <Badge tone={status.tone} size="sm">{status.label}</Badge>;
+            })()}
+            <form action={avancarEntregaComId}>
+              <SubmitButton variant="tonal" size="sm">Avançar status →</SubmitButton>
+            </form>
+          </div>
+        )}
       </SectionCard>
     </div>
   );

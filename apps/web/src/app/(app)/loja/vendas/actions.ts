@@ -12,9 +12,25 @@ import {
   lojaVendaChecklistItens,
   lojaVendaDocumentos,
   lojaEntregas,
+  lojaEntregaDocumentos,
 } from "@/db/schema";
 import { registrarAuditoria } from "@/lib/audit";
+import { idUsuarioEquipe } from "@/lib/sessao";
 import { validarArquivo } from "@/lib/upload";
+
+const ORDEM_STATUS_ENTREGA = ["aguardando", "preparando", "em_transporte", "entregue"] as const;
+type StatusEntrega = (typeof ORDEM_STATUS_ENTREGA)[number];
+
+function normalizarStatusEntrega(status: string): StatusEntrega {
+  const mapeado: Record<string, StatusEntrega> = {
+    pendente: "aguardando",
+    em_transito: "em_transporte",
+  };
+  const valor = mapeado[status] ?? status;
+  return (ORDEM_STATUS_ENTREGA as readonly string[]).includes(valor)
+    ? (valor as StatusEntrega)
+    : "aguardando";
+}
 
 function uploadsDir() {
   return process.env.UPLOADS_DIR ?? "./data/uploads";
@@ -96,22 +112,112 @@ export async function criarOuAtualizarEntregaVenda(vendaId: string, formData: Fo
   const cidade = String(formData.get("cidade") ?? "").trim() || null;
   const responsavel = String(formData.get("responsavel") ?? "").trim() || null;
   const dataPrevista = String(formData.get("dataPrevista") ?? "").trim() || null;
-  const status = String(formData.get("status") ?? "pendente");
+  const status = normalizarStatusEntrega(String(formData.get("status") ?? "aguardando"));
+  const endereco = String(formData.get("endereco") ?? "").trim() || null;
+  const transportadora = String(formData.get("transportadora") ?? "").trim() || null;
+  const dataRealizada = String(formData.get("dataRealizada") ?? "").trim() || null;
+  const frete = String(formData.get("frete") ?? "0").trim() || "0";
+  const pedagio = String(formData.get("pedagio") ?? "0").trim() || "0";
+  const outrosCustos = String(formData.get("outrosCustos") ?? "0").trim() || "0";
+  const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+  const usuarioId = await idUsuarioEquipe();
 
   const [existente] = await db.select().from(lojaEntregas).where(eq(lojaEntregas.vendaId, vendaId)).limit(1);
   if (existente) {
     await db
       .update(lojaEntregas)
-      .set({ cidade, responsavel, dataPrevista, status })
+      .set({
+        cidade,
+        responsavel,
+        dataPrevista,
+        status,
+        endereco,
+        transportadora,
+        dataRealizada,
+        frete,
+        pedagio,
+        outrosCustos,
+        observacoes,
+        atualizadoPorId: usuarioId,
+        atualizadoEm: new Date(),
+      })
       .where(eq(lojaEntregas.id, existente.id));
     await registrarAuditoria("atualizar", "loja_entrega", existente.id, `venda ${vendaId} — ${status}`);
   } else {
     const [entrega] = await db
       .insert(lojaEntregas)
-      .values({ vendaId, cidade, responsavel, dataPrevista, status })
+      .values({
+        vendaId,
+        cidade,
+        responsavel,
+        dataPrevista,
+        status,
+        endereco,
+        transportadora,
+        dataRealizada,
+        frete,
+        pedagio,
+        outrosCustos,
+        observacoes,
+        criadoPorId: usuarioId,
+        atualizadoPorId: usuarioId,
+        atualizadoEm: new Date(),
+      })
       .returning({ id: lojaEntregas.id });
     await registrarAuditoria("criar", "loja_entrega", entrega.id, `venda ${vendaId} — ${status}`);
   }
   revalidatePath(`/loja/vendas/${vendaId}`);
+  revalidatePath("/loja/entregas");
+}
+
+export async function avancarStatusEntrega(entregaId: string) {
+  const [entrega] = await db.select().from(lojaEntregas).where(eq(lojaEntregas.id, entregaId)).limit(1);
+  if (!entrega) throw new Error("Entrega não encontrada.");
+
+  const indiceAtual = ORDEM_STATUS_ENTREGA.indexOf(normalizarStatusEntrega(entrega.status));
+  const proximo = ORDEM_STATUS_ENTREGA[Math.min(indiceAtual + 1, ORDEM_STATUS_ENTREGA.length - 1)];
+  if (proximo === normalizarStatusEntrega(entrega.status)) {
+    throw new Error("A entrega já foi concluída.");
+  }
+
+  await db
+    .update(lojaEntregas)
+    .set({ status: proximo, atualizadoPorId: await idUsuarioEquipe(), atualizadoEm: new Date() })
+    .where(eq(lojaEntregas.id, entregaId));
+
+  if (proximo === "entregue") {
+    await db.update(lojaVendas).set({ status: "entregue" }).where(eq(lojaVendas.id, entrega.vendaId));
+  }
+
+  await registrarAuditoria("atualizar", "loja_entrega", entregaId, `status → ${proximo}`);
+  revalidatePath(`/loja/vendas/${entrega.vendaId}`);
+  revalidatePath("/loja/entregas");
+}
+
+export async function adicionarDocumentoEntrega(entregaId: string, formData: FormData) {
+  const arquivo = formData.get("arquivo") as File | null;
+  if (!arquivo || arquivo.size === 0) throw new Error("Selecione um arquivo.");
+  const erroArquivo = validarArquivo(arquivo, "documento");
+  if (erroArquivo) throw new Error(erroArquivo);
+
+  const [entrega] = await db.select().from(lojaEntregas).where(eq(lojaEntregas.id, entregaId)).limit(1);
+  if (!entrega) throw new Error("Entrega não encontrada.");
+
+  const dir = path.join(uploadsDir(), "loja", "entregas", entregaId);
+  await mkdir(dir, { recursive: true });
+  const extensao = path.extname(arquivo.name) || "";
+  const nomeArquivo = `${randomUUID()}${extensao}`;
+  const bytes = Buffer.from(await arquivo.arrayBuffer());
+  await writeFile(path.join(dir, nomeArquivo), bytes);
+
+  await db.insert(lojaEntregaDocumentos).values({
+    entregaId,
+    tipo: String(formData.get("tipo") ?? "") || "outro",
+    nomeOriginal: arquivo.name,
+    caminho: path.join("loja", "entregas", entregaId, nomeArquivo),
+    criadoPorId: await idUsuarioEquipe(),
+  });
+  await registrarAuditoria("atualizar", "loja_entrega", entregaId, `documento anexado: ${arquivo.name}`);
+  revalidatePath(`/loja/vendas/${entrega.vendaId}`);
   revalidatePath("/loja/entregas");
 }

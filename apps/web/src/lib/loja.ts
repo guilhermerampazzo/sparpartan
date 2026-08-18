@@ -48,6 +48,13 @@ export const LOJA_COMPRA_STATUS = [
   { value: "cancelado", label: "Cancelado", tone: "danger" as const },
 ];
 
+export const LOJA_ENTREGA_STATUS = [
+  { value: "aguardando", label: "Aguardando entrega", tone: "info" as const },
+  { value: "preparando", label: "Preparando", tone: "warning" as const },
+  { value: "em_transporte", label: "Em transporte", tone: "warning" as const },
+  { value: "entregue", label: "Entregue", tone: "success" as const },
+];
+
 export function infoStatusCompra(status: string) {
   return LOJA_COMPRA_STATUS.find((s) => s.value === status) ?? LOJA_COMPRA_STATUS[0];
 }
@@ -58,6 +65,10 @@ export function infoStatusOrcamento(status: string) {
 
 export function infoStatusVenda(status: string) {
   return LOJA_VENDA_STATUS.find((s) => s.value === status) ?? LOJA_VENDA_STATUS[0];
+}
+
+export function infoStatusEntrega(status: string) {
+  return LOJA_ENTREGA_STATUS.find((s) => s.value === status) ?? LOJA_ENTREGA_STATUS[0];
 }
 
 export function formatarMoeda(valor: string | number | null | undefined) {
