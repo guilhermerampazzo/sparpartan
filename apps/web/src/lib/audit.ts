@@ -3,7 +3,7 @@ import { auditLog } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 export async function registrarAuditoria(
-  acao: "criar" | "atualizar" | "excluir" | "arquivar" | "alterar_status" | "login",
+  acao: "criar" | "atualizar" | "excluir" | "arquivar" | "alterar_status" | "login" | "enviar",
   entidade: string,
   entidadeId: string,
   detalhes?: string,
