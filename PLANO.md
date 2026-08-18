@@ -366,3 +366,26 @@ Verificações que provam o sistema de ponta a ponta, e que valem mais que qualq
 - **`MERGEFIELD` com formatação partida.** O Word às vezes quebra um campo em vários `instrText`. O importador precisa concatenar os runs antes de casar o regex, senão alguns campos passam batido. É a parte do M2 que merece teste real contra os 17 arquivos de `documentos/`.
 - **Planilhas com fórmulas modernas.** O Arrais e a 303 têm sheets `LAMBDA_WF`/`ARRAYTEXT_WF`. Não vou reescrever `.xlsx` nenhum — leio uma vez para extrair o schema e vou direto ao DOCX. Risco eliminado por não tocar no arquivo.
 - **Escopo.** São 10 módulos. Do M0 ao M3 já existe um sistema que substitui as planilhas e é melhor que o Base44 no que importa. Vale entregar e usar antes de seguir para o M4.
+
+---
+
+## Correções agosto/2026 — lacunas da lista de alterações (itens Loja)
+
+Verificação da lista completa em `alteracoes.txt` + correções implementadas e testadas em E2E (commit `28bfad4`..`e32d452`):
+
+### M17 — Entregas da Loja completas (spec Loja nº 9)
+- Migration `0041`: colunas novas em `loja_entregas` (endereco, transportadora, data_realizada, frete, pedagio, outros_custos, observacoes, criado_por_id, atualizado_por_id, atualizado_em) + tabela `loja_entrega_documentos` (tipo: comprovante/foto_entrega/documento/recibo).
+- Fluxo de status novo: `aguardando → preparando → em_transporte → entregue` (legados `pendente`/`em_transito` migrados na 0041); `avancarStatusEntrega` sincroniza a venda para `entregue` automaticamente.
+- UI: form na aba Resumo da venda (7 campos novos), página `/loja/entregas/[id]` (dados, status, upload de anexos com link "Abrir" via `api/loja-entregas/[id]`), listagem com colunas novas e total de custos.
+
+### M18 — Central de Operações com status novos (bug)
+- Correção das queries da seção Loja em `pipeline/central-operacional.tsx` para os status pós-migration 0040 (rascunho/enviado/aguardando_aprovacao; aprovada/aguardando_pagamento/pagamento_parcial/preparando_entrega; aguardando/preparando/em_transporte). Antes os indicadores ficavam zerados para sempre.
+
+### M19 — Histórico de compras por fornecedor (complemento Loja nº 10)
+- `buscarHistoricoComprasFornecedor` + seção no detalhe do fornecedor: pedidos (links para `/loja/compras/[id]`), resumo por produto (qtd total, último preço, última compra, pendente com ⚠️) e totais.
+
+### M20 — Envio do pedido de compra por e-mail (complemento Loja nº 6)
+- `gerarHtmlPedidoCompra` (HTML reutilizado pelo PDF e pelo e-mail) + `enviarPedidoCompraEmail` (via `lib/mail`, assunto "Pedido de Compra <número> — Sparapan") + botão na página do pedido. Migration `0042` adiciona a ação `enviar` ao enum `audit_acao` (auditoria do envio).
+
+### Correções pontuais
+- `lib/datas.ts`: `formatarDataBR` agora aceita timestamps ISO completos (ex.: `2026-08-18T03:41:13Z`), não só datas puras — corrige datas do histórico do fornecedor e evita "—" em qualquer exibição futura com horário.
